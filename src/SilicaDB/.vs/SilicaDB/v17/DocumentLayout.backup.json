@@ -3,27 +3,18 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{72B7DAF5-B55A-4D16-83C5-9A53BDFCF90D}|..\\DeviceTestApp\\DeviceTestApp.csproj|c:\\githubrepos\\silicadb\\src\\devicetestapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\metricsrecorder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\metricsrecorder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{7E1FD92C-4EB2-470B-B6AC-020F110C0B6D}|..\\MetricsRecorderTest\\MetricsRecorderTest.csproj|c:\\githubrepos\\silicadb\\src\\metricsrecordertest\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\asyncstoragedevicebase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\asyncstoragedevicebase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{639A6D1E-B0B5-4A4F-BE47-E12E12B6D540}|..\\EvictionCacheTest\\EvictionCacheTest.csproj|c:\\githubrepos\\silicadb\\src\\evictioncachetest\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\interfaces\\istoragedevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\interfaces\\istoragedevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\streamdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\streamdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\inmemorydevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\inmemorydevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\interfaces\\imetricsrecorder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\interfaces\\imetricsrecorder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -33,84 +24,58 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\DeviceTestApp\\Program.cs",
-              "RelativeDocumentMoniker": "..\\DeviceTestApp\\Program.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\DeviceTestApp\\Program.cs*",
-              "RelativeToolTip": "..\\DeviceTestApp\\Program.cs*",
-              "ViewState": "AgIAAKUAAAAAAAAAAAAmwNYAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T11:23:23.615Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "PhysicalBlockDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\PhysicalBlockDevice.cs",
-              "RelativeDocumentMoniker": "Devices\\PhysicalBlockDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\PhysicalBlockDevice.cs",
-              "RelativeToolTip": "Devices\\PhysicalBlockDevice.cs",
-              "ViewState": "AgIAADIAAAAAAAAAAAAmwGMAAAAAAAAAAAAAAA==",
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\MetricsRecorderTest\\Program.cs",
+              "RelativeDocumentMoniker": "..\\MetricsRecorderTest\\Program.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\MetricsRecorderTest\\Program.cs",
+              "RelativeToolTip": "..\\MetricsRecorderTest\\Program.cs",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAmwHsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T10:37:14.91Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "StreamDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\StreamDevice.cs",
-              "RelativeDocumentMoniker": "Devices\\StreamDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\StreamDevice.cs",
-              "RelativeToolTip": "Devices\\StreamDevice.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAmwDwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T10:37:02.992Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "InMemoryDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\InMemoryDevice.cs",
-              "RelativeDocumentMoniker": "Devices\\InMemoryDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\InMemoryDevice.cs",
-              "RelativeToolTip": "Devices\\InMemoryDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAcAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T10:36:51.516Z",
+              "WhenOpened": "2025-08-03T22:31:20.196Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "AsyncStorageDeviceBase.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\AsyncStorageDeviceBase.cs",
-              "RelativeDocumentMoniker": "Devices\\AsyncStorageDeviceBase.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\AsyncStorageDeviceBase.cs",
-              "RelativeToolTip": "Devices\\AsyncStorageDeviceBase.cs",
-              "ViewState": "AgIAAF4AAAAAAAAAAAAowIwAAAAAAAAAAAAAAA==",
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\EvictionCacheTest\\Program.cs",
+              "RelativeDocumentMoniker": "..\\EvictionCacheTest\\Program.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\EvictionCacheTest\\Program.cs",
+              "RelativeToolTip": "..\\EvictionCacheTest\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T10:36:37.17Z",
+              "WhenOpened": "2025-08-03T22:24:31.447Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "IStorageDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\Interfaces\\IStorageDevice.cs",
-              "RelativeDocumentMoniker": "Devices\\Interfaces\\IStorageDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\Interfaces\\IStorageDevice.cs",
-              "RelativeToolTip": "Devices\\Interfaces\\IStorageDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACEAAAAAAAAAAAAAAA==",
+              "Title": "IMetricsRecorder.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\Interfaces\\IMetricsRecorder.cs",
+              "RelativeDocumentMoniker": "Metrics\\Interfaces\\IMetricsRecorder.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\Interfaces\\IMetricsRecorder.cs",
+              "RelativeToolTip": "Metrics\\Interfaces\\IMetricsRecorder.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T10:36:23.569Z",
+              "WhenOpened": "2025-08-03T21:09:44.088Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MetricsRecorder.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricsRecorder.cs",
+              "RelativeDocumentMoniker": "Metrics\\MetricsRecorder.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricsRecorder.cs*",
+              "RelativeToolTip": "Metrics\\MetricsRecorder.cs*",
+              "ViewState": "AgIAALMAAAAAAAAAAAAmwOQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-03T21:06:27.755Z",
               "EditorCaption": ""
             }
           ]

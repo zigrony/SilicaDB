@@ -16,22 +16,22 @@ namespace SilicaDB.DeviceTester
     {
         // fine-tune these for your cancellation test
         private const int CancellationFloodCount = 500;
-        private const int CancellationTimeoutMs = 20;
+        private const int CancellationTimeoutMs = 5;
 
         static async Task Main(string[] args)
         {
             Console.WriteLine("=== SilicaDB Device Tester ===");
-
-            await TestDeviceAsync(new InMemoryDevice(),
-                                  "InMemoryDevice");
-            await TestDeviceAsync(
-                new StreamDevice(
-                    new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4),
-                    true),
-                "StreamDevice (MemoryStream)");
+            int pid = Process.GetCurrentProcess().Id;
+            Console.WriteLine($"PID: {pid}");
+            Console.ReadLine();
+            await TestDeviceAsync(new InMemoryDevice(), "InMemoryDevice");
+            await TestDeviceAsync(new StreamDevice(
+                                        new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4),
+                                        true), "StreamDevice (MemoryStream)");
 
             var tempPath = Path.Combine(
                 Path.GetTempPath(), "silicadb_test.bin");
+
             if (File.Exists(tempPath)) File.Delete(tempPath);
 
             await TestDeviceAsync(
@@ -39,6 +39,7 @@ namespace SilicaDB.DeviceTester
                 $"PhysicalBlockDevice ({tempPath})");
 
             Console.WriteLine("\n=== All tests completed ===");
+            Console.ReadLine();
         }
 
         static async Task TestDeviceAsync(
@@ -69,6 +70,9 @@ namespace SilicaDB.DeviceTester
                     () => device.ReadFrameAsync(0)));
             await RunTestAsync("Dispose is idempotent",
                                () => device.DisposeAsync().AsTask());
+
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
         }
 
         static async Task RunTestAsync(

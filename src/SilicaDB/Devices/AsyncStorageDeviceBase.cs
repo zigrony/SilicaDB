@@ -14,16 +14,30 @@ namespace SilicaDB.Devices
     {
         public const int FrameSize = 8192;
 
-        private readonly ConcurrentDictionary<long, SemaphoreSlim> _frameLocks = new();
-        private readonly object _mountSync = new();
-        private bool _mounted;
+    // Single lock for mount state, semaphore dict and in-flight tracking
+    private readonly object _stateLock = new();
+    private readonly Dictionary<long, SemaphoreSlim> _frameLocks = new();
+    private bool _mounted = false;
+
+    // Broadcasts Unmount requests
+    private readonly CancellationTokenSource _lifecycleCts = new();
+
+    // Count of current Read/Write operations
+    private int _inFlightCount = 0;
+        private TaskCompletionSource<object> _drainTcs; // = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public async Task MountAsync(CancellationToken cancellationToken = default)
         {
-            lock (_mountSync)
+            lock (_stateLock)
             {
-                if (_mounted) throw new InvalidOperationException("Already mounted");
+                if (_mounted)
+                    throw new InvalidOperationException("Already mounted");
+
                 _mounted = true;
+
+                // Reset the drain TCS for this mount/unmount cycle
+                _drainTcs = new TaskCompletionSource<object>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
             }
 
             await OnMountAsync(cancellationToken).ConfigureAwait(false);
@@ -31,35 +45,85 @@ namespace SilicaDB.Devices
 
         public async Task UnmountAsync(CancellationToken cancellationToken = default)
         {
-            lock (_mountSync)
+            lock (_stateLock)
             {
                 if (!_mounted) throw new InvalidOperationException("Not mounted");
                 _mounted = false;
             }
 
+
+            // 1) Tell all in-flight ops to cancel
+            _lifecycleCts.Cancel();
+
+            // 2) Wait for any in-flight operations to finish
+            Task waitForDrain;
+            lock (_stateLock)
+            {
+                waitForDrain = _inFlightCount == 0
+                    ? Task.CompletedTask
+                    : _drainTcs.Task;
+            }
+            await waitForDrain.ConfigureAwait(false);
+
+            // 3) Now it’s safe to dispose all frame semaphores
+            lock (_stateLock)
+            {
+                foreach (var sem in _frameLocks.Values)
+                    sem.Dispose();
+                _frameLocks.Clear();
+            }
+
             await OnUnmountAsync(cancellationToken).ConfigureAwait(false);
 
-            // Dispose all frame semaphores
-            foreach (var kv in _frameLocks)
-            {
-                kv.Value.Dispose();
-            }
-            _frameLocks.Clear();
         }
 
         public async Task<byte[]> ReadFrameAsync(long frameId, CancellationToken cancellationToken = default)
         {
-            EnsureMounted();
-            var sem = _frameLocks.GetOrAdd(frameId, _ => new SemaphoreSlim(1, 1));
-            await sem.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // 1) Snapshot mounted‐state, create/fetch semaphore, bump in-flight
+            SemaphoreSlim sem;
+            lock (_stateLock)
+            {
+                if (!_mounted)
+                    throw new InvalidOperationException("Device is not mounted");
 
+                if (!_frameLocks.TryGetValue(frameId, out sem))
+                {
+                    sem = new SemaphoreSlim(1, 1);
+                    _frameLocks[frameId] = sem;
+                }
+
+                _inFlightCount++;
+            }
+
+            // 2) Combine user token with shutdown token
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifecycleCts.Token);
+            var ct = linkedCts.Token;
+
+            bool acquired = false;
             try
             {
-                return await ReadFrameInternalAsync(frameId, cancellationToken).ConfigureAwait(false);
+                // 3) This will throw if lifecycleCts was canceled
+                await sem.WaitAsync(ct).ConfigureAwait(false);
+                acquired = true; 
+
+                // 4) Actual I/O
+                return await ReadFrameInternalAsync(frameId, ct).ConfigureAwait(false);
             }
             finally
             {
-                sem.Release();
+                // 5) Release the semaphore if we successfully acquired it
+                if (acquired)
+                    sem.Release();
+
+                // 6) Decrement in-flight and signal drain if unmount in progress
+                TaskCompletionSource<object>? toSignal = null;
+                lock (_stateLock)
+                {
+                    _inFlightCount--;
+                    if (_inFlightCount == 0 && !_mounted)
+                        toSignal = _drainTcs;
+                }
+                toSignal?.TrySetResult(null);
             }
         }
 
@@ -70,7 +134,14 @@ namespace SilicaDB.Devices
                 throw new ArgumentException($"Buffer must be exactly {FrameSize} bytes", nameof(data));
 
             EnsureMounted();
-            var sem = _frameLocks.GetOrAdd(frameId, _ => new SemaphoreSlim(1, 1));
+
+            SemaphoreSlim sem;
+            if (!_frameLocks.TryGetValue(frameId, out sem))
+            {
+                sem = new SemaphoreSlim(1, 1);
+                _frameLocks[frameId] = sem;
+            }
+
             await sem.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
@@ -85,7 +156,7 @@ namespace SilicaDB.Devices
 
         private void EnsureMounted()
         {
-            lock (_mountSync)
+            lock (_stateLock)
             {
                 if (!_mounted) throw new InvalidOperationException("Device is not mounted");
             }
