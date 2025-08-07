@@ -3,7 +3,39 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{7E1FD92C-4EB2-470B-B6AC-020F110C0B6D}|..\\MetricsRecorderTest\\MetricsRecorderTest.csproj|c:\\githubrepos\\silicadb\\src\\metricsrecordertest\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\metricsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\metricsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\interfaces\\imetricsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\interfaces\\imetricsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\metricdefinition.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\metricdefinition.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\metrics\\metrictype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:metrics\\metrictype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\common\\metricsextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:common\\metricsextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\durability\\walmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:durability\\walmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\devices\\asyncstoragedevicebase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:devices\\asyncstoragedevicebase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{939E21D9-D067-4EA1-910B-5264499AC93A}|..\\DurabilityTestApp\\DurabilityTestApp.csproj|c:\\githubrepos\\silicadb\\src\\durabilitytestapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,14 +50,122 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\MetricsRecorderTest\\Program.cs",
-              "RelativeDocumentMoniker": "..\\MetricsRecorderTest\\Program.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\MetricsRecorderTest\\Program.cs",
-              "RelativeToolTip": "..\\MetricsRecorderTest\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAARAAAAAAAAAA==",
+              "Title": "MetricsManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricsManager.cs",
+              "RelativeDocumentMoniker": "Metrics\\MetricsManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricsManager.cs",
+              "RelativeToolTip": "Metrics\\MetricsManager.cs",
+              "ViewState": "AgIAAFYAAAAAAAAAAAAcwFwAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-03T23:07:53.794Z",
+              "WhenOpened": "2025-08-07T17:23:56.654Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "IMetricsManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\Interfaces\\IMetricsManager.cs",
+              "RelativeDocumentMoniker": "Metrics\\Interfaces\\IMetricsManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\Interfaces\\IMetricsManager.cs",
+              "RelativeToolTip": "Metrics\\Interfaces\\IMetricsManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T17:23:35.582Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MetricDefinition.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricDefinition.cs",
+              "RelativeDocumentMoniker": "Metrics\\MetricDefinition.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricDefinition.cs",
+              "RelativeToolTip": "Metrics\\MetricDefinition.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T17:23:13.571Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MetricType.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricType.cs",
+              "RelativeDocumentMoniker": "Metrics\\MetricType.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Metrics\\MetricType.cs",
+              "RelativeToolTip": "Metrics\\MetricType.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T17:22:50.07Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "MetricsExtensions.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Common\\MetricsExtensions.cs",
+              "RelativeDocumentMoniker": "Common\\MetricsExtensions.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Common\\MetricsExtensions.cs",
+              "RelativeToolTip": "Common\\MetricsExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T15:52:43.244Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PhysicalBlockDevice.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\PhysicalBlockDevice.cs",
+              "RelativeDocumentMoniker": "Devices\\PhysicalBlockDevice.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\PhysicalBlockDevice.cs",
+              "RelativeToolTip": "Devices\\PhysicalBlockDevice.cs",
+              "ViewState": "AgIAACgAAAAAAAAAAIA5wFMAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T15:32:08.675Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\DurabilityTestApp\\Program.cs",
+              "RelativeDocumentMoniker": "..\\DurabilityTestApp\\Program.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\DurabilityTestApp\\Program.cs",
+              "RelativeToolTip": "..\\DurabilityTestApp\\Program.cs",
+              "ViewState": "AgIAACEAAAAAAAAAAAAowEEAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T14:59:47.6Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "WalManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Durability\\WalManager.cs",
+              "RelativeDocumentMoniker": "Durability\\WalManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Durability\\WalManager.cs",
+              "RelativeToolTip": "Durability\\WalManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAEAAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T14:57:25.454Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AsyncStorageDeviceBase.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\AsyncStorageDeviceBase.cs",
+              "RelativeDocumentMoniker": "Devices\\AsyncStorageDeviceBase.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Devices\\AsyncStorageDeviceBase.cs",
+              "RelativeToolTip": "Devices\\AsyncStorageDeviceBase.cs",
+              "ViewState": "AgIAAF4BAAAAAAAAAAAMwIcBAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-07T14:39:52.457Z",
               "EditorCaption": ""
             }
           ]

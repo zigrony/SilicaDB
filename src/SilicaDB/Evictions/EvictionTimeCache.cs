@@ -1,106 +1,135 @@
-﻿// File: SilicaDB.Evictions/EvictionTimeCache.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using SilicaDB.Evictions.Interfaces;
 
 namespace SilicaDB.Evictions
 {
-    /// <summary>
-    /// Idle‐only eviction. No capacity limit; entries expire after idleTimeout.
-    /// </summary>
     public class EvictionTimeCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
         private readonly AsyncLock _lock = new();
-        private readonly TimeSpan _idleTimeout;
-        private readonly Dictionary<TKey, LinkedListNode<CacheEntry>> _map;
-        private readonly LinkedList<CacheEntry> _lruList;
+        private readonly long _idleTicks;
+        private readonly Func<long> _now;
+        private readonly Dictionary<TKey, LinkedListNode<CacheEntry>> _map
+            = new();
+        private readonly LinkedList<CacheEntry> _lruList
+            = new();
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvictedAsync;
         private bool _disposed;
+        /// <summary>
+        /// How many entries are currently in the cache.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                // Snapshot the count under lock for thread-safety.
+                lock (_lock)
+                {
+                    return _map.Count;
+                }
+            }
+        }
 
         private sealed class CacheEntry
         {
             public TKey Key { get; }
             public TValue Value { get; }
-            public DateTime LastUse { get; set; }
+            /// <summary>
+            /// The absolute Stopwatch-ticks when this entry should be pulled.
+            /// </summary>
+            public long Expiration { get; set; }
 
-            public CacheEntry(TKey key, TValue value)
+            public CacheEntry(TKey key, TValue value, long now, long idleTicks)
             {
                 Key = key;
                 Value = value;
-                LastUse = DateTime.UtcNow;
+                Expiration = now + idleTicks;
             }
         }
 
+        /// <param name="timeProvider">
+        ///   Defaults to Stopwatch.GetTimestamp.  In tests you can
+        ///   pass a fake that you advance manually.
+        /// </param>
         public EvictionTimeCache(
             TimeSpan idleTimeout,
             Func<TKey, ValueTask<TValue>> factory,
-            Func<TKey, TValue, ValueTask> onEvictedAsync)
+            Func<TKey, TValue, ValueTask> onEvictedAsync,
+            Func<long>? timeProvider = null)
         {
-            _idleTimeout = idleTimeout;
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _onEvictedAsync = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            _now = timeProvider ?? Stopwatch.GetTimestamp;
 
-            _map = new Dictionary<TKey, LinkedListNode<CacheEntry>>();
-            _lruList = new LinkedList<CacheEntry>();
+            // Convert idleTimeout (100 ns ticks) → Stopwatch ticks
+            _idleTicks = idleTimeout.Ticks * Stopwatch.Frequency
+                         / TimeSpan.TicksPerSecond;
         }
 
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(EvictionLruCache<TKey, TValue>));
+                throw new ObjectDisposedException(nameof(EvictionTimeCache<TKey, TValue>));
 
-            // Phase 1: existing‐entry hit
+            var now = _now();
+
+            // Phase 1: try a hit
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 if (_map.TryGetValue(key, out var node))
                 {
-                    node.Value.LastUse = DateTime.UtcNow;
+                    // push expiration forward
+                    node.Value.Expiration = now + _idleTicks;
                     _lruList.Remove(node);
                     _lruList.AddFirst(node);
                     return node.Value.Value;
                 }
             }
 
-            // Phase 2: build value outside lock
-            var createdValue = await _factory(key).ConfigureAwait(false);
+            // Phase 2: build the value
+            var newValue = await _factory(key).ConfigureAwait(false);
 
-            // Phase 3: insert new entry under lock
+            // Phase 3: re-check and insert
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
-                if (_map.TryGetValue(key, out var existingNode2))
-                    return existingNode2.Value.Value;
+                if (_map.TryGetValue(key, out var existing))
+                    return existing.Value.Value;
 
-                var entry = new CacheEntry(key, createdValue);
-                var node2 = new LinkedListNode<CacheEntry>(entry);
-                _lruList.AddFirst(node2);
-                _map[key] = node2;
+                var entry = new CacheEntry(key, newValue, now, _idleTicks);
+                var node = new LinkedListNode<CacheEntry>(entry);
+                _lruList.AddFirst(node);
+                _map[key] = node;
             }
 
-            // Phase 4: done
-            return createdValue;
+            return newValue;
         }
 
         public async ValueTask CleanupIdleAsync()
         {
-            var threshold = DateTime.UtcNow - _idleTimeout;
-            List<CacheEntry>? toEvict = null;
+            var now = _now();
+            var toEvict = new List<CacheEntry>();
 
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
-                toEvict = new List<CacheEntry>();
-                while (_lruList.Last is { Value: var entry } tailNode
-                       && entry.LastUse < threshold)
+                // Evict all expired entries at the tail
+                while (true)
                 {
+                    var tail = _lruList.Last;
+                    if (tail == null || tail.Value.Expiration >= now)
+                        break;
+
                     _lruList.RemoveLast();
-                    _map.Remove(entry.Key);
-                    toEvict.Add(entry);
+                    _map.Remove(tail.Value.Key);
+                    toEvict.Add(tail.Value);
                 }
             }
 
-            foreach (var e in toEvict!)
+            // Fire callbacks outside the lock
+            foreach (var e in toEvict)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
         }
 
@@ -119,6 +148,10 @@ namespace SilicaDB.Evictions
 
             foreach (var e in allEntries)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
+
+            // clean up the internal AsyncLock
+            _lock.Dispose();
+
         }
     }
 }

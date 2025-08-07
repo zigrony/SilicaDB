@@ -1,0 +1,11 @@
+﻿2025-08-04T17:26:46.8243558Z [Information] Starting SilicaLogger test.
+2025-08-04T17:26:46.8247632Z [Debug] Debugging value: 123
+2025-08-04T17:26:46.8247847Z [Warning] This is a warning with parameter param1
+2025-08-04T17:26:46.8247995Z [Error] Error occurred: Something went wrong
+2025-08-04T17:26:46.8248020Z [Critical] Critical failure: shutting down
+2025-08-04T17:26:46.8304549Z [Trace] Concurrent log message 0
+2025-08-04T17:26:46.8307893Z [Trace] Concurrent log message 1
+2025-08-04T17:26:46.8308318Z [Trace] Concurrent log message 2
+2025-08-04T17:26:46.8309048Z [Trace] Concurrent log message 3
+2025-08-04T17:26:46.8309197Z [Trace] Concurrent log message 4
+2025-08-04T17:26:46.8311571Z [Information] Finishing SilicaLogger test.

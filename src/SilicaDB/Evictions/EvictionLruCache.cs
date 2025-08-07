@@ -21,6 +21,20 @@ namespace SilicaDB.Evictions
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvictedAsync;
         private bool _disposed;
+        /// <summary>
+        /// How many entries are currently in the cache.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                // Snapshot the count under lock for thread-safety.
+                lock (_lock)
+                {
+                    return _map.Count;
+                }
+            }
+        }
 
         private sealed class CacheEntry
         {
@@ -139,6 +153,10 @@ namespace SilicaDB.Evictions
 
             foreach (var e in allEntries)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
+
+            // clean up the internal AsyncLock
+            _lock.Dispose();
+
         }
     }
 }

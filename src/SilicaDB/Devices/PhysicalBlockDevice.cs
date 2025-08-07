@@ -18,7 +18,6 @@ namespace SilicaDB.Devices
     {
         private readonly string _path;
         private FileStream? _fs;
-        private readonly SemaphoreSlim _streamLock = new SemaphoreSlim(1, 1);
 
         public PhysicalBlockDevice(string path)
         {
@@ -44,56 +43,45 @@ namespace SilicaDB.Devices
             // Dispose underlying FileStream and the global stream lock
             _fs?.Dispose();
             _fs = null;
-            _streamLock.Dispose();
 
             return Task.CompletedTask;
         }
 
-        protected override async Task<byte[]> ReadFrameInternalAsync(long frameId, CancellationToken cancellationToken)
-        {
-            var buffer = new byte[FrameSize];
-            long offset = checked(frameId * (long)FrameSize);
+    protected override async Task<byte[]> ReadFrameInternalAsync(long frameId, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[FrameSize];
+        long offset = checked(frameId * (long)FrameSize);
 
-            // If reading beyond EOF, return zero-filled buffer
-            if (offset >= _fs!.Length)
-                return buffer;
-
-            await _streamLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                _fs.Seek(offset, SeekOrigin.Begin);
-                int bytesRead = await _fs
-                    .ReadAsync(buffer, 0, FrameSize, cancellationToken)
-                    .ConfigureAwait(false);
-                // any unread portion remains zero
-            }
-            finally
-            {
-                _streamLock.Release();
-            }
-
+        // if beyond current EOF, return zeros
+        if (offset >= _fs!.Length)
             return buffer;
-        }
+
+        // positional read — no shared pointer, no global lock
+        int bytesRead = await RandomAccess.ReadAsync(
+                _fs.SafeFileHandle,
+                buffer,
+                offset,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        // any unread portion is already zero
+        return buffer;
+    }
 
         protected override async Task WriteFrameInternalAsync(long frameId, byte[] data, CancellationToken cancellationToken)
         {
             long offset = checked(frameId * (long)FrameSize);
 
-            await _streamLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                _fs!.Seek(offset, SeekOrigin.Begin);
-                await _fs
-                    .WriteAsync(data, 0, FrameSize, cancellationToken)
-                    .ConfigureAwait(false);
-                await _fs
-                    .FlushAsync(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            finally
-            {
-                _streamLock.Release();
-            }
+            // positional write — no global lock needed
+            await RandomAccess.WriteAsync(
+                    _fs!.SafeFileHandle,
+                    data,
+                    offset,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            // ensure durability
+            await _fs!.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -22,6 +22,8 @@ namespace SilicaDB.Evictions.Interfaces
         /// Triggers idle‐time eviction.
         /// </summary>
         ValueTask CleanupIdleAsync();
+
+        public int Count { get; }
     }
 
 }

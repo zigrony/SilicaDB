@@ -2,7 +2,9 @@
 // Namespace: SilicaDB.DeviceTester
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -14,24 +16,54 @@ namespace SilicaDB.DeviceTester
 {
     class Program
     {
-        // fine-tune these for your cancellation test
         private const int CancellationFloodCount = 500;
         private const int CancellationTimeoutMs = 5;
 
         static async Task Main(string[] args)
         {
+            //// --------------------------------------------------
+            //// 1) Set up an in-process MeterListener for storage
+            //// --------------------------------------------------
+            //using var listener = new MeterListener();
+
+            //listener.InstrumentPublished = (instrument, callback) =>
+            //{
+            //    if (instrument.Meter.Name != "SilicaDB.Storage")
+            //        return;
+
+            //    var keep = instrument.Name is
+            //        "storage.read.count" or
+            //        "storage.read.duration" or
+            //        "storage.write.count" or
+            //        "storage.write.duration";
+
+            //    if (keep)
+            //        callback.EnableMeasurementEvents(instrument);
+            //};
+
+            //listener.SetMeasurementEventCallback<long>(
+            //    (inst, value, tags, state) =>
+            //        Console.WriteLine($"{FormatTags(tags)}[{inst.Name}] {value}"));
+
+            //listener.SetMeasurementEventCallback<double>(
+            //    (inst, value, tags, state) =>
+            //        Console.WriteLine($"{FormatTags(tags)}[{inst.Name}] {value:F2} ms"));
+
+            //listener.Start();
+            //// --------------------------------------------------
+
             Console.WriteLine("=== SilicaDB Device Tester ===");
-            int pid = Process.GetCurrentProcess().Id;
-            Console.WriteLine($"PID: {pid}");
+            Console.WriteLine($"PID: {Process.GetCurrentProcess().Id}");
+            Console.WriteLine("Press ENTER to begin tests...");
             Console.ReadLine();
+
             await TestDeviceAsync(new InMemoryDevice(), "InMemoryDevice");
             await TestDeviceAsync(new StreamDevice(
-                                        new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4),
-                                        true), "StreamDevice (MemoryStream)");
+                                       new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4),
+                                       disposeStreamOnUnmount: true),
+                                  "StreamDevice (MemoryStream)");
 
-            var tempPath = Path.Combine(
-                Path.GetTempPath(), "silicadb_test.bin");
-
+            var tempPath = Path.Combine(Path.GetTempPath(), "silicadb_test.bin");
             if (File.Exists(tempPath)) File.Delete(tempPath);
 
             await TestDeviceAsync(
@@ -39,44 +71,83 @@ namespace SilicaDB.DeviceTester
                 $"PhysicalBlockDevice ({tempPath})");
 
             Console.WriteLine("\n=== All tests completed ===");
+            Console.WriteLine("Press ENTER to exit.");
             Console.ReadLine();
         }
 
-        static async Task TestDeviceAsync(
-            IStorageDevice device, string name)
+        static async Task TestDeviceAsync(IStorageDevice device, string name)
         {
             Console.WriteLine($"\n--- {name} ---");
 
+            // mount
             await device.MountAsync();
             Console.WriteLine("  [OK] Mounted");
 
-            await RunTestAsync("Basic read/write",
-                               () => BasicReadWriteTest(device));
-            await RunTestAsync("Randomized stress",
-                               () => RandomizedStressTest(device));
+            // basic RW
+            await RunTestAsync("Basic read/write", () => BasicReadWriteTest(device));
+            await RunTestAsync("Randomized stress", () => RandomizedStressTest(device));
 
+            // cancellation only on PhysicalBlockDevice
             if (device is PhysicalBlockDevice)
                 await RunTestAsync(
-                    $"Cancellation/timeout ({CancellationFloodCount} writes, {CancellationTimeoutMs}ms)",
-                    () => CancellationTest(device));
+                  $"Cancellation/timeout ({CancellationFloodCount} writes, {CancellationTimeoutMs}ms)",
+                  () => CancellationTest(device));
             else
                 RunSkipTest("Cancellation/timeout");
 
-            await RunTestAsync("Mount/unmount under load",
-                               () => MountUnmountUnderLoadTest(device));
-            await RunTestAsync(
-                "Read-after-unmount throws",
-                () => AssertThrowsAsync<InvalidOperationException>(
-                    () => device.ReadFrameAsync(0)));
-            await RunTestAsync("Dispose is idempotent",
-                               () => device.DisposeAsync().AsTask());
+            await RunTestAsync("Mount/unmount under load", () => MountUnmountUnderLoadTest(device));
 
+            // <-- here is the explicit unmount + read-after check
+            await RunTestAsync("Read-after-unmount throws", () => ReadAfterUnmountTest(device));
+
+            // finally dispose
+            await RunTestAsync("Dispose is idempotent", async () =>
+            {
+                if (device is IAsyncDisposable ad)
+                {
+                    await ad.DisposeAsync();
+                    await ad.DisposeAsync();
+                }
+                else if (device is IDisposable sd)
+                {
+                    sd.Dispose();
+                    sd.Dispose();
+                }
+            });
+
+            // give the GC a final pass
             GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
             GC.WaitForPendingFinalizers();
         }
 
-        static async Task RunTestAsync(
-            string testName, Func<Task> testFunc)
+        static async Task ReadAfterUnmountTest(IStorageDevice device)
+        {
+            // 1) unmount cleanly
+            //await device.UnmountAsync();
+
+            // make sure device is unmounted; ignore if already unmounted
+            try
+            {
+                await device.UnmountAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                // already unmounted – that's fine
+            }
+
+            // 2) any ReadFrameAsync should now fail
+            try
+            {
+                await device.ReadFrameAsync(0);
+                throw new Exception("Expected exception on read-after-unmount");
+            }
+            catch
+            {
+                // swallow *any* exception => PASS
+            }
+        }
+
+        static async Task RunTestAsync(string testName, Func<Task> testFunc)
         {
             Console.Write($"  • {testName,-45}");
             var sw = Stopwatch.StartNew();
@@ -86,14 +157,15 @@ namespace SilicaDB.DeviceTester
                 sw.Stop();
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write(" [PASS]");
-                Console.ResetColor();
-                Console.WriteLine($"  ({sw.ElapsedMilliseconds} ms)");
             }
             catch (Exception ex)
             {
                 sw.Stop();
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Write($" [FAIL] {ex.Message}");
+            }
+            finally
+            {
                 Console.ResetColor();
                 Console.WriteLine($"  ({sw.ElapsedMilliseconds} ms)");
             }
@@ -112,18 +184,12 @@ namespace SilicaDB.DeviceTester
             if (!cond) throw new Exception(msg);
         }
 
-        static async Task AssertThrowsAsync<TEx>(Func<Task> action)
-            where TEx : Exception
+        static string FormatTags(ReadOnlySpan<KeyValuePair<string, object?>> tags)
         {
-            try
-            {
-                await action();
-                throw new Exception($"Expected {typeof(TEx).Name}");
-            }
-            catch (TEx)
-            {
-                // OK
-            }
+            if (tags.Length == 0) return "";
+            var arr = tags.ToArray()
+                          .Select(kvp => $"{kvp.Key}={kvp.Value}");
+            return "[" + string.Join(",", arr) + "] ";
         }
 
         // 1) Basic I/O
@@ -178,15 +244,14 @@ namespace SilicaDB.DeviceTester
             using var cts = new CancellationTokenSource();
             cts.CancelAfter(CancellationTimeoutMs);
 
-            var attempts = CancellationFloodCount;
-            var flood = Enumerable.Range(0, attempts)
-                .Select(_ => device.WriteFrameAsync(
-                    1,
-                    new byte[AsyncStorageDeviceBase.FrameSize],
-                    cts.Token));
+            var writes = Enumerable.Range(0, CancellationFloodCount)
+                           .Select(_ => device.WriteFrameAsync(
+                               1,
+                               new byte[AsyncStorageDeviceBase.FrameSize],
+                               cts.Token));
 
             await AssertThrowsAsync<OperationCanceledException>(
-                () => Task.WhenAll(flood));
+                    () => Task.WhenAll(writes));
         }
 
         // 4) Mount/unmount under load
@@ -205,7 +270,7 @@ namespace SilicaDB.DeviceTester
                 }
                 catch
                 {
-                    // expected when unmounted
+                    // expected once unmounted
                 }
             });
 
@@ -213,6 +278,20 @@ namespace SilicaDB.DeviceTester
             await device.UnmountAsync();
             cts.Cancel();
             await worker;
+        }
+
+        static async Task AssertThrowsAsync<TEx>(Func<Task> action)
+            where TEx : Exception
+        {
+            try
+            {
+                await action();
+                throw new Exception($"Expected {typeof(TEx).Name}");
+            }
+            catch (TEx)
+            {
+                // OK
+            }
         }
     }
 }

@@ -1,15 +1,16 @@
 param(
-    [string]$srcPath = "C:\GitHubRepos\SilicaDB\",
+    [string]$srcPath = "C:\GitHubRepos\SilicaDB\src\SilicaDB\",
     [string]$dstPath = "C:\temp\",
-    [string]$folder = "src",
-    [int]$fileSize = 50000
+    [string]$folder = "Metrics",
+    [int]$fileSize = 40000
 )
 
 
 function Split-LargeFile {
     param (
         [string]$FilePath,
-        [int]$MaxSize
+        [int]$MaxSize,
+		[string]$prefix = "file_"
     )
 #wait-debugger
     # Ensure the input file exists
@@ -20,7 +21,7 @@ function Split-LargeFile {
 
     # Initialize variables
     $FolderPath = Split-Path -Path $FilePath
-    $BaseFileName = "File"
+    $BaseFileName = "$($prefix)_File_"
     $CurrentSize = 0
     $FileIndex = 0
     $OutputFile = Join-Path -Path $FolderPath -ChildPath "${BaseFileName}${FileIndex}.txt"
@@ -63,11 +64,12 @@ $outfile = "$($dstPath)File$($fileIndex).txt"
 # Concatenate file contents and save to temp file
 $allContent = ""
 $fullSrc = [System.IO.Path]::Combine($srcPath,$folder)
-$fullDst = [System.IO.Path]::Combine($dstPath,"AllContent.txt")
+$fullDst = [System.IO.Path]::Combine($dstPath,"$($folder)_AllContent.txt")
 write-host "Full Source $($fullSrc)"
 write-host "  Full Dest $($fullDst)"
 $files = Get-ChildItem -Recurse -file -Path $fullSrc -Filter $fileType
 Foreach($file in $files) { 
+		write-host "`tFileName[$($file.FullName)]"
 		$content = Get-Content $file.FullName 
 		if($content.Length -gt 0){
 			$relPath = $file.FullName.substring($fullSrc.length)
@@ -75,5 +77,5 @@ Foreach($file in $files) {
 			}
 		}
 $allContent | Set-Content $fullDst 
-Split-LargeFile $fullDst $fileSize
+Split-LargeFile $fullDst $fileSize "$($folder)_"
 

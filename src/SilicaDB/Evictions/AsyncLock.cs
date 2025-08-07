@@ -3,7 +3,7 @@
     /// <summary>
     /// Simple async‐mutex. Matches the pattern in AsyncStorageDeviceBase.
     /// </summary>
-    public sealed class AsyncLock
+    public sealed class AsyncLock : IDisposable
     {
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private readonly Task<IDisposable> _releaserTask;
@@ -37,6 +37,14 @@
             private readonly AsyncLock _toRelease;
             public Releaser(AsyncLock toRelease) => _toRelease = toRelease;
             public void Dispose() => _toRelease._semaphore.Release();
+        }
+
+        /// <summary>
+        /// Dispose the underlying SemaphoreSlim.
+        /// </summary>
+        public void Dispose()
+        {
+            _semaphore.Dispose();
         }
     }
 
