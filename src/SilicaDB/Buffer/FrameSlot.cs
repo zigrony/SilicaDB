@@ -3,7 +3,6 @@ using SilicaDB.Devices.Interfaces;
 using SilicaDB.Devices;
 using SilicaDB.Evictions.Interfaces;
 using SilicaDB.Evictions;
-using SilicaDB.Storage;
 
 namespace SilicaDB.BufferPool
 {
@@ -15,12 +14,12 @@ namespace SilicaDB.BufferPool
     {
         private int _pinCount;
 
-        public Page Page { get; }
+        public long Page { get; }
         public bool IsDirty { get; private set; }
 
-        public FrameSlot(Page page)
+        public FrameSlot(long page)
         {
-            Page = page ?? throw new ArgumentNullException(nameof(page));
+            Page = page;
         }
 
         public void Pin() => Interlocked.Increment(ref _pinCount);

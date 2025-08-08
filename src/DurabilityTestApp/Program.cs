@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Durability;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.DurabilityTester
 {
@@ -60,7 +61,7 @@ namespace SilicaDB.DurabilityTester
             var walPath = Path.Combine(dir, "wal.log");
             const int count = 100;
 
-            using var wal = new WalManager(walPath);
+            using var wal = new WalManager(walPath, new MetricsManager(), walName: null);
             await wal.StartAsync(default);
             for (int i = 1; i <= count; i++)
                 await wal.AppendAsync(new WalRecord(0, BitConverter.GetBytes(i)), default);
@@ -83,7 +84,7 @@ namespace SilicaDB.DurabilityTester
             const int second = 30;
 
             // First session
-            using (var wal = new WalManager(walPath))
+            using (var wal = new WalManager(walPath, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(default);
                 for (int i = 1; i <= first; i++)
@@ -93,7 +94,7 @@ namespace SilicaDB.DurabilityTester
             }
 
             // Second session
-            using (var wal = new WalManager(walPath))
+            using (var wal = new WalManager(walPath, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(default);
                 for (int i = first + 1; i <= first + second; i++)
@@ -116,7 +117,7 @@ namespace SilicaDB.DurabilityTester
             var walPath = Path.Combine(dir, "wal.log");
             const int total = 20;
 
-            using var wal = new WalManager(walPath);
+            using var wal = new WalManager(walPath, new MetricsManager(), walName: null);
             await wal.StartAsync(default);
             for (int i = 1; i <= total; i++)
                 await wal.AppendAsync(new WalRecord(0, BitConverter.GetBytes(i)), default);
@@ -135,7 +136,7 @@ namespace SilicaDB.DurabilityTester
         {
             var dir = PrepareTestDir("InvalidUsage");
             var walPath = Path.Combine(dir, "wal.log");
-            var wal = new WalManager(walPath);
+            var wal = new WalManager(walPath, new MetricsManager(), walName: null);
 
             // Append before Start
             await AssertThrowsAsync<InvalidOperationException>(
@@ -162,7 +163,7 @@ namespace SilicaDB.DurabilityTester
             using var cts = new CancellationTokenSource(50);
 
             int appended = 0;
-            using (var wal = new WalManager(walPath))
+            using (var wal = new WalManager(walPath, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(cts.Token);
                 try
@@ -194,7 +195,7 @@ namespace SilicaDB.DurabilityTester
             const int producers = 4, perProducer = 150;
             var expectedTotal = producers * perProducer;
 
-            using var wal = new WalManager(walPath);
+            using var wal = new WalManager(walPath, new MetricsManager(), walName: null);
             await wal.StartAsync(default);
             var tasks = Enumerable.Range(0, producers).Select(_ => Task.Run(async () =>
             {
@@ -231,7 +232,7 @@ namespace SilicaDB.DurabilityTester
                 return buf;
             }).ToArray();
 
-            using var wal = new WalManager(walPath);
+            using var wal = new WalManager(walPath, new MetricsManager(), walName: null);
             await wal.StartAsync(default);
             foreach (var p in payloads)
                 await wal.AppendAsync(new WalRecord(0, p), default);
@@ -274,7 +275,7 @@ namespace SilicaDB.DurabilityTester
 
             try
             {
-                var wal = new WalManager(walPath);
+                var wal = new WalManager(walPath, new MetricsManager(), walName: null);
                 await AssertThrowsAsync<UnauthorizedAccessException>(
                     () => wal.StartAsync(default));
             }

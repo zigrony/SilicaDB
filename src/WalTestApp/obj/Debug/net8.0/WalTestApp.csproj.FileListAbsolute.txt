@@ -1,3 +1,8 @@
+C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\WalTestApp.exe
 C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\WalTestApp.deps.json
 C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\WalTestApp.runtimeconfig.json
@@ -6,11 +11,6 @@ C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\WalTestApp.pdb
 C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\SilicaDB.dll
 C:\GitHubRepos\SilicaDB\src\WalTestApp\bin\Debug\net8.0\SilicaDB.pdb
 C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.csproj.AssemblyReference.cache
-C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.csproj.Up2Date
 C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\WalTestApp.dll
 C:\GitHubRepos\SilicaDB\src\WalTestApp\obj\Debug\net8.0\refint\WalTestApp.dll

@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Durability;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.WalTester
 {
@@ -62,7 +63,7 @@ namespace SilicaDB.WalTester
                                      .Select(i => $"Record-{i}")
                                      .ToList();
 
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(CancellationToken.None);
                 foreach (var text in payloads)
@@ -87,7 +88,7 @@ namespace SilicaDB.WalTester
             const int writers = 4, perWriter = 100;
             var expected = new ConcurrentBag<string>();
 
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(CancellationToken.None);
 
@@ -122,7 +123,7 @@ namespace SilicaDB.WalTester
             var path = GetTempWal();
             var cts = new CancellationTokenSource(50);
 
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(cts.Token);
 
@@ -161,7 +162,7 @@ namespace SilicaDB.WalTester
             var second = Enumerable.Range(1, 5).Select(i => $"B-{i}").ToList();
 
             // First session
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(CancellationToken.None);
                 foreach (var t in first)
@@ -171,7 +172,7 @@ namespace SilicaDB.WalTester
             }
 
             // Second session
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(CancellationToken.None);
                 foreach (var t in second)
@@ -191,7 +192,7 @@ namespace SilicaDB.WalTester
         static async Task TestInvalidUsage()
         {
             var path = GetTempWal();
-            var wal = new WalManager(path);
+            var wal = new WalManager(path, new MetricsManager(), walName: null);
 
             // Append before StartAsync → should throw
             await AssertThrowsAsync<InvalidOperationException>(

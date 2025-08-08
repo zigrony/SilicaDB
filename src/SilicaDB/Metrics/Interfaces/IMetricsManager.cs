@@ -20,5 +20,9 @@ namespace SilicaDB.Metrics
             string name,
             double value,
             params KeyValuePair<string, object>[] tags);
+
+        // ③ allow removing individual or all metrics
+        void Unregister(string name);
+        void ClearAll();
     }
 }

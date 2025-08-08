@@ -20,8 +20,8 @@ namespace SilicaDB.Devices.Interfaces
         Task UnmountAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Reads exactly FrameSize bytes from frame &apos;frameId&apos;. 
-        /// If the underlying medium is shorter, the remainder is zero‐filled.
+        /// Reads exactly FrameSize bytes from frame 'frameId'.
+        /// Throws if any part of the range lies beyond the current device length.
         /// </summary>
         Task<byte[]> ReadFrameAsync(long frameId, CancellationToken cancellationToken = default);
 
@@ -29,5 +29,13 @@ namespace SilicaDB.Devices.Interfaces
         /// Writes exactly FrameSize bytes into frame &apos;frameId&apos;, overwriting any existing data.
         /// </summary>
         Task WriteFrameAsync(long frameId, byte[] data, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Flush the device.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task FlushAsync(CancellationToken cancellationToken);
+
     }
 }

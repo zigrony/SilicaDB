@@ -2,145 +2,60 @@
 using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Logging;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.LogTester
 {
-    class Program
+    internal class Program
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("=== Filter Test (Info and above) ===");
-            await RunFilterTestAsync();
+            Console.WriteLine("=== SilicaLogger Test Suite ===");
+            string logPath = "silica_test.log";
 
-            Console.WriteLine("\n=== Concurrency Test (Trace and above) ===");
-            await RunConcurrencyTestAsync();
+            using var metrics = new MetricsManager();
 
-            Console.WriteLine("\n=== Shutdown Timeout Test ===");
-            await RunShutdownTimeoutTestAsync();
-
-            Console.WriteLine("\n=== Post-Dispose Logging Exception Test ===");
-            await RunDisposeExceptionTestAsync();
-
-            Console.WriteLine("\nAll tests completed.");
-        }
-
-        private static async Task RunFilterTestAsync()
-        {
-            // Only Information, Warning, Error, Critical get logged
-            await using var logger = new SilicaLogger(
-                filePath: "filter_test.txt",
-                minLevel: LogLevel.Information,
-                toConsole: true
-            );
-
-            logger.Log(LogLevel.Debug, "This DEBUG should NOT appear.");
-            logger.Log(LogLevel.Information, "This INFORMATION should appear.");
-            logger.Log(LogLevel.Warning, "This WARNING should appear.");
-            logger.Log(LogLevel.Error, "This ERROR should appear.");
-            logger.Log(LogLevel.Critical, "This CRITICAL should appear.");
-
-            // Give the background writer a moment to flush
-            await Task.Delay(100);
-        }
-
-        private static async Task RunConcurrencyTestAsync()
-        {
-            // Capture everything
-            await using var logger = new SilicaLogger(
-                filePath: "concurrency_test.txt",
+            var logger = new SilicaLogger(
+                filePath: logPath,
+                metrics: metrics,
                 minLevel: LogLevel.Trace,
                 toConsole: true
             );
 
-            const int taskCount = 10;
-            const int messagesPerTask = 20;
-            var tasks = new Task[taskCount];
-            var rng = new Random();
+            Console.WriteLine("Logger initialized. Emitting test messages...\n");
 
-            for (int i = 0; i < taskCount; i++)
-            {
-                int taskId = i;
-                tasks[i] = Task.Run(async () =>
-                {
-                    for (int j = 0; j < messagesPerTask; j++)
-                    {
-                        logger.Log(
-                            LogLevel.Trace,
-                            "Task {0} – message #{1}",
-                            taskId,
-                            j
-                        );
+            logger.Log(LogLevel.Information, "Startup complete. System ready at {0}.", DateTime.UtcNow);
+            logger.Log(LogLevel.Warning, "High memory usage detected: {0} MB", 928.6);
+            logger.Log(LogLevel.Debug, "Debug mode enabled for subsystem: {0}", "CacheLayer");
+            logger.Log(LogLevel.Error, "Unhandled exception from {0}: {1}", "DeviceManager", "DeviceNotFound");
 
-                        // *** Random jitter to mix up enqueue order ***
-                        await Task.Delay(rng.Next(1, 10));
-                    }
-                });
-            }
+            Console.WriteLine("Sleeping to simulate workload...\n");
+            await Task.Delay(250);
 
-            await Task.WhenAll(tasks);
+            logger.Log(LogLevel.Information, "Background job started: JobId={0}", Guid.NewGuid());
+            logger.Log(LogLevel.Critical, "CRITICAL: DB corruption detected at sector {0}", 45_312);
+            logger.Log(LogLevel.Trace, "Trace event: {0}", "LockAcquired[Page:113]");
 
-            // Final marker
-            logger.Log(
-                LogLevel.Information,
-                "Completed {0} tasks of {1} messages",
-                taskCount,
-                messagesPerTask
-            );
-
-            // Give time to flush
-            await Task.Delay(200);
-        }
-
-        private static async Task RunShutdownTimeoutTestAsync()
-        {
-            const string path = "shutdown_timeout_test.txt";
-            await using var logger = new SilicaLogger(
-                filePath: path,
-                minLevel: LogLevel.Trace,
-                toConsole: true
-            );
-
-            // Flood the logger
-            for (int i = 0; i < 100; i++)
-                logger.Log(LogLevel.Debug, "ShutdownTest – msg #{0}", i);
-
-            // Bound shutdown to 50ms
-            using var cts = new CancellationTokenSource(50);
+            Console.WriteLine("\nShutting down logger...\n");
 
             try
             {
-                await logger.ShutdownAsync(cts.Token);
-                Console.WriteLine("Logger shutdown completed within timeout.");
+                var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await logger.ShutdownAsync(shutdownCts.Token);
+                Console.WriteLine("Logger shutdown completed.");
             }
             catch (OperationCanceledException)
             {
                 Console.WriteLine("Logger shutdown timed out.");
             }
-        }
 
-        private static async Task RunDisposeExceptionTestAsync()
-        {
-            await using var logger = new SilicaLogger(
-                filePath: "dispose_exception_test.txt",
-                minLevel: LogLevel.Trace,
-                toConsole: true
-            );
-
-            logger.Log(LogLevel.Information, "Logging before disposal works.");
-
-            // Dispose asynchronously
-            await logger.DisposeAsync();
-
-            try
+            Console.WriteLine("\n=== Metrics Snapshot ===\n");
+            foreach (var metric in metrics.Snapshot())
             {
-                // Should throw ObjectDisposedException
-                logger.Log(LogLevel.Warning, "This should throw after disposal.");
-                Console.WriteLine("ERROR: No exception thrown!");
+                Console.WriteLine($"{metric.Name} = {metric.Value}");
             }
-            catch (ObjectDisposedException ex)
-            {
-                Console.WriteLine($"Caught expected exception: {ex.Message}");
-            }
+
+            Console.WriteLine("\nTest run finished.");
         }
     }
 }

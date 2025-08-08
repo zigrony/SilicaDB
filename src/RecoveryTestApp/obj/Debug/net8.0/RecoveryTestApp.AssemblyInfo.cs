@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RecoveryTestApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+44f3671f4a6297baefcc11b182a1a67591157357")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0bc11f254410f4f260a8e74db6d31f9cf05716a7")]
 [assembly: System.Reflection.AssemblyProductAttribute("RecoveryTestApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RecoveryTestApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Devices;
+using SilicaDB.Devices.Exceptions;
 using SilicaDB.Devices.Interfaces;
 
 namespace SilicaDB.DeviceTester
@@ -59,8 +60,8 @@ namespace SilicaDB.DeviceTester
 
             await TestDeviceAsync(new InMemoryDevice(), "InMemoryDevice");
             await TestDeviceAsync(new StreamDevice(
-                                       new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4),
-                                       disposeStreamOnUnmount: true),
+                                       new MemoryStream(AsyncStorageDeviceBase.FrameSize * 4)
+                                       ),
                                   "StreamDevice (MemoryStream)");
 
             var tempPath = Path.Combine(Path.GetTempPath(), "silicadb_test.bin");
@@ -84,7 +85,9 @@ namespace SilicaDB.DeviceTester
             Console.WriteLine("  [OK] Mounted");
 
             // basic RW
-            await RunTestAsync("Basic read/write", () => BasicReadWriteTest(device));
+            var ctx = new TestContext("Basic read/write");
+            ctx.Start();
+            await RunTestAsync("Basic read/write", () => BasicReadWriteTest(ctx, device));
             await RunTestAsync("Randomized stress", () => RandomizedStressTest(device));
 
             // cancellation only on PhysicalBlockDevice
@@ -193,7 +196,7 @@ namespace SilicaDB.DeviceTester
         }
 
         // 1) Basic I/O
-        static async Task BasicReadWriteTest(IStorageDevice device)
+        static async Task BasicReadWriteTest(TestContext ctx, IStorageDevice device)
         {
             var buf = new byte[AsyncStorageDeviceBase.FrameSize];
             for (int i = 0; i < buf.Length; i++)
@@ -203,8 +206,11 @@ namespace SilicaDB.DeviceTester
             var r0 = await device.ReadFrameAsync(0);
             Assert(r0.SequenceEqual(buf), "frame 0 mismatch");
 
-            var empty = await device.ReadFrameAsync(10);
-            Assert(empty.All(b => b == 0), "nonzero in empty frame");
+            // Correct expectation: frame 10 should throw
+            await AssertThrowsAsync<DeviceReadOutOfRangeException>(
+                ctx,
+                () => device.ReadFrameAsync(10),
+                "Basic read/write");
         }
 
         // 2) Randomized stress
@@ -293,5 +299,44 @@ namespace SilicaDB.DeviceTester
                 // OK
             }
         }
+        internal sealed class TestContext
+        {
+            private readonly Stopwatch _sw = new();
+            private readonly string _prefix;
+
+            public TestContext(string prefix)
+            {
+                _prefix = prefix;
+            }
+
+            public void Pass(string label, string? detail = null)
+            {
+                //var elapsed = _sw.ElapsedMilliseconds;
+                //Console.WriteLine($"   {label,-40} [PASS] {(detail != null ? detail : "")}  ({elapsed} ms)");
+            }
+
+            public void Fail(string label, string detail)
+            {
+                //var elapsed = _sw.ElapsedMilliseconds;
+                //Console.WriteLine($"   {label,-40} [FAIL] {detail}  ({elapsed} ms)");
+            }
+
+            public void Start() => _sw.Restart();
+        }
+
+        static async Task AssertThrowsAsync<TEx>(TestContext ctx, Func<Task> action, string label)
+            where TEx : Exception
+        {
+            try
+            {
+                await action();
+                ctx.Fail(label, $"Expected exception of type {typeof(TEx).Name} was not thrown.");
+            }
+            catch (TEx ex)
+            {
+                ctx.Pass(label, $"[expected exception] {ex.Message}");
+            }
+        }
+
     }
 }

@@ -6,7 +6,6 @@ using SilicaDB.Evictions.Interfaces;
 using SilicaDB.Durability;
 using SilicaDB.Common;
 using SilicaDB.Devices;
-using SilicaDB.Storage;
 
 namespace SilicaDB.BufferPool
 {
@@ -19,18 +18,18 @@ namespace SilicaDB.BufferPool
         /// Pins the requested page in memory, loading it from storage if needed.
         /// Increments that page’s pin count so it won’t be evicted until unpinned.
         /// </summary>
-        Task<Page> PinPageAsync(PageId pageId, CancellationToken cancellationToken = default);
+        Task<long> PinPageAsync(long pageId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Decrements the pin count on the specified page.
         /// If isDirty is true, marks the page as dirty so it will be flushed on eviction or DisposeAsync.
         /// </summary>
-        void UnpinPage(PageId pageId, bool isDirty = false);
+        void UnpinPage(long pageId, bool isDirty = false);
 
         /// <summary>
         /// Forces a write of a single dirty page through the WAL and down to the storage device.
         /// </summary>
-        Task FlushPageAsync(PageId pageId, CancellationToken cancellationToken = default);
+        Task FlushPageAsync(long pageId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Flushes all dirty pages currently resident in the buffer pool.

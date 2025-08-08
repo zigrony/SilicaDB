@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Durability;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.RecoveryTester
 {
@@ -71,7 +72,7 @@ namespace SilicaDB.RecoveryTester
             var expected = new[] { "One", "Two", "Three" };
 
             // write them
-            await using (var wal = new WalManager(path))
+            await using (var wal = new WalManager(path, new MetricsManager(), walName: null))
             {
                 await wal.StartAsync(default);
                 foreach (var s in expected)

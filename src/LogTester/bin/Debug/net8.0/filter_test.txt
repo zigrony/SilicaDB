@@ -34,3 +34,7 @@
 2025-08-06T20:58:25.0592360Z [Warning] This WARNING should appear.
 2025-08-06T20:58:25.0592404Z [Error] This ERROR should appear.
 2025-08-06T20:58:25.0592406Z [Critical] This CRITICAL should appear.
+2025-08-08T12:13:18.7218406Z [Information] This INFORMATION should appear.
+2025-08-08T12:13:18.7235220Z [Warning] This WARNING should appear.
+2025-08-08T12:13:18.7235475Z [Error] This ERROR should appear.
+2025-08-08T12:13:18.7235518Z [Critical] This CRITICAL should appear.

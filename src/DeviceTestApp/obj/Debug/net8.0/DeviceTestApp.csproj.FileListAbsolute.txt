@@ -1,3 +1,8 @@
+C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\DeviceTestApp.exe
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\DeviceTestApp.deps.json
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\DeviceTestApp.runtimeconfig.json
@@ -6,11 +11,6 @@ C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\DeviceTestApp.pdb
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\SilicaDB.dll
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\bin\Debug\net8.0\SilicaDB.pdb
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.csproj.AssemblyReference.cache
-C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTe.60C6D46A.Up2Date
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\DeviceTestApp.dll
 C:\GitHubRepos\SilicaDB\src\DeviceTestApp\obj\Debug\net8.0\refint\DeviceTestApp.dll

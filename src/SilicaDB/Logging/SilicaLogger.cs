@@ -1,9 +1,12 @@
-﻿using System;
+﻿// File: Logging/SilicaLogger.cs
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.Logging
 {
@@ -16,6 +19,9 @@ namespace SilicaDB.Logging
         private readonly StreamWriter _fileWriter;
         private readonly bool _toConsole;
 
+        private readonly IMetricsManager _metrics;
+        private readonly bool _ownsMetrics;
+
         // Control state transitions and cancellation of the reader loop
         private int _state;
         private readonly CancellationTokenSource _readerCts = new();
@@ -23,10 +29,20 @@ namespace SilicaDB.Logging
         // The background drain task
         private readonly Task _drainTask;
 
-        public SilicaLogger(string filePath, LogLevel minLevel = LogLevel.Trace, bool toConsole = false)
+        // Primary ctor: inject metrics manager
+        public SilicaLogger(
+            string filePath,
+            IMetricsManager metrics,
+            LogLevel minLevel = LogLevel.Trace,
+            bool toConsole = false)
         {
             _minLevel = minLevel;
             _toConsole = toConsole;
+            _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+            _ownsMetrics = false;
+
+            RegisterMetrics(_metrics);
+
             _fileWriter = new StreamWriter(filePath, append: true, encoding: Encoding.UTF8)
             {
                 AutoFlush = true
@@ -38,8 +54,17 @@ namespace SilicaDB.Logging
                 SingleWriter = false
             });
 
-            // Kick off the background loop, honouring _readerCts for forced abort.
             _drainTask = Task.Run(() => ProcessQueueAsync(_readerCts.Token));
+        }
+
+        // Convenience ctor: create and own a MetricsManager
+        public SilicaLogger(
+            string filePath,
+            LogLevel minLevel = LogLevel.Trace,
+            bool toConsole = false)
+            : this(filePath, new MetricsManager(), minLevel, toConsole)
+        {
+            _ownsMetrics = true;
         }
 
         public void Log(LogLevel level, string message, params object[] args)
@@ -48,38 +73,60 @@ namespace SilicaDB.Logging
             if (Interlocked.CompareExchange(ref _state, 0, 0) != (int)State.Running)
                 throw new ObjectDisposedException(nameof(SilicaLogger));
 
-            if (level < _minLevel) return;
+            // Filtered by level => dropped
+            if (level < _minLevel)
+            {
+                _metrics.Increment(LogMetrics.Dropped.Name);
+                return;
+            }
 
-            var text = args?.Length > 0
-                ? string.Format(message, args)
-                : message;
+            string text;
+            // Measure formatting latency when args are provided
+            if (args?.Length > 0)
+            {
+                long t0 = Stopwatch.GetTimestamp();
+                text = string.Format(message, args);
+                RecordMicros(LogMetrics.FormatLatencyMicros.Name, t0);
+            }
+            else
+            {
+                text = message;
+            }
 
             var entry = new LogEntry(DateTime.UtcNow, level, text);
 
-            // This should always succeed in Running state
-            _channel.Writer.TryWrite(entry);
+            // Emitted counter by severity bucket
+            IncrementSeverity(level);
+
+            // Try to enqueue; if it ever fails (e.g., shutting down), count as dropped
+            if (!_channel.Writer.TryWrite(entry))
+            {
+                _metrics.Increment(LogMetrics.Dropped.Name);
+            }
         }
 
         private async Task ProcessQueueAsync(CancellationToken cancel)
         {
             try
             {
-                // This will throw if 'cancel' is signaled
                 await foreach (var entry in _channel.Reader.ReadAllAsync(cancel).ConfigureAwait(false))
                 {
                     var line = $"{entry.Timestamp:O} [{entry.Level}] {entry.Message}";
+
+                    long t0 = Stopwatch.GetTimestamp();
                     _fileWriter.WriteLine(line);
                     if (_toConsole) Console.WriteLine(line);
+                    RecordMicros(LogMetrics.FlushLatencyMicros.Name, t0);
                 }
             }
             catch (OperationCanceledException)
             {
-                // Forced abort – swallow and exit
+                // Forced abort — swallow and exit
             }
         }
 
         /// <summary>
-        /// Gracefully flush then force‐abort on token fire.
+        /// Gracefully flush then force-abort on token fire.
         /// </summary>
         public async Task ShutdownAsync(CancellationToken gracefulWaitToken)
         {
@@ -97,7 +144,7 @@ namespace SilicaDB.Logging
             var finished = await Task.WhenAny(waitTask, delayTask).ConfigureAwait(false);
             if (finished == delayTask)
             {
-                // Graceful window elapsed – force‐abort remaining work
+                // Graceful window elapsed — force-abort remaining work
                 _readerCts.Cancel();
                 try
                 {
@@ -118,7 +165,7 @@ namespace SilicaDB.Logging
 
         public async ValueTask DisposeAsync()
         {
-            // If still Running, just do a normal graceful shutdown with infinite wait
+            // If still Running, just do a normal graceful shutdown with long wait
             if (Interlocked.Exchange(ref _state, (int)State.ShuttingDown) == (int)State.Running)
             {
                 _channel.Writer.Complete();
@@ -136,6 +183,48 @@ namespace SilicaDB.Logging
 
             _fileWriter.Dispose();
             _readerCts.Dispose();
+            if (_ownsMetrics && _metrics is IDisposable d)
+                d.Dispose();
+        }
+
+        private void IncrementSeverity(LogLevel level)
+        {
+            switch (level)
+            {
+                // Bucket Trace/Debug/Information as INFO
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                case LogLevel.Information:
+                    _metrics.Increment(LogMetrics.EmittedInfo.Name);
+                    break;
+
+                case LogLevel.Warning:
+                    _metrics.Increment(LogMetrics.EmittedWarning.Name);
+                    break;
+
+                // Bucket Error/Critical as ERROR
+                case LogLevel.Error:
+                case LogLevel.Critical:
+                    _metrics.Increment(LogMetrics.EmittedError.Name);
+                    break;
+            }
+        }
+
+        private void RecordMicros(string metricName, long startTimestamp)
+        {
+            double micros = (Stopwatch.GetTimestamp() - startTimestamp) * 1_000_000.0 / Stopwatch.Frequency;
+            _metrics.Record(metricName, micros);
+        }
+
+        private static void RegisterMetrics(IMetricsManager mgr)
+        {
+            // Same pattern as StorageMetrics/WalMetrics.RegisterAll
+            mgr.Register(LogMetrics.EmittedInfo);
+            mgr.Register(LogMetrics.EmittedWarning);
+            mgr.Register(LogMetrics.EmittedError);
+            mgr.Register(LogMetrics.Dropped);
+            mgr.Register(LogMetrics.FlushLatencyMicros);
+            mgr.Register(LogMetrics.FormatLatencyMicros);
         }
 
         private record LogEntry(DateTime Timestamp, LogLevel Level, string Message);

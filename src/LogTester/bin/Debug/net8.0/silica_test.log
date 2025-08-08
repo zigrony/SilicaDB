@@ -1,0 +1,14 @@
+﻿2025-08-08T12:15:51.8910377Z [Information] Startup complete. System ready at 8/8/2025 12:15:51 PM.
+2025-08-08T12:15:51.8980316Z [Warning] High memory usage detected: 928.6 MB
+2025-08-08T12:15:51.8980811Z [Debug] Debug mode enabled for subsystem: CacheLayer
+2025-08-08T12:15:51.8980905Z [Error] Unhandled exception from DeviceManager: DeviceNotFound
+2025-08-08T12:15:52.1446388Z [Information] Background job started: JobId=9d906f15-c63d-4ae4-8bbd-b6414e75c386
+2025-08-08T12:15:52.1446660Z [Critical] CRITICAL: DB corruption detected at sector 45312
+2025-08-08T12:15:52.1446703Z [Trace] Trace event: LockAcquired[Page:113]
+2025-08-08T12:18:09.7682709Z [Information] Startup complete. System ready at 8/8/2025 12:18:09 PM.
+2025-08-08T12:18:09.7741956Z [Warning] High memory usage detected: 928.6 MB
+2025-08-08T12:18:09.7742291Z [Debug] Debug mode enabled for subsystem: CacheLayer
+2025-08-08T12:18:09.7742341Z [Error] Unhandled exception from DeviceManager: DeviceNotFound
+2025-08-08T12:18:10.0168689Z [Information] Background job started: JobId=02fb1043-a31a-457e-a508-7774771bf90f
+2025-08-08T12:18:10.0169000Z [Critical] CRITICAL: DB corruption detected at sector 45312
+2025-08-08T12:18:10.0169046Z [Trace] Trace event: LockAcquired[Page:113]

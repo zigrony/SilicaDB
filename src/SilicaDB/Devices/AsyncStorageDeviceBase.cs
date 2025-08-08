@@ -3,12 +3,12 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics.Metrics;
 using System.Diagnostics;
 using SilicaDB.Evictions;
 using SilicaDB.Evictions.Interfaces;
 using System.Runtime.ExceptionServices;
 using SilicaDB.Common;
+using SilicaDB.Metrics;
 
 namespace SilicaDB.Devices
 {
@@ -17,49 +17,7 @@ namespace SilicaDB.Devices
     /// </summary>
     public abstract class AsyncStorageDeviceBase : IStorageDevice
     {
-        // gauge showing current number of frame‐locks in the cache
-        private readonly ObservableGauge<long> _cacheSizeGauge;
-
-        // 1a) Meter for all storage events
-        private static readonly Meter StorageMeter =
-            new Meter("SilicaDB.Storage", "1.0");
-
-        // 1b) Mount/unmount
-        private static readonly Counter<long> MountCounter =
-            StorageMeter.CreateCounter<long>("storage.mount.count");
-        private static readonly Histogram<double> MountDuration =
-            StorageMeter.CreateHistogram<double>("storage.mount.duration", "ms");
-
-        private static readonly Counter<long> UnmountCounter =
-            StorageMeter.CreateCounter<long>("storage.unmount.count");
-        private static readonly Histogram<double> UnmountDuration =
-            StorageMeter.CreateHistogram<double>("storage.unmount.duration", "ms");
-
-        // 1c) Read/Write ops
-        private static readonly Counter<long> ReadCount =
-            StorageMeter.CreateCounter<long>("storage.read.count");
-        private static readonly Counter<long> BytesRead =
-            StorageMeter.CreateCounter<long>("storage.read.bytes", "bytes");
-        private static readonly Histogram<double> ReadLatency =
-            StorageMeter.CreateHistogram<double>("storage.read.duration", "ms");
-
-        private static readonly Counter<long> WriteCount =
-            StorageMeter.CreateCounter<long>("storage.write.count");
-        private static readonly Counter<long> BytesWritten =
-            StorageMeter.CreateCounter<long>("storage.write.bytes", "bytes");
-        private static readonly Histogram<double> WriteLatency =
-            StorageMeter.CreateHistogram<double>("storage.write.duration", "ms");
-
-        // 1d) Lock-wait / in-flight
-        private static readonly Histogram<double> LockWaitTime =
-            StorageMeter.CreateHistogram<double>("storage.lock.wait", "ms");
-        private static readonly UpDownCounter<long> InFlightOps =
-            StorageMeter.CreateUpDownCounter<long>("storage.inflight", "ops");
-
-        // eviction metrics: count how many frame‐locks get disposed
-        private static readonly Counter<long> EvictionCount =
-            StorageMeter.CreateCounter<long>("storage.lock.evicted.count");
-
+        private readonly IMetricsManager _metrics;
         public const int FrameSize = 8192;
 
         // Single lock for mount state, semaphore dict and in-flight tracking
@@ -143,10 +101,13 @@ namespace SilicaDB.Devices
             private TaskCompletionSource<object> _drainTcs; // = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         protected AsyncStorageDeviceBase(
-            EvictionManager? evictionManager = null,
-            TimeSpan? evictionInterval = null,
-            TimeSpan? frameLockIdleTimeout = null)
+           IMetricsManager metrics,
+           EvictionManager? evictionManager = null,
+           TimeSpan? evictionInterval = null,
+           TimeSpan? frameLockIdleTimeout = null)
         {
+            _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+
             // 1. Drive eviction on the supplied interval (default 10 m)
             var interval = evictionInterval ?? TimeSpan.FromMinutes(10);
             _evictionManager = evictionManager ?? new EvictionManager(interval);
@@ -159,17 +120,23 @@ namespace SilicaDB.Devices
                 onEvictedAsync: EvictFrameLock);
 
             // 3) Observe cache size
-            _cacheSizeGauge = StorageMeter.CreateObservableGauge<long>(
-                                "storage.lock.cache.size",
-                                () => _frameLockCache.Count,
-                                "locks");
+            //_cacheSizeGauge = StorageMeter.CreateObservableGauge<long>(
+            //                    "storage.lock.cache.size",
+            //                    () => _frameLockCache.Count,
+            //                    "locks");
 
             _evictionManager.RegisterCache(_frameLockCache);
+            // Wire up all storage metrics (counters, histograms, gauges, up-down)
+            StorageMetrics.RegisterAll(
+                _metrics,
+                deviceName: GetType().Name,
+                cacheSizeProvider: () => _frameLockCache.Count);
+
         }
 
         protected AsyncStorageDeviceBase()
-            : this(evictionManager: null)
-        { }
+            : this(new MetricsManager(), evictionManager: null)
+         { }
 
         // Eviction callback
         // Eviction callback – only dispose when no holders remain
@@ -177,17 +144,15 @@ namespace SilicaDB.Devices
         {
             if (frameLock.IsIdle)
             {
-                EvictionCount.Add(1, ("device", GetType().Name));
-                Console.WriteLine(
-                    $"[Eviction] Disposing frame lock for {frameId} at {DateTime.Now:HH:mm:ss.fff}");
+                _metrics.Increment(StorageMetrics.EvictionCount.Name);
+                //Console.WriteLine($"[Eviction] Disposing frame lock for {frameId} at {DateTime.Now:HH:mm:ss.fff}");
 
                 // free the underlying SemaphoreSlim handle
-                frameLock.Sem.Dispose();
+                //frameLock.Sem.Dispose();
             }
             else
             {
-                Console.WriteLine(
-                    $"[Eviction] Skipped disposing frame lock {frameId}, still in use.");
+                //Console.WriteLine($"[Eviction] Skipped disposing frame lock {frameId}, still in use.");
             }
 
             return ValueTask.CompletedTask;
@@ -196,7 +161,6 @@ namespace SilicaDB.Devices
         public async Task MountAsync(CancellationToken cancellationToken = default)
         {
             var sw = Stopwatch.StartNew();
-            MountCounter.Add(1, ("device", GetType().Name));
             try
             {
                 lock (_stateLock)
@@ -227,7 +191,10 @@ namespace SilicaDB.Devices
             finally
             {
                 sw.Stop();
-                MountDuration.Record(sw.Elapsed.TotalMilliseconds,("device", GetType().Name));
+                // MountCount is a Counter
+                _metrics.Increment(StorageMetrics.MountCount.Name);
+                // MountDuration is a Histogram
+                _metrics.Record(StorageMetrics.MountDuration.Name, sw.Elapsed.TotalMilliseconds);
             }
         }
 
@@ -235,7 +202,6 @@ namespace SilicaDB.Devices
         public async Task UnmountAsync(CancellationToken cancellationToken = default)
         {
             var sw = Stopwatch.StartNew();
-            UnmountCounter.Add(1, ("device", GetType().Name));
             try
             {
                 lock (_stateLock)
@@ -265,7 +231,10 @@ namespace SilicaDB.Devices
             finally
             {
                 sw.Stop();
-                UnmountDuration.Record(sw.Elapsed.TotalMilliseconds,("device", GetType().Name));
+                // UnmountCount is a Counter
+                _metrics.Increment(StorageMetrics.UnmountCount.Name);
+                // UnmountDuration is a Histogram
+                _metrics.Record(StorageMetrics.UnmountDuration.Name, sw.Elapsed.TotalMilliseconds);
             }
         }
 
@@ -277,7 +246,7 @@ namespace SilicaDB.Devices
             var frameLock = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
 
             // 2) Track the operation in-flight
-            InFlightOps.Add(1, ("device", GetType().Name));
+            _metrics.Add(StorageMetrics.InFlightOps.Name, 1);
 
             // 3) Combine unmount- and caller-cancellation
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
@@ -297,7 +266,7 @@ namespace SilicaDB.Devices
 
                 // 6) Record lock-wait metric
                 lockSw.Stop();
-                LockWaitTime.Record(lockSw.Elapsed.TotalMilliseconds,("device", GetType().Name));
+                _metrics.Record(StorageMetrics.LockWaitTime.Name, lockSw.Elapsed.TotalMilliseconds);
 
                 // 7) Book-keep the acquisition
                 frameLock.MarkAcquired();
@@ -313,9 +282,13 @@ namespace SilicaDB.Devices
                 ioSw.Stop();
 
                 // 9) Record read metrics
-                ReadLatency.Record(ioSw.Elapsed.TotalMilliseconds, ("device", GetType().Name), ("operation", "read"));
-                ReadCount.Add(1, ("device", GetType().Name), ("operation", "read"));
-                BytesRead.Add(result.Length, ("device", GetType().Name), ("operation", "read"));
+                _metrics.Record(StorageMetrics.ReadLatency.Name, ioSw.Elapsed.TotalMilliseconds);
+                
+                // ReadCount is a Counter
+                _metrics.Increment(StorageMetrics.ReadCount.Name);
+                
+                // BytesRead is a Histogram
+                _metrics.Record(StorageMetrics.BytesRead.Name, result.Length);
                 return result;
             }
             finally
@@ -339,7 +312,7 @@ namespace SilicaDB.Devices
                 toDrain?.TrySetResult(null);
 
                 // 12) Mark the operation complete
-                InFlightOps.Add(-1, ("device", GetType().Name));
+                _metrics.Add(StorageMetrics.InFlightOps.Name, -1);
             }
         }
 
@@ -357,8 +330,7 @@ namespace SilicaDB.Devices
                 .ConfigureAwait(false);
 
             // 2) Track this operation in-flight (metrics)
-            InFlightOps.Add(1, ("device", GetType().Name));
-
+            _metrics.Add(StorageMetrics.InFlightOps.Name, 1);
 
             // 3) Combine unmount- and caller’s cancellation
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
@@ -378,7 +350,7 @@ namespace SilicaDB.Devices
 
                 // 6) Record how long we waited for the lock
                 lockSw.Stop();
-                LockWaitTime.Record(lockSw.Elapsed.TotalMilliseconds, ("device", GetType().Name));
+                _metrics.Record(StorageMetrics.LockWaitTime.Name, lockSw.Elapsed.TotalMilliseconds);
 
                 // 7) Book-keep the acquisition
                 frameLock.MarkAcquired();
@@ -394,9 +366,11 @@ namespace SilicaDB.Devices
                 ioSw.Stop();
 
                 // 9) Record write metrics
-                WriteLatency.Record(ioSw.Elapsed.TotalMilliseconds, ("device", GetType().Name), ("operation", "write"));
-                WriteCount.Add(1, ("device", GetType().Name), ("operation", "write"));
-                BytesWritten.Add(data.Length, ("device", GetType().Name), ("operation", "write"));
+                _metrics.Record(StorageMetrics.WriteLatency.Name, ioSw.Elapsed.TotalMilliseconds);
+                
+                _metrics.Increment(StorageMetrics.WriteCount.Name);
+                
+                _metrics.Record(StorageMetrics.BytesWritten.Name, data.Length);
             }
             finally
             {
@@ -419,7 +393,7 @@ namespace SilicaDB.Devices
                 toSignal?.TrySetResult(null);
 
                 // 12) Complete the in-flight metric
-                InFlightOps.Add(-1, ("device", GetType().Name));
+                _metrics.Add(StorageMetrics.InFlightOps.Name, -1);
             }
         }
 
@@ -450,6 +424,7 @@ namespace SilicaDB.Devices
             try
             {
                 _evictionManager.UnregisterCache(_frameLockCache);
+                _evictionManager.Dispose();
                 await _frameLockCache.DisposeAsync().ConfigureAwait(false);
 
                 // if you created the manager yourself, shut it down:
@@ -477,6 +452,13 @@ namespace SilicaDB.Devices
         /// </summary>
         protected abstract Task OnMountAsync(CancellationToken cancellationToken);
         protected abstract Task OnUnmountAsync(CancellationToken cancellationToken);
+        /// <summary>
+        /// Optional durability flush. Default implementation is no-op.
+        /// </summary>
+        public virtual Task FlushAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
         protected abstract Task<byte[]> ReadFrameInternalAsync(
                                             long frameId,
                                             CancellationToken cancellationToken);
@@ -485,6 +467,10 @@ namespace SilicaDB.Devices
                                             byte[] buffer,
                                             CancellationToken cancellationToken);
 
-
+        protected void EnsureMountedOrThrow()
+        {
+            lock (_stateLock)
+                if (!_mounted) throw new InvalidOperationException("Device is not mounted");
+        }
     }
 }

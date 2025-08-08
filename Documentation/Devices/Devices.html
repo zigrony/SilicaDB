@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SilicaDB Storage &amp; Devices API Reference</title>
+  <style>
+    /* Reset & base */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; background: #f7f8fa; }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: 'Source Code Pro', monospace; background: #eef0f3; padding: .2em .4em; border-radius: 4px; }
+    pre { overflow-x: auto; padding: 1em; }
+    h1, h2, h3 { color: #24292e; }
+    
+    /* Layout */
+    header { background: #24292e; color: white; padding: 1rem 2rem; }
+    header h1 { font-size: 1.8rem; }
+    nav { position: fixed; top: 72px; left: 0; width: 240px; height: calc(100% - 72px); overflow-y: auto; background: #fff; border-right: 1px solid #e1e4e8; padding: 1rem; }
+    nav ul { list-style: none; }
+    nav li + li { margin-top: .5rem; }
+    main { margin-left: 260px; padding: 2rem; }
+    section { margin-bottom: 3rem; }
+    
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: .75rem; border: 1px solid #e1e4e8; }
+    th { background: #f1f1f5; text-align: left; }
+    
+    /* Code blocks */
+    .signature { margin: .5rem 0 1rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>SilicaDB Storage &amp; Devices API</h1>
+    <p>Version 1.0 • Low‐level I/O abstraction for database pages &amp; durable devices</p>
+  </header>
+
+  <nav>
+    <h3>On This Page</h3>
+    <ul>
+      <li><a href="#istoragedevice">IStorageDevice</a></li>
+      <li><a href="#asynccollector">AsyncStorageDeviceBase</a></li>
+      <li><a href="#inmemorydevice">InMemoryDevice</a></li>
+      <li><a href="#physicaldevice">PhysicalBlockDevice</a></li>
+      <li><a href="#streamdevice">StreamDevice</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <!-- IStorageDevice -->
+    <section id="istoragedevice">
+      <h2>IStorageDevice</h2>
+      <p>Defines the core interface for a fixed‐size, frame‐based block device.</p>
+      <pre class="signature"><code>public interface IStorageDevice : IAsyncDisposable</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th><th>Signature</th><th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MountAsync</td>
+            <td><code>Task MountAsync(CancellationToken cancellationToken = default)</code></td>
+            <td>Prepare device for I/O; must be called before reads or writes.</td>
+          </tr>
+          <tr>
+            <td>UnmountAsync</td>
+            <td><code>Task UnmountAsync(CancellationToken cancellationToken = default)</code></td>
+            <td>Gracefully tear down, await in‐flight I/O, release resources.</td>
+          </tr>
+          <tr>
+            <td>ReadFrameAsync</td>
+            <td><code>Task&lt;byte[]&gt; ReadFrameAsync(long frameId, CancellationToken cancellationToken = default)</code></td>
+            <td>Reads exactly <code>FrameSize</code> bytes from <code>frameId</code>; zero‐fills past EOF.</td>
+          </tr>
+          <tr>
+            <td>WriteFrameAsync</td>
+            <td><code>Task WriteFrameAsync(long frameId, byte[] data, CancellationToken cancellationToken = default)</code></td>
+            <td>Writes exactly <code>FrameSize</code> bytes to <code>frameId</code>.</td>
+          </tr>
+          <tr>
+            <td>FlushAsync</td>
+            <td><code>Task FlushAsync(CancellationToken cancellationToken = default)</code></td>
+            <td>Ensure durability; flush internal buffers to underlying storage.</td>
+          </tr>
+          <tr>
+            <td>DisposeAsync</td>
+            <td><code>ValueTask DisposeAsync()</code></td>
+            <td>Unmount + free resources asynchronously.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- AsyncStorageDeviceBase -->
+    <section id="asynccollector">
+      <h2>AsyncStorageDeviceBase</h2>
+      <p>Abstract base implementing mount/unmount, per‐frame locking, eviction hygiene, and metrics wiring.</p>
+      <pre class="signature"><code>public abstract class AsyncStorageDeviceBase : IStorageDevice</code></pre>
+
+      <h3>Key Features</h3>
+      <ul>
+        <li>Mount/unmount with cancellation &amp; drain‐on‐shutdown</li>
+        <li>Per‐frame <code>SemaphoreSlim</code> locks via <code>EvictionTimeCache&lt;long,FrameLock&gt;</code></li>
+        <li>Automatic eviction of idle frame locks</li>
+        <li>In‐flight operation tracking (up/down counters)</li>
+        <li>Hook methods for I/O: <code>ReadFrameInternalAsync</code>, <code>WriteFrameInternalAsync</code></li>
+        <li>Public <code>FlushAsync</code> with default no‐op</li>
+      </ul>
+
+      <h3>Abstract Hooks</h3>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Signature</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OnMountAsync</td>
+            <td><code>protected abstract Task OnMountAsync(CancellationToken)</code></td>
+            <td>Open streams, files, initialize underlying storage.</td>
+          </tr>
+          <tr>
+            <td>OnUnmountAsync</td>
+            <td><code>protected abstract Task OnUnmountAsync(CancellationToken)</code></td>
+            <td>Cleanup underlying resources.</td>
+          </tr>
+          <tr>
+            <td>ReadFrameInternalAsync</td>
+            <td><code>protected abstract Task&lt;byte[]&gt; ReadFrameInternalAsync(long, CancellationToken)</code></td>
+            <td>Concrete read logic (e.g. buffer copy, RandomAccess API).</td>
+          </tr>
+          <tr>
+            <td>WriteFrameInternalAsync</td>
+            <td><code>protected abstract Task WriteFrameInternalAsync(long, byte[], CancellationToken)</code></td>
+            <td>Concrete write logic.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- InMemoryDevice -->
+    <section id="inmemorydevice">
+      <h2>InMemoryDevice</h2>
+      <p>Keeps frames in a <code>ConcurrentDictionary&lt;long,byte[]&gt;</code>. Ideal for tests or ephemeral stores.</p>
+      <pre class="signature"><code>public class InMemoryDevice : AsyncStorageDeviceBase</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>Override</th><th>Signature</th><th>Behavior</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OnMountAsync</td>
+            <td><code>Task OnMountAsync(CancellationToken)</code></td>
+            <td>Clears in‐memory page store.</td>
+          </tr>
+          <tr>
+            <td>OnUnmountAsync</td>
+            <td><code>Task OnUnmountAsync(CancellationToken)</code></td>
+            <td>Clears dictionary.</td>
+          </tr>
+          <tr>
+            <td>ReadFrameInternalAsync</td>
+            <td><code>Task&lt;byte[]&gt; ReadFrameInternalAsync(long, CancellationToken)</code></td>
+            <td>Return zero‐filled or cloned page.</td>
+          </tr>
+          <tr>
+            <td>WriteFrameInternalAsync</td>
+            <td><code>Task WriteFrameInternalAsync(long, byte[], CancellationToken)</code></td>
+            <td>Store a copy of the buffer.</td>
+          </tr>
+          <tr>
+            <td>FlushAsync</td>
+            <td><code>public override Task FlushAsync(CancellationToken=_)</code></td>
+            <td>No‐op (memory).</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- PhysicalBlockDevice -->
+    <section id="physicaldevice">
+      <h2>PhysicalBlockDevice</h2>
+      <p>File‐system–backed device using <code>FileStream</code> + <code>RandomAccess.ReadAsync/WriteAsync</code> for positional, lock‐free I/O.</p>
+      <pre class="signature"><code>public class PhysicalBlockDevice : AsyncStorageDeviceBase</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>Override</th><th>Signature</th><th>Behavior</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OnMountAsync</td>
+            <td><code>Task OnMountAsync(CancellationToken)</code></td>
+            <td>Open or create <code>FileStream</code> with <code>FileOptions.Asynchronous</code>.</td>
+          </tr>
+          <tr>
+            <td>OnUnmountAsync</td>
+            <td><code>Task OnUnmountAsync(CancellationToken)</code></td>
+            <td>Dispose the <code>FileStream</code>.</td>
+          </tr>
+          <tr>
+            <td>ReadFrameInternalAsync</td>
+            <td><code>Task&lt;byte[]&gt; ReadFrameInternalAsync(long, CancellationToken)</code></td>
+            <td>RandomAccess read + zero‐fill beyond EOF.</td>
+          </tr>
+          <tr>
+            <td>WriteFrameInternalAsync</td>
+            <td><code>Task WriteFrameInternalAsync(long, byte[], CancellationToken)</code></td>
+            <td>RandomAccess write to correct offset.</td>
+          </tr>
+          <tr>
+            <td>FlushAsync</td>
+            <td><code>public override async Task FlushAsync(CancellationToken)</code></td>
+            <td>Call <code>_fs.FlushAsync</code> to persist OS buffers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- StreamDevice -->
+    <section id="streamdevice">
+      <h2>StreamDevice</h2>
+      <p>Generic <code>Stream</code>–backed device with optional positional I/O or serialized seek+read/write fallback.</p>
+      <pre class="signature"><code>public class StreamDevice : AsyncStorageDeviceBase, IDisposable</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>Override</th><th>Signature</th><th>Behavior</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OnMountAsync</td>
+            <td><code>Task OnMountAsync(CancellationToken)</code></td>
+            <td>No initialization.</td>
+          </tr>
+          <tr>
+            <td>OnUnmountAsync</td>
+            <td><code>Task OnUnmountAsync(CancellationToken)</code></td>
+            <td>No teardown.</td>
+          </tr>
+          <tr>
+            <td>ReadFrameInternalAsync</td>
+            <td><code>Task&lt;byte[]&gt; ReadFrameInternalAsync(long, CancellationToken)</code></td>
+            <td>Positional <code>RandomAccess.ReadAsync</code> if available, otherwise lock+seek+read.</td>
+          </tr>
+          <tr>
+            <td>WriteFrameInternalAsync</td>
+            <td><code>Task WriteFrameInternalAsync(long, byte[], CancellationToken)</code></td>
+            <td>Positional write or lock+seek+write+flush.</td>
+          </tr>
+          <tr>
+            <td>FlushAsync</td>
+            <td><code>public override async Task FlushAsync(CancellationToken)</code></td>
+            <td>Forward to <code>_stream.FlushAsync</code>.</td>
+          </tr>
+          <tr>
+            <td>Dispose</td>
+            <td><code>public void Dispose()</code></td>
+            <td>Dispose internal semaphore only; caller owns the stream.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+</body>
+</html>
