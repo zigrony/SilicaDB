@@ -1,8 +1,3 @@
-C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\EvictionCacheTest.exe
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\EvictionCacheTest.deps.json
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\EvictionCacheTest.runtimeconfig.json
@@ -11,6 +6,11 @@ C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\EvictionCacheTest
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\SilicaDB.dll
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\bin\Debug\net8.0\SilicaDB.pdb
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.csproj.AssemblyReference.cache
+C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\Eviction.66FE310B.Up2Date
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\EvictionCacheTest.dll
 C:\GitHubRepos\SilicaDB\src\EvictionCacheTest\obj\Debug\net8.0\refint\EvictionCacheTest.dll

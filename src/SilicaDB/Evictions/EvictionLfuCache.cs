@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Evictions.Interfaces;
 
@@ -20,17 +21,8 @@ namespace SilicaDB.Evictions
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
-        public int Count
-        {
-            get
-            {
-                // Snapshot the count under lock for thread-safety.
-                lock (_lock)
-                {
-                    return _map.Count;
-                }
-            }
-        }
+        private int _count;
+        public int Count => Volatile.Read(ref _count);
 
         // key → (value, freq)
         private readonly Dictionary<TKey, (TValue Value, int Freq)> _map
@@ -96,6 +88,7 @@ namespace SilicaDB.Evictions
 
                 // insert at freq=1 bucket
                 _map[key] = (val, 1);
+                Interlocked.Increment(ref _count);
                 if (!_buckets.TryGetValue(1, out var bucket1))
                 {
                     bucket1 = new LinkedList<TKey>();
@@ -114,7 +107,7 @@ namespace SilicaDB.Evictions
 
                     var removedVal = _map[oldestKey].Value;
                     _map.Remove(oldestKey);
-
+                    Interlocked.Decrement(ref _count);
                     evicted = new List<(TKey, TValue)> { (oldestKey, removedVal) };
                 }
             }
@@ -141,6 +134,7 @@ namespace SilicaDB.Evictions
                     all.Add((kv.Key, kv.Value.Value));
                 _map.Clear();
                 _buckets.Clear();
+                Interlocked.Exchange(ref _count, 0);
             }
 
             foreach (var (k, v) in all)

@@ -1,11 +1,11 @@
+C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.deps.json
+C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.dll
+C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.pdb
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.GeneratedMSBuildEditorConfig.editorconfig
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.AssemblyInfoInputs.cache
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.AssemblyInfo.cs
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.csproj.CoreCompileInputs.cache
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.sourcelink.json
-C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.deps.json
-C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.dll
-C:\GitHubRepos\SilicaDB\src\SilicaDB\bin\Debug\net8.0\SilicaDB.pdb
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.dll
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\refint\SilicaDB.dll
 C:\GitHubRepos\SilicaDB\src\SilicaDB\obj\Debug\net8.0\SilicaDB.pdb

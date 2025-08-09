@@ -21,17 +21,9 @@ namespace SilicaDB.Evictions
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
-        public int Count
-        {
-            get
-            {
-                // Snapshot the count under lock for thread-safety.
-                lock (_lock)
-                {
-                    return _map.Count;
-                }
-            }
-        }
+        private int _count;
+        public int Count => Volatile.Read(ref _count);
+
 
         public EvictionFifoCache(
           int capacity,
@@ -64,6 +56,7 @@ namespace SilicaDB.Evictions
                 // add to queue + map
                 _queue.Enqueue(key);
                 _map[key] = newVal;
+                Interlocked.Increment(ref _count);
 
                 // capacity check
                 if (_map.Count > _capacity)
@@ -71,6 +64,7 @@ namespace SilicaDB.Evictions
                     var oldest = _queue.Dequeue();
                     if (_map.Remove(oldest, out var removedVal))
                     {
+                        Interlocked.Decrement(ref _count);
                         evicted = new List<(TKey, TValue)> { (oldest, removedVal) };
                     }
                 }
@@ -99,6 +93,7 @@ namespace SilicaDB.Evictions
                     all.Add((kv.Key, kv.Value));
                 _map.Clear();
                 _queue.Clear();
+                Interlocked.Exchange(ref _count, 0);
             }
 
             foreach (var (k, v) in all)

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DurabilityTestApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0bc11f254410f4f260a8e74db6d31f9cf05716a7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d100dc13e99bd11b4caa8c4cc4b84c2a26cd4d52")]
 [assembly: System.Reflection.AssemblyProductAttribute("DurabilityTestApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DurabilityTestApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

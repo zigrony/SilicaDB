@@ -42,6 +42,8 @@ namespace Silica.Storage.Buffering
         private readonly IMetricsManager _metrics;
         private readonly ConcurrentDictionary<PageId, Frame> _frames;
         private readonly IWalManager? _wal;
+        // Tracks whether DisposeAsync has already run
+        private bool _disposed;
 
         /// <summary>
         /// Constructs the manager.
@@ -72,15 +74,28 @@ namespace Silica.Storage.Buffering
         /// Acquire a read lease on the page. Multiple concurrent readers allowed.
         /// </summary>
         public async Task<PageReadLease> AcquireReadAsync(
-            PageId pageId,
+            PageId pid,
             CancellationToken ct = default)
         {
-            var frame = await GetOrCreateAndLoadFrameAsync(pageId, ct)
-                .ConfigureAwait(false);
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(BufferPoolManager));
 
-            await frame.PinAsync(ct).ConfigureAwait(false);
+            var frame = await GetOrCreateAndLoadFrameAsync(pid, ct)
+                            .ConfigureAwait(false);
+
+            // NEW: block eviction first, then pin under the barrier
             var releaser = await frame.Latch.AcquireReadAsync(ct)
-                .ConfigureAwait(false);
+                             .ConfigureAwait(false);
+            try
+            {
+                await frame.PinAsync(ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                // If pin fails, drop the latch immediately
+                await releaser.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
 
             return new PageReadLease(frame, releaser, frame.Buffer);
         }
@@ -90,32 +105,42 @@ namespace Silica.Storage.Buffering
         /// Writers block readers, and overlapping writers block each other.
         /// </summary>
         public async Task<PageWriteLease> AcquireWriteAsync(
-            PageId pageId,
+            PageId pid,
             int offset,
             int length,
-            CancellationToken ct = default)
+            CancellationToken ct)
         {
-            if ((uint)offset >= (uint)_device.PageSize)
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            if (length <= 0 || offset + length > _device.PageSize)
-                throw new ArgumentOutOfRangeException(nameof(length));
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(BufferPoolManager));
 
-            var frame = await GetOrCreateAndLoadFrameAsync(pageId, ct)
-                .ConfigureAwait(false);
+            var frame = await GetOrCreateAndLoadFrameAsync(pid, ct)
+                            .ConfigureAwait(false);
 
-            await frame.PinAsync(ct).ConfigureAwait(false);
+            // NEW: acquire full-page barrier first, then pin
             var releaser = await frame.Latch.AcquireWriteAsync(offset, length, ct)
-                .ConfigureAwait(false);
+                             .ConfigureAwait(false);
+            try
+            {
+                await frame.PinAsync(ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                await releaser.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
 
             frame.MarkDirty();
-            return new PageWriteLease(frame, releaser, frame.Buffer.Slice(offset, length));
+            return new PageWriteLease(frame, releaser,
+                                      frame.Buffer.Slice(offset, length));
         }
-
         /// <summary>
         /// Flushes one page if dirty: write WAL record then page device.
         /// </summary>
         public async Task FlushPageAsync(PageId pageId, CancellationToken ct = default)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(BufferPoolManager));
+
             if (!_frames.TryGetValue(pageId, out var frame))
                 return;
 
@@ -156,6 +181,9 @@ namespace Silica.Storage.Buffering
         /// </summary>
         public async Task FlushAllAsync(CancellationToken ct = default)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(BufferPoolManager));
+
             foreach (var pid in _frames.Keys)
             {
                 ct.ThrowIfCancellationRequested();
@@ -171,6 +199,9 @@ namespace Silica.Storage.Buffering
             PageId pageId,
             CancellationToken ct = default)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(BufferPoolManager));
+
             if (!_frames.TryGetValue(pageId, out var frame))
                 return false;
             if (frame.PinCount > 0)
@@ -208,9 +239,11 @@ namespace Silica.Storage.Buffering
                 var removed = _frames.TryRemove(
                     new KeyValuePair<PageId, Frame>(pageId, frame));
 
-                if (removed)
+                if (removed) 
+                { 
                     _metrics.Increment(BufferPoolMetrics.Evictions.Name);
-
+                    frame.ReturnBuffer();
+                }
                 return removed;
             }
             finally
@@ -221,8 +254,19 @@ namespace Silica.Storage.Buffering
 
         public async ValueTask DisposeAsync()
         {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
             // best-effort flush
-            try { await FlushAllAsync(CancellationToken.None).ConfigureAwait(false); }
+            try 
+            { 
+                await FlushAllAsync(CancellationToken.None).ConfigureAwait(false);
+                foreach (var frame in _frames.Values)
+                    frame.ReturnBuffer();
+                _frames.Clear();
+            }
             catch { }
         }
 
@@ -245,6 +289,7 @@ namespace Silica.Storage.Buffering
                 return frame;
             }
 
+            // Replace the entire loading logic with this:
             await frame.LoadGate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
@@ -260,9 +305,11 @@ namespace Silica.Storage.Buffering
                 frame.MarkLoaded();
 
                 _metrics.Increment(BufferPoolMetrics.Misses.Name);
+                return frame;
             }
             finally
             {
+                // Exactly one Release() per WaitAsync()
                 frame.LoadGate.Release();
             }
 
@@ -321,6 +368,15 @@ namespace Silica.Storage.Buffering
             {
                 if (_bytes is null)
                     _bytes = ArrayPool<byte>.Shared.Rent(size);
+            }
+
+            internal void ReturnBuffer()
+            {
+                if (_bytes != null)
+                {
+                    ArrayPool<byte>.Shared.Return(_bytes, clearArray: true);
+                    _bytes = null;
+                }
             }
 
             public void MarkLoaded() => Volatile.Write(ref _loadState, 2);
@@ -397,24 +453,33 @@ namespace Silica.Storage.Buffering
     /// - writers block readers and other overlapping writers
     /// - FIFO queues, writer preference
     /// </summary>
-    internal sealed class AsyncRangeLatch
+    /// <summary>
+    /// Coordinated per-page latch:
+    /// - multiple readers if no writer
+    /// - writers block readers and other overlapping writers
+    /// - FIFO queues, writer preference
+    /// </summary>
+    internal sealed class AsyncRangeLatch : IDisposable, IAsyncDisposable
     {
         private readonly SemaphoreSlim _mutex = new(1, 1);
         private int _activeReaders;
         private readonly List<RangeSeg> _activeWrites = new();
         private readonly Queue<TaskCompletionSource<Releaser>> _readerQ = new();
         private readonly Queue<WriterWait> _writerQ = new();
+        private bool _disposed;
 
         public async Task<Releaser> AcquireReadAsync(CancellationToken ct = default)
         {
-            TaskCompletionSource<Releaser>? tcs;
+            ThrowIfDisposed();
+            TaskCompletionSource<Releaser> tcs;
+
             await _mutex.WaitAsync(ct).ConfigureAwait(false);
             try
             {
                 if (_activeWrites.Count == 0 && _writerQ.Count == 0)
                 {
                     _activeReaders++;
-                    return new Releaser(this, false, default);
+                    return new Releaser(this, isWriter: false, seg: default);
                 }
                 tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
                 _readerQ.Enqueue(tcs);
@@ -427,6 +492,7 @@ namespace Silica.Storage.Buffering
             using var reg = ct.CanBeCanceled
                 ? ct.Register(static s => ((TaskCompletionSource<Releaser>)s!).TrySetCanceled(), tcs)
                 : default;
+
             return await tcs.Task.ConfigureAwait(false);
         }
 
@@ -435,29 +501,32 @@ namespace Silica.Storage.Buffering
             int length,
             CancellationToken ct = default)
         {
+            ThrowIfDisposed();
             if (length <= 0) throw new ArgumentOutOfRangeException(nameof(length));
             var seg = new RangeSeg(offset, offset + length);
 
-            TaskCompletionSource<Releaser>? tcs;
+            TaskCompletionSource<Releaser> tcs;
             await _mutex.WaitAsync(ct).ConfigureAwait(false);
             try
             {
                 if (_activeReaders == 0 && !OverlapsAny(_activeWrites, seg))
                 {
                     _activeWrites.Add(seg);
-                    return new Releaser(this, true, seg);
+                    return new Releaser(this, isWriter: true, seg);
                 }
                 tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                _writerQ.Enqueue(new WriterWait(this, seg, tcs));
+                _writerQ.Enqueue(new WriterWait(seg, tcs));
             }
             finally
             {
                 _mutex.Release();
             }
 
+            // Register cancellation on the same TCS
             using var reg = ct.CanBeCanceled
-                ? ct.Register(static s => ((WriterWait)s!).TryCancel(), new WriterWait(this, seg, tcs))
+                ? ct.Register(static s => ((WriterWait)s!).TryCancel(), new WriterWait(seg, tcs))
                 : default;
+
             return await tcs.Task.ConfigureAwait(false);
         }
 
@@ -470,16 +539,21 @@ namespace Silica.Storage.Buffering
 
         public async ValueTask ReleaseAsync(bool isWriter, RangeSeg seg)
         {
+            ThrowIfDisposed();
             await _mutex.WaitAsync().ConfigureAwait(false);
             try
             {
                 if (isWriter)
+                {
                     _activeWrites.Remove(seg);
+                }
                 else
                 {
                     _activeReaders--;
-                    if (_activeReaders < 0) throw new InvalidOperationException("Reader underflow");
+                    if (_activeReaders < 0)
+                        throw new InvalidOperationException("Reader underflow");
                 }
+
                 Promote();
             }
             finally
@@ -493,89 +567,133 @@ namespace Silica.Storage.Buffering
             // Writers first if no readers
             if (_activeReaders == 0 && _writerQ.Count > 0)
             {
-                var current = new List<RangeSeg>(_activeWrites);
+                var snapshot = new List<RangeSeg>(_activeWrites);
                 var remaining = new Queue<WriterWait>();
-                bool any = false;
+                bool grantedAny = false;
 
                 while (_writerQ.Count > 0)
                 {
                     var w = _writerQ.Dequeue();
-                    if (w.IsCanceled) continue;
-                    if (!OverlapsAny(current, w.Range))
+                    if (w.IsCanceled)
+                        continue;
+
+                    if (!OverlapsAny(snapshot, w.Range))
                     {
                         _activeWrites.Add(w.Range);
-                        current.Add(w.Range);
-                        w.Tcs.TrySetResult(new Releaser(this, true, w.Range));
-                        any = true;
+                        snapshot.Add(w.Range);
+                        w.Tcs.TrySetResult(new Releaser(this, isWriter: true, w.Range));
+                        grantedAny = true;
                     }
                     else
                     {
                         remaining.Enqueue(w);
                     }
                 }
-                while (remaining.Count > 0) _writerQ.Enqueue(remaining.Dequeue());
-                if (any) return; // do not wake readers this cycle
+                foreach (var w in remaining)
+                    _writerQ.Enqueue(w);
+
+                if (grantedAny)
+                    return;   // do not wake readers this cycle
             }
 
-            // Then readers if no writers pending
+            // Then readers if no writers waiting or active
             if (_activeWrites.Count == 0 && _writerQ.Count == 0 && _readerQ.Count > 0)
             {
                 int n = _readerQ.Count;
                 _activeReaders += n;
                 while (n-- > 0)
-                    _readerQ.Dequeue().TrySetResult(new Releaser(this, false, default));
+                    _readerQ.Dequeue().TrySetResult(new Releaser(this, isWriter: false, default));
             }
         }
 
-        // WriterWait helper
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(AsyncRangeLatch));
+        }
+
+        // -------------------------------------------------------------
+        // IDisposable / IAsyncDisposable to free the internal semaphore
+        // -------------------------------------------------------------
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _mutex.Dispose();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            Dispose();
+            await ValueTask.CompletedTask;
+        }
+
+        // ------------------------------------------------------------------
+        // Nested helper types
+        // ------------------------------------------------------------------
+
         private sealed class WriterWait
         {
             public RangeSeg Range { get; }
             public TaskCompletionSource<Releaser> Tcs { get; }
-            public bool IsCanceled => _c == 1;
-            private int _c;
+            private int _canceled;   // 0 = live, 1 = canceled
 
-            public WriterWait(AsyncRangeLatch owner, RangeSeg r, TaskCompletionSource<Releaser> t)
+            public bool IsCanceled => _canceled == 1;
+
+            public WriterWait(RangeSeg range, TaskCompletionSource<Releaser> tcs)
             {
-                Range = r; Tcs = t; _c = 0;
+                Range = range;
+                Tcs = tcs;
             }
 
             public void TryCancel()
             {
-                if (Interlocked.CompareExchange(ref _c, 1, 0) == 0)
+                if (Interlocked.CompareExchange(ref _canceled, 1, 0) == 0)
                     Tcs.TrySetCanceled();
             }
         }
 
         public readonly struct Releaser : IAsyncDisposable
         {
-            private readonly AsyncRangeLatch _l;
-            private readonly bool _w;
+            private readonly AsyncRangeLatch _owner;
+            private readonly bool _writer;
             private readonly RangeSeg _seg;
 
-            internal Releaser(AsyncRangeLatch l, bool w, RangeSeg s)
+            internal Releaser(AsyncRangeLatch owner, bool isWriter, RangeSeg seg)
             {
-                _l = l; _w = w; _seg = s;
+                _owner = owner;
+                _writer = isWriter;
+                _seg = seg;
             }
 
-            public ValueTask DisposeAsync() => _l.ReleaseAsync(_w, _seg);
+            public ValueTask DisposeAsync()
+                => _owner.ReleaseAsync(_writer, _seg);
         }
 
         public readonly struct RangeSeg : IEquatable<RangeSeg>
         {
             public int Start { get; }
-            public int End { get; }  // exclusive
+            public int End { get; }
 
-            public RangeSeg(int s, int e)
+            public RangeSeg(int start, int end)
             {
-                if (s < 0 || e <= s) throw new ArgumentOutOfRangeException();
-                Start = s; End = e;
+                if (start < 0 || end <= start)
+                    throw new ArgumentOutOfRangeException(nameof(start));
+                Start = start;
+                End = end;
             }
 
-            public bool Overlaps(RangeSeg o) => Start < o.End && o.Start < End;
-            public bool Equals(RangeSeg other) => Start == other.Start && End == other.End;
-            public override int GetHashCode() => HashCode.Combine(Start, End);
-            public override bool Equals(object? o) => o is RangeSeg r && Equals(r);
+            public bool Overlaps(RangeSeg other)
+                => Start < other.End && other.Start < End;
+
+            public bool Equals(RangeSeg other)
+                => Start == other.Start && End == other.End;
+
+            public override bool Equals(object? obj)
+                => obj is RangeSeg r && Equals(r);
+
+            public override int GetHashCode()
+                => HashCode.Combine(Start, End);
         }
     }
 }
