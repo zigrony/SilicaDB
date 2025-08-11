@@ -59,7 +59,7 @@ namespace SilicaDB.Evictions
                 Interlocked.Increment(ref _count);
 
                 // capacity check
-                if (_map.Count > _capacity)
+                if (Volatile.Read(ref _count) > _capacity)
                 {
                     var oldest = _queue.Dequeue();
                     if (_map.Remove(oldest, out var removedVal))

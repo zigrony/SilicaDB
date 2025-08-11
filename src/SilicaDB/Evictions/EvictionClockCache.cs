@@ -35,17 +35,8 @@ namespace SilicaDB.Evictions
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
-        public int Count
-        {
-            get
-            {
-                // Snapshot the count under lock for thread-safety.
-                lock (_lock)
-                {
-                    return _map.Count;
-                }
-            }
-        }
+        private int _count;
+        public int Count => Volatile.Read(ref _count);
 
         public EvictionClockCache(
           int capacity,
@@ -96,7 +87,7 @@ namespace SilicaDB.Evictions
                 }
 
                 // If not full, find next free slot
-                if (_map.Count < _capacity)
+                if (Volatile.Read(ref _count) < _capacity)
                 {
                     idx = _hand;
                     while (_entries[idx].Occupied)
@@ -110,6 +101,7 @@ namespace SilicaDB.Evictions
                         Occupied = true
                     };
                     _map[key] = idx;
+                    Interlocked.Increment(ref _count);
                     _hand = (idx + 1) % _capacity;
                 }
                 else
@@ -124,6 +116,8 @@ namespace SilicaDB.Evictions
                             // Evict this slot
                             toEvict = (candidate.Key, candidate.Value);
                             _map.Remove(candidate.Key);
+                            // adjust counter for removal
+                            Interlocked.Decrement(ref _count);
 
                             _entries[_hand] = new Entry
                             {
@@ -136,6 +130,7 @@ namespace SilicaDB.Evictions
 
                             idx = _hand;
                             _hand = (idx + 1) % _capacity;
+                            Interlocked.Increment(ref _count);
                             break;
                         }
                         else
@@ -173,6 +168,7 @@ namespace SilicaDB.Evictions
                         allItems.Add((e.Key, e.Value));
 
                 _map.Clear();
+                Interlocked.Exchange(ref _count, 0);
                 for (int i = 0; i < _entries.Length; i++)
                     _entries[i] = default;
             }

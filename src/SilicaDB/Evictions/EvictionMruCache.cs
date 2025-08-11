@@ -77,7 +77,7 @@ namespace SilicaDB.Evictions
                     return _values[key];
 
                 // If full, evict the most-recent (head of list)
-                if (_values.Count >= _capacity)
+                if (Volatile.Read(ref _count) >= _capacity)
                 {
                     var mruNode = _mruList.First!;
                     var mruKey = mruNode.Value;

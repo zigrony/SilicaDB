@@ -565,7 +565,7 @@ namespace Silica.Storage.Buffering
         private void Promote()
         {
             // Writers first if no readers
-            if (_activeReaders == 0 && _writerQ.Count > 0)
+            if (_writerQ.Count > 0)
             {
                 var snapshot = new List<RangeSeg>(_activeWrites);
                 var remaining = new Queue<WriterWait>();

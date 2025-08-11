@@ -96,7 +96,7 @@ namespace SilicaDB.Evictions
                 }
                 bucket1.AddLast(key);
 
-                if (_map.Count > _capacity)
+                if (Volatile.Read(ref _count) > _capacity)
                 {
                     // evict lowest-frequency, oldest in that bucket
                     var lowest = _buckets.First();

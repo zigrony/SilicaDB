@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurabilityTestApp", "..\Dur
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BufferPoolTestApp", "..\BufferPoolTestApp\BufferPoolTestApp.csproj", "{56B5AA6D-9F56-4875-87E8-21253B5B8201}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LockTestApp", "..\LockTestApp\LockTestApp.csproj", "{6468704A-9459-41EA-A862-46E65149D77A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{56B5AA6D-9F56-4875-87E8-21253B5B8201}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56B5AA6D-9F56-4875-87E8-21253B5B8201}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{56B5AA6D-9F56-4875-87E8-21253B5B8201}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6468704A-9459-41EA-A862-46E65149D77A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6468704A-9459-41EA-A862-46E65149D77A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6468704A-9459-41EA-A862-46E65149D77A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6468704A-9459-41EA-A862-46E65149D77A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

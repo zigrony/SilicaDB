@@ -3,12 +3,28 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionfifocache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionfifocache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionlfucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionlfucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionclockcache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionclockcache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionlrucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionlrucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionmrucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionmrucache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionsizecache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -17,10 +33,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictiontimecache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictiontimecache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|c:\\githubrepos\\silicadb\\src\\silicadb\\evictions\\evictionfifocache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{48A44516-3C67-4919-9309-89176B1E2485}|SilicaDB.csproj|solutionrelative:evictions\\evictionfifocache.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,76 +42,115 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 7,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "EvictionFifoCache.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionFifoCache.cs",
-              "RelativeDocumentMoniker": "Evictions\\EvictionFifoCache.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionFifoCache.cs",
-              "RelativeToolTip": "Evictions\\EvictionFifoCache.cs",
-              "ViewState": "AgIAADsAAAAAAAAAAAAYwGAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-09T15:33:23.57Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "EvictionLfuCache.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLfuCache.cs",
-              "RelativeDocumentMoniker": "Evictions\\EvictionLfuCache.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLfuCache.cs",
-              "RelativeToolTip": "Evictions\\EvictionLfuCache.cs",
-              "ViewState": "AgIAAEAAAAAAAAAAAAAswG0AAAA2AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-09T15:33:14.416Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "EvictionLruCache.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLruCache.cs",
-              "RelativeDocumentMoniker": "Evictions\\EvictionLruCache.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLruCache.cs",
-              "RelativeToolTip": "Evictions\\EvictionLruCache.cs",
-              "ViewState": "AgIAADIAAAAAAAAAAAAkwDsAAAAnAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-09T15:32:50.516Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "EvictionSizeCache.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionSizeCache.cs",
-              "RelativeDocumentMoniker": "Evictions\\EvictionSizeCache.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionSizeCache.cs",
-              "RelativeToolTip": "Evictions\\EvictionSizeCache.cs",
-              "ViewState": "AgIAACkAAAAAAAAAAAAkwDUAAAAnAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-09T15:31:44.977Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 7,
               "Title": "EvictionTimeCache.cs",
               "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionTimeCache.cs",
               "RelativeDocumentMoniker": "Evictions\\EvictionTimeCache.cs",
               "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionTimeCache.cs",
               "RelativeToolTip": "Evictions\\EvictionTimeCache.cs",
-              "ViewState": "AgIAADwAAAAAAAAAAAAkwD8AAAAnAAAAAAAAAA==",
+              "ViewState": "AgIAADAAAAAAAAAAAAApwD8AAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-09T15:30:12.19Z",
+              "WhenOpened": "2025-08-11T12:42:34.455Z",
               "EditorCaption": ""
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "EvictionSizeCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionSizeCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionSizeCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionSizeCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionSizeCache.cs",
+              "ViewState": "AgIAADUAAAAAAAAAAAA5wFUAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:34.315Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "EvictionMruCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionMruCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionMruCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionMruCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionMruCache.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAhwE8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:34.16Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "EvictionManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionManager.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionManager.cs",
+              "RelativeToolTip": "Evictions\\EvictionManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:34.019Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "EvictionLruCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLruCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionLruCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLruCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionLruCache.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAAAowF0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:33.879Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "EvictionLfuCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLfuCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionLfuCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionLfuCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionLfuCache.cs",
+              "ViewState": "AgIAAB0AAAAAAAAAAAApwC4AAABlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:33.738Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "EvictionFifoCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionFifoCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionFifoCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionFifoCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionFifoCache.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAgwD0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:33.566Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "EvictionClockCache.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionClockCache.cs",
+              "RelativeDocumentMoniker": "Evictions\\EvictionClockCache.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\Evictions\\EvictionClockCache.cs",
+              "RelativeToolTip": "Evictions\\EvictionClockCache.cs",
+              "ViewState": "AgIAAH8AAAAAAAAAAAApwJ0AAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-11T12:42:26.229Z",
+              "EditorCaption": ""
             }
           ]
         }

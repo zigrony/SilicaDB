@@ -91,7 +91,7 @@ namespace SilicaDB.Evictions
                 _map[key] = node;
                 Interlocked.Increment(ref _count);
 
-                if (_map.Count > _capacity)
+                if (Volatile.Read(ref _count) > _capacity)
                 {
                     toEvict = new List<CacheEntry>(1);
                     var tail = _lruList.Last!;
