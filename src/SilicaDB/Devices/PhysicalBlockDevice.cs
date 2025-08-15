@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SilicaDB.Devices.Exceptions;
 using SilicaDB.Devices.Interfaces;
+using SilicaDB.Diagnostics.Tracing;
 
 namespace SilicaDB.Devices
 {
@@ -25,8 +26,10 @@ namespace SilicaDB.Devices
             _path = path ?? throw new ArgumentNullException(nameof(path));
         }
 
-        protected override Task OnMountAsync(CancellationToken cancellationToken)
+        protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
+
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"OnMountAsync",GetType().Name);
             // Open or create for asynchronous R/W
             _fs = new FileStream(
                 _path,
@@ -36,20 +39,25 @@ namespace SilicaDB.Devices
                 bufferSize: FrameSize,
                 options: FileOptions.Asynchronous);
 
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
 
-        protected override Task OnUnmountAsync(CancellationToken cancellationToken)
+        protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
         {
+
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"OnUnmountAsync",GetType().Name);
             // Dispose underlying FileStream and the global stream lock
             _fs?.Dispose();
             _fs = null;
 
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
 
         protected override async Task<byte[]> ReadFrameInternalAsync(long frameId, CancellationToken cancellationToken)
         {
+
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"ReadFrameInternalAsync",$"{GetType().Name}:{frameId}");
+
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
 
@@ -83,6 +91,8 @@ namespace SilicaDB.Devices
 
         protected override async Task WriteFrameInternalAsync(long frameId, byte[] data, CancellationToken cancellationToken)
         {
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"WriteFrameInternalAsync",$"{GetType().Name}:{frameId}");
+
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
 
@@ -101,6 +111,8 @@ namespace SilicaDB.Devices
         }
         public override async Task FlushAsync(CancellationToken cancellationToken)
         {
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"FlushAsync",GetType().Name);
+
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
 

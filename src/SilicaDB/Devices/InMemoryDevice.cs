@@ -1,5 +1,7 @@
 ﻿using SilicaDB.Devices.Exceptions;
 using System.Collections.Concurrent;
+using SilicaDB.Diagnostics.Tracing;
+
 
 namespace SilicaDB.Devices
 {
@@ -13,29 +15,39 @@ namespace SilicaDB.Devices
         // One entry per frameId
         private readonly ConcurrentDictionary<long, byte[]> _pages = new();
 
-        protected override Task OnMountAsync(CancellationToken cancellationToken)
+        protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
+            // Trace the InMemory mount
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"OnMountAsync",GetType().Name);
+            
             // nothing to initialize beyond clearing the dictionary
             _pages.Clear();
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
 
-        protected override Task OnUnmountAsync(CancellationToken cancellationToken)
+        protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
         {
+
+            // Trace the InMemory unmount
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"OnUnmountAsync",GetType().Name);
+
             // drop all pages
             _pages.Clear();
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
 
-        protected override Task<byte[]> ReadFrameInternalAsync(
+        protected override async Task<byte[]> ReadFrameInternalAsync(
             long frameId,
             CancellationToken cancellationToken)
         {
+            // Trace individual in-memory reads
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"ReadFrameInternalAsync",$"{GetType().Name}:{frameId}");
+
             if (_pages.TryGetValue(frameId, out var existing))
             {
                 var copy = new byte[FrameSize];
                 Buffer.BlockCopy(existing, 0, copy, 0, FrameSize);
-                return Task.FromResult(copy);
+                return copy;
             }
 
             // No concept of contiguous length here; signal out-of-range by frame id
@@ -45,19 +57,25 @@ namespace SilicaDB.Devices
                 deviceLength: frameId * FrameSize);  // self-signal out-of-range
         }
 
-        protected override Task WriteFrameInternalAsync(
+        protected override async Task WriteFrameInternalAsync(
             long frameId,
             byte[] data,
             CancellationToken cancellationToken)
         {
+            // Trace individual in-memory writes
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"WriteFrameInternalAsync",$"{GetType().Name}:{frameId}");
+
             // data is exactly FrameSize bytes per base class contract
             // store a copy so the caller can reuse their buffer immediately
             var frame = new byte[FrameSize];
             Buffer.BlockCopy(data, 0, frame, 0, FrameSize);
             _pages[frameId] = frame;
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
-        public override Task FlushAsync(CancellationToken _) => Task.CompletedTask;
-
+        public override async Task FlushAsync(CancellationToken _)
+        {
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"FlushAsync",GetType().Name);
+            await Task.CompletedTask;
+        }
     }
 }

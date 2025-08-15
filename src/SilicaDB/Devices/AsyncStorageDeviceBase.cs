@@ -9,6 +9,7 @@ using SilicaDB.Evictions.Interfaces;
 using System.Runtime.ExceptionServices;
 using SilicaDB.Common;
 using SilicaDB.Metrics;
+using SilicaDB.Diagnostics.Tracing;
 
 namespace SilicaDB.Devices
 {
@@ -160,6 +161,12 @@ namespace SilicaDB.Devices
 
         public async Task MountAsync(CancellationToken cancellationToken = default)
         {
+            // Trace the entire MountAsync operation
+            await using var _traceScope = SilicaDB.Diagnostics.Tracing.Trace.AsyncScope(
+            TraceCategory.Device,
+            "MountAsync",
+            GetType().Name);
+            
             var sw = Stopwatch.StartNew();
             try
             {
@@ -201,7 +208,13 @@ namespace SilicaDB.Devices
 
         public async Task UnmountAsync(CancellationToken cancellationToken = default)
         {
-            var sw = Stopwatch.StartNew();
+            // Trace the entire UnmountAsync operation
+            await using var _traceScope = SilicaDB.Diagnostics.Tracing.Trace.AsyncScope(
+            TraceCategory.Device,
+            "UnmountAsync",
+            GetType().Name);
+            
+            var sw = Stopwatch.StartNew(); 
             try
             {
                 lock (_stateLock)
@@ -240,8 +253,12 @@ namespace SilicaDB.Devices
 
         public async Task<byte[]> ReadFrameAsync(long frameId, CancellationToken cancellationToken = default)
         {
+            // Trace the entire ReadFrameAsync for this frameId
+            await using var _traceScope = SilicaDB.Diagnostics.Tracing.Trace.AsyncScope(
+            TraceCategory.Device,
+            "ReadFrameAsync");
+            
             EnsureMounted();
-
             // 1) Grab or create the per-frame lock
             var frameLock = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
 
@@ -322,7 +339,11 @@ namespace SilicaDB.Devices
                 throw new ArgumentNullException(nameof(data));
             if (data.Length != FrameSize)
                 throw new ArgumentException($"Buffer must be exactly {FrameSize} bytes", nameof(data));
-            EnsureMounted();
+
+            // Trace the entire WriteFrameAsync for this frameId
+            await using var _traceScope = SilicaDB.Diagnostics.Tracing.Trace.AsyncScope(
+            TraceCategory.Device,
+            "WriteFrameAsync");
 
             // 1) Grab or create the per-frame lock
             var frameLock = await _frameLockCache

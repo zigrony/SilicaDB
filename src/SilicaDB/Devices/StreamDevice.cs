@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;   // For SafeFileHandle
 using SilicaDB.Devices;
 using SilicaDB.Devices.Exceptions;
+using SilicaDB.Diagnostics.Tracing;
+
 
 namespace SilicaDB.Devices
 {
@@ -31,16 +33,32 @@ namespace SilicaDB.Devices
             }
         }
 
-        protected override Task OnMountAsync(CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        protected override async Task OnMountAsync(CancellationToken cancellationToken)
+        {
+            await using var _scope = Trace.AsyncScope(
+                TraceCategory.Device,
+                "OnMountAsync",
+                GetType().Name);
+        
+            await Task.CompletedTask;
+        }
 
-        protected override Task OnUnmountAsync(CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
+        {
+            await using var _scope = Trace.AsyncScope(
+                TraceCategory.Device,
+                "OnUnmountAsync",
+                GetType().Name);
+
+            await Task.CompletedTask;
+        }
 
         protected override async Task<byte[]> ReadFrameInternalAsync(
             long frameId,
             CancellationToken cancellationToken)
         {
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"ReadFrameInternalAsync",$"{GetType().Name}:{frameId}");
+            
             var offset = checked(frameId * (long)FrameSize);
             var endExclusive = checked(offset + FrameSize);
             var buffer = new byte[FrameSize];
@@ -110,6 +128,9 @@ namespace SilicaDB.Devices
             byte[] data,
             CancellationToken cancellationToken)
         {
+
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"WriteFrameInternalAsync",$"{GetType().Name}:{frameId}");
+            
             var offset = frameId * FrameSize;
 
             // Clone so callers can reuse their buffer
@@ -148,6 +169,8 @@ namespace SilicaDB.Devices
         }
         public override async Task FlushAsync(CancellationToken cancellationToken)
         {
+            await using var _scope = Trace.AsyncScope(TraceCategory.Device,"FlushAsync",GetType().Name);
+            
             EnsureMountedOrThrow();
 
             if (_stream is null)

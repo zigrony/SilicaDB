@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LockTestApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d337c06547dc53de5389065092b4f38257566229")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+80374162afb40b1338e04002372d87cfc2045e70")]
 [assembly: System.Reflection.AssemblyProductAttribute("LockTestApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LockTestApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
