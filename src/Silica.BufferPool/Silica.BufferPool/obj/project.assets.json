@@ -1,0 +1,180 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0": {
+      "Silica.Common/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Silica.Common.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Common.dll": {}
+        }
+      },
+      "Silica.Durability/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Evictions": "1.0.0",
+          "Silica.Observability": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.Durability.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Durability.dll": {}
+        }
+      },
+      "Silica.Evictions/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Observability": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.Evictions.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Evictions.dll": {}
+        }
+      },
+      "Silica.Observability/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Silica.Observability.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Observability.dll": {}
+        }
+      },
+      "Silica.Storage/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Common": "1.0.0",
+          "Silica.Evictions": "1.0.0",
+          "Silica.Observability": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.Storage.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Storage.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Silica.Common/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Common/Silica.Common/Silica.Common.csproj",
+      "msbuildProject": "../../Silica.Common/Silica.Common/Silica.Common.csproj"
+    },
+    "Silica.Durability/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Durability/Silica.Durability/Silica.Durability.csproj",
+      "msbuildProject": "../../Silica.Durability/Silica.Durability/Silica.Durability.csproj"
+    },
+    "Silica.Evictions/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj",
+      "msbuildProject": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj"
+    },
+    "Silica.Observability/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Observability/Silica.Observability/Silica.Observability.csproj",
+      "msbuildProject": "../../Silica.Observability/Silica.Observability/Silica.Observability.csproj"
+    },
+    "Silica.Storage/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Storage/Silica.Storage/Silica.Storage.csproj",
+      "msbuildProject": "../../Silica.Storage/Silica.Storage/Silica.Storage.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0": [
+      "Silica.Common >= 1.0.0",
+      "Silica.Durability >= 1.0.0",
+      "Silica.Evictions >= 1.0.0",
+      "Silica.Storage >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\aboyd\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj",
+      "projectName": "Silica.BufferPool",
+      "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj",
+      "packagesPath": "C:\\Users\\aboyd\\.nuget\\packages\\",
+      "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\aboyd\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "projectReferences": {
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Common\\Silica.Common\\Silica.Common.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Common\\Silica.Common\\Silica.Common.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      }
+    },
+    "frameworks": {
+      "net8.0": {
+        "targetAlias": "net8.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

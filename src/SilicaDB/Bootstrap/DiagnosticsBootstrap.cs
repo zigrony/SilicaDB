@@ -1,6 +1,7 @@
-﻿using SilicaDB.Diagnostics.Tracing;
-using SilicaDB.Diagnostics.Tracing.Sinks;
-using SilicaDB.Metrics;
+﻿using Silica.Observability.Tracing;
+using Silica.Observability.Tracing.Sinks;
+using Silica.Observability.Metrics;
+using Silica.Observability.Metrics.Interfaces;
 
 namespace SilicaDB.Bootstrap;
 

@@ -1,0 +1,40 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "Silica.Concurrency/1.0.0": {
+        "dependencies": {
+          "Silica.Instrumentation": "1.0.0",
+          "Silica.Observability": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Concurrency.dll": {}
+        }
+      },
+      "Silica.Observability/1.0.0": {
+        "runtime": {
+          "Silica.Observability.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Silica.Concurrency/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Observability/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
