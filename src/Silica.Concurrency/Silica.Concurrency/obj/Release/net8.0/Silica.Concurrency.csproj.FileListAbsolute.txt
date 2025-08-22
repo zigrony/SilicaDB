@@ -1,0 +1,16 @@
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Release\net8.0\Silica.Concurrency.deps.json
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Release\net8.0\Silica.Concurrency.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Release\net8.0\Silica.Concurrency.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Release\net8.0\Silica.Observability.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Release\net8.0\Silica.Observability.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.csproj.AssemblyReference.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.sourcelink.json
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.C.38EB956D.Up2Date
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\refint\Silica.Concurrency.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\Silica.Concurrency.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Release\net8.0\ref\Silica.Concurrency.dll

@@ -1,0 +1,12 @@
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\bin\Release\net8.0\Silica.Common.deps.json
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\bin\Release\net8.0\Silica.Common.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\bin\Release\net8.0\Silica.Common.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.sourcelink.json
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\refint\Silica.Common.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\Silica.Common.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Common\Silica.Common\obj\Release\net8.0\ref\Silica.Common.dll

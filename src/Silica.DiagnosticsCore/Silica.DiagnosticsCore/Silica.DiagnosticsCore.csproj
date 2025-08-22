@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyTitle>Silica.DiagnosticsCore</AssemblyTitle>
+    <AssemblyDescription>Core diagnostics infrastructure for Silica, including logging, metrics, tracing, and instrumentation primitives.</AssemblyDescription>
+    <Company>Silica</Company>
+    <Product>Silica.DiagnosticsCore</Product>
+    <Version>1.0.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+  </PropertyGroup>
+
+</Project>

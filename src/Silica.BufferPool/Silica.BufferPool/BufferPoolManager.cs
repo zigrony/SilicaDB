@@ -360,7 +360,7 @@ namespace Silica.BufferPool
                 if (s == 2) { alreadyLoaded = true; return true; }
                 if (s == 1) { alreadyLoaded = false; return true; }
                 alreadyLoaded = false;
-                return Interlocked.CompareExchange(ref _loadState, 1, 0) != 0;
+                return Interlocked.CompareExchange(ref _loadState, 1, 0) == 0;
             }
 
             public void InitializeBuffer(int size)

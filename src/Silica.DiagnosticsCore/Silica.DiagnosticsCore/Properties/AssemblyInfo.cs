@@ -1,0 +1,9 @@
+﻿using System.Reflection;
+using System.Runtime.InteropServices;
+
+// Compliance and interop
+[assembly: ComVisible(false)]
+[assembly: Guid("D6ACF04E-1F59-4D40-A0C9-3E6F779B54AB")] // Unique for this assembly
+
+// Optional: mark as CLS-compliant if you want cross-language .NET compatibility
+[assembly: CLSCompliant(true)]

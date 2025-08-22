@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Evictions")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a86b42494ced0ab9590fcd1cd1bd7c86753c2f5e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85aeeb583977e41ddda5ba6963a3bfdf7cc899af")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Evictions")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Evictions")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

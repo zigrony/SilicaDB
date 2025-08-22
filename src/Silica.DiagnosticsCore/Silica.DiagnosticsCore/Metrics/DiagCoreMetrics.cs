@@ -1,0 +1,134 @@
+﻿// File: Silica.DiagnosticsCore/Metrics/DiagCoreMetrics.cs
+using System;
+using System.Collections.Generic;
+using System.Xml.Linq;
+
+
+namespace Silica.DiagnosticsCore.Metrics
+{
+    /// <summary>
+    /// Canonical metric definitions for Silica.DiagnosticsCore.
+    /// These definitions are singletons - they MUST be reused across all code paths
+    /// to avoid cardinality drift and to keep aggregation consistent.
+    /// </summary>
+    public static class DiagCoreMetrics
+    {
+        // Define NoTags first so all subsequent definitions can safely reference it.
+        private static readonly KeyValuePair<string, object>[] NoTags =
+            Array.Empty<KeyValuePair<string, object>>();
+
+        public static readonly MetricDefinition TraceTagsTruncated = new(
+                                        Name: "diagcore.traces.tags_truncated",
+                                        Type: MetricType.Counter,
+                                        Description: "Count of trace tag values truncated to policy",
+                                        Unit: "entries",
+                                        DefaultTags: NoTags);
+
+        public static readonly MetricDefinition MetricTagsTruncated = new(
+                                        Name: "diagcore.metrics.tags_truncated",
+                                        Type: MetricType.Counter,
+                                        Description: "Count of metric tag values truncated to policy",
+                                        Unit: "entries",
+                                        DefaultTags: NoTags);
+
+        public static readonly MetricDefinition MetricTagsRejected = new(
+                                        Name: "diagcore.metrics.tags_rejected",
+                                        Type: MetricType.Counter,
+                                        Description: "Count of metric tags rejected (disallowed, too many, invalid type)",
+                                        Unit: "entries",
+                                        DefaultTags: NoTags);
+
+        /// <summary>
+        /// Count of individual trace tags dropped by policy (disallowed, too many, invalid, or truncated).
+        /// </summary>
+        public static readonly MetricDefinition TraceTagsDropped = new(
+                                    Name: "diagcore.traces.tags_dropped",
+                                    Type: MetricType.Counter,
+                                    Description: "Count of trace tags dropped by policy",
+                                    Unit: "entries",
+                                    DefaultTags: NoTags);
+        /// <summary>
+        /// Count of metric emissions dropped by policy.
+        /// </summary>
+        public static readonly MetricDefinition MetricsDropped = new(
+            Name: "diagcore.metrics.dropped",
+            Type: MetricType.Counter,
+            Description: "Count of metric emissions dropped by policy",
+            Unit: "entries",
+            DefaultTags: NoTags
+        );
+
+        /// <summary>
+        /// Count of trace events dropped by sinks or policy.
+        /// </summary>
+        public static readonly MetricDefinition TracesDropped = new(
+            Name: "diagcore.traces.dropped",
+            Type: MetricType.Counter,
+            Description: "Count of trace events dropped by sinks or policy",
+            Unit: "entries",
+            DefaultTags: NoTags
+        );
+
+        /// <summary>
+        /// Count of trace events that had redaction applied.
+        /// </summary>
+        public static readonly MetricDefinition TracesRedacted = new(
+            Name: "diagcore.traces.redacted",
+            Type: MetricType.Counter,
+            Description: "Count of trace events that had redaction applied",
+            Unit: "entries",
+            DefaultTags: NoTags
+        );
+
+
+        /// <summary>
+        /// Count of attempts to re-start diagnostics with different options than the active instance.
+        /// </summary>
+        public static readonly MetricDefinition BootstrapOptionsConflict = new(
+            Name: "diagcore.bootstrap.options_conflict",
+            Type: MetricType.Counter,
+            Description: "Detected divergent DiagnosticsOptions on subsequent Start()",
+            Unit: "entries",
+            DefaultTags: NoTags
+        );
+
+        public static readonly MetricDefinition IgnoredConfigFieldSet = new(
+            Name: "diagcore.bootstrap.ignored_config_field_set",
+            Type: MetricType.Counter,
+            Description: "Count of ignored config fields that were set but not enforced",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition MetricsLenientNoAutoreg = new(
+            Name: "diagcore.metrics.lenient_no_autoreg",
+            Type: MetricType.Counter,
+            Description: "Emissions dropped because strict=false with a manager that does not auto-register",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // Dispatcher histogram for sink.Emit duration (ms)
+        public static readonly MetricDefinition SinkEmitDurationMs = new(
+            Name: "diagcore.traces.sink_emit_duration_ms",
+            Type: MetricType.Histogram,
+            Description: "Duration of sink.Emit calls in milliseconds",
+            Unit: "ms",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // Dispatcher counter for slow sink emits (>1s)
+        public static readonly MetricDefinition SinkEmitLong = new(
+            Name: "diagcore.traces.sink_emit_long",
+            Type: MetricType.Counter,
+            Description: "Count of sink.Emit calls exceeding 1s",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // Dispatcher histogram for shutdown queue depth on timeout
+        public static readonly MetricDefinition DispatcherShutdownQueueDepth = new(
+            Name: "diagcore.traces.dispatcher.shutdown_queue_depth",
+            Type: MetricType.Histogram,
+            Description: "Queue depth measured when dispatcher exceeded shutdown timeout",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+    }
+}

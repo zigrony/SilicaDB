@@ -3,31 +3,52 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{7653CC84-DC00-4E7A-877A-777087289C8A}|..\\Silica.Logging\\Silica.Logging\\Silica.Logging.csproj|c:\\githubrepos\\silicadb\\src\\silica.logging\\silica.logging\\loglevel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\diagnosticscorebootstrap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7653CC84-DC00-4E7A-877A-777087289C8A}|..\\Silica.Logging\\Silica.Logging\\Silica.Logging.csproj|c:\\githubrepos\\silicadb\\src\\silica.logging\\silica.logging\\silicalogger.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\tagvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\loopbackdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\metricsfacade.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\telemetrydevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\tracedispatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\faultinjectiondevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\redactors\\defaulttraceredactor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\latencyjitterdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\metricdefinition.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\interfaces\\istoragedevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\sinks\\loggingtracesink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\asyncminidriver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\diagcoremetrics.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\bufferpoolmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\config\\diagnosticsoptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\sinks\\boundedinmemorytracesink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\tracemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\tags\\tagkeys.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\metrics\\metricsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\instrumentation\\timingscope.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\compositetraceredactor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\config\\itraceredactor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -37,128 +58,219 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 5,
           "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "LogLevel.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Logging\\Silica.Logging\\LogLevel.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Logging\\Silica.Logging\\LogLevel.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Logging\\Silica.Logging\\LogLevel.cs",
-              "RelativeToolTip": "..\\Silica.Logging\\Silica.Logging\\LogLevel.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-20T11:30:42.335Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "SilicaLogger.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Logging\\Silica.Logging\\SilicaLogger.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Logging\\Silica.Logging\\SilicaLogger.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Logging\\Silica.Logging\\SilicaLogger.cs",
-              "RelativeToolTip": "..\\Silica.Logging\\Silica.Logging\\SilicaLogger.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-20T11:30:32.148Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "LoopBackDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\LoopBackDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\LoopBackDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\LoopBackDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\LoopBackDevice.cs",
-              "ViewState": "AgIAADMAAAAAAAAAAAAjwFwAAAA0AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T20:18:40.177Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "TelemetryDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\TelemetryDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\TelemetryDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\TelemetryDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\TelemetryDevice.cs",
-              "ViewState": "AgIAAB0AAAAAAAAAAAD4vzYAAAAdAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T20:17:54.245Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "FaultInjectionDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\FaultInjectionDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\FaultInjectionDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\FaultInjectionDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\FaultInjectionDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwDIAAAAqAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T20:16:55.07Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Document",
               "DocumentIndex": 5,
-              "Title": "LatencyJitterDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\LatencyJitterDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\LatencyJitterDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\LatencyJitterDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\LatencyJitterDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAAqAAAAAAAAAA==",
+              "Title": "MetricDefinition.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricDefinition.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricDefinition.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricDefinition.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricDefinition.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAjwDYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T20:15:34.975Z",
+              "WhenOpened": "2025-08-22T16:12:50.941Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
-              "Title": "IStorageDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Interfaces\\IStorageDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\Interfaces\\IStorageDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Interfaces\\IStorageDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\Interfaces\\IStorageDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Title": "LoggingTraceSink.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\LoggingTraceSink.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\LoggingTraceSink.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\LoggingTraceSink.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\LoggingTraceSink.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAWwBQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T20:16:17.547Z",
+              "WhenOpened": "2025-08-22T10:18:28.657Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "BoundedInMemoryTraceSink.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\BoundedInMemoryTraceSink.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\BoundedInMemoryTraceSink.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\BoundedInMemoryTraceSink.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\BoundedInMemoryTraceSink.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAA3AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:27:58.44Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "TraceDispatcher.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
+              "ViewState": "AgIAADkAAAAAAAAAAADgv1EAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:10:00.99Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 7,
-              "Title": "AsyncMiniDriver.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\AsyncMiniDriver.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\AsyncMiniDriver.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\AsyncMiniDriver.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\AsyncMiniDriver.cs",
-              "ViewState": "AgIAADMCAAAAAAAAAAAkwF4CAAAAAAAAAAAAAA==",
+              "Title": "DiagCoreMetrics.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\DiagCoreMetrics.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\DiagCoreMetrics.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\DiagCoreMetrics.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\DiagCoreMetrics.cs",
+              "ViewState": "AgIAAE4AAAAAAAAAAADgv2wAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T19:54:20.292Z",
+              "WhenOpened": "2025-08-21T22:45:48.184Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "DiagnosticsCoreBootstrap.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\DiagnosticsCoreBootstrap.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\DiagnosticsCoreBootstrap.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\DiagnosticsCoreBootstrap.cs*",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\DiagnosticsCoreBootstrap.cs*",
+              "ViewState": "AgIAABoAAAAAAAAAAAAjwDYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T22:41:46.26Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "TagValidator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\TagValidator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\TagValidator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\TagValidator.cs*",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\TagValidator.cs*",
+              "ViewState": "AgIAADoAAAAAAAAAAAAAAEcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:04:38.604Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "TraceManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceManager.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceManager.cs",
+              "ViewState": "AgIAALMAAAAAAAAAAAAjwL0AAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:09:07.258Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 8,
-              "Title": "BufferPoolManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "ViewState": "AgIAANUBAAAAAAAAAIA6wPEBAAAkAAAAAAAAAA==",
+              "Title": "DiagnosticsOptions.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\DiagnosticsOptions.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\DiagnosticsOptions.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\DiagnosticsOptions.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\DiagnosticsOptions.cs",
+              "ViewState": "AgIAAEIAAAAAAAAAAAArwF4AAAB3AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-19T19:48:30.642Z",
+              "WhenOpened": "2025-08-21T23:19:16.586Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "TagKeys.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\Tags\\TagKeys.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\Tags\\TagKeys.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\Tags\\TagKeys.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\Tags\\TagKeys.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-22T00:28:22.132Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DefaultTraceRedactor.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Redactors\\DefaultTraceRedactor.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Redactors\\DefaultTraceRedactor.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Redactors\\DefaultTraceRedactor.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Redactors\\DefaultTraceRedactor.cs",
+              "ViewState": "AgIAAC8AAAAAAAAAAADgv0EAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:29:53.475Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "MetricsManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsManager.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsManager.cs",
+              "ViewState": "AgIAACkAAAAAAAAAAAArwFAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:42:35.017Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MetricsFacade.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsFacade.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsFacade.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsFacade.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Metrics\\MetricsFacade.cs",
+              "ViewState": "AgIAAD8AAAAAAAAAAIA2wFsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-21T23:06:50.472Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "TimingScope.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Instrumentation\\TimingScope.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Instrumentation\\TimingScope.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Instrumentation\\TimingScope.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Instrumentation\\TimingScope.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAAAjwFgAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-22T10:13:14.108Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "CompositeTraceRedactor.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\CompositeTraceRedactor.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\CompositeTraceRedactor.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\CompositeTraceRedactor.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\CompositeTraceRedactor.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-22T00:23:44.807Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "ITraceRedactor.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\ITraceRedactor.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\ITraceRedactor.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\ITraceRedactor.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Config\\ITraceRedactor.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAABUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-22T00:21:38.797Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             }
           ]
         }
