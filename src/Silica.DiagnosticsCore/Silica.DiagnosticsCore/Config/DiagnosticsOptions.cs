@@ -6,6 +6,7 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Threading.Channels;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Internal;
 
 namespace Silica.DiagnosticsCore
 {
@@ -15,6 +16,11 @@ namespace Silica.DiagnosticsCore
     /// </summary>
     public sealed class DiagnosticsOptions
     {
+        /// <summary>
+        /// Additional allowed metric tag keys beyond the base set. Intended for low-cardinality, schema-governed tags.
+        /// </summary>
+        public IEnumerable<string> AllowedCustomMetricTagKeys { get; set; } = Array.Empty<string>();
+
         public bool StrictBootstrapOptions { get; set; } = true;
         // ----- Defaults and allowed sets -----
         public static class Defaults
@@ -22,15 +28,26 @@ namespace Silica.DiagnosticsCore
             public const string DefaultComponent = "default";
             public const string MinimumLevel = "info"; // allowed: trace, debug, info, warn, error, fatal
             public const int InMemoryCapacity = 10_000;
+
+#if DEBUG
+            public const bool LoggingAvailable = true;
+#else
+            public const bool LoggingAvailable = false;
+#endif
+ 
+            [Obsolete("UseHighResolutionTiming is not enforced by the pipeline and will be removed in a future release.")]
             public const bool UseHighResolutionTiming = true;
+
+            [Obsolete("CaptureExceptions is not enforced by the pipeline and will be removed in a future release. Use redaction options instead.")]
             public const bool CaptureExceptions = true;
+
             public const bool EnableTracing = true;
             public const bool EnableMetrics = true;
-            // Default to false in production to avoid blocking on slow stdout
+
 #if DEBUG
             public const bool EnableLogging = true;
 #else
-            public const bool EnableLogging = false;
+    public const bool EnableLogging = false;
 #endif
 
             public const bool StrictMetrics = true;
@@ -60,25 +77,28 @@ namespace Silica.DiagnosticsCore
             set { ThrowIfFrozen(); _maxExceptionStackFrames = Math.Max(1, value); }
         }
 
-public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.DispatcherFullMode;
-
-
-        public DiagnosticsOptions(IMetricsManager? metrics = null) { /* preserved signature for compatibility */ }
-
+        public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.DispatcherFullMode;
+        [Obsolete("The IMetricsManager parameter is ignored; use DiagnosticsCoreBootstrap.Start to wire metrics.")]
+        public DiagnosticsOptions(IMetricsManager? metrics = null) { }
         /// <summary>
         /// Stable fingerprint of effective, normalized values for drift detection and auditing.
         /// Safe to call before or after Freeze(); values are taken from effective state.
         /// </summary>
         public string ComputeFingerprint()
         {
-            // Use effective views and normalized fields
             var sb = new StringBuilder();
-            sb.Append("DefaultComponent=").Append(_defaultComponent).Append(';');
-            // NOTE:
-            // - Include behavior-affecting knobs here for drift detection.
-            // - Exclude truly-unenforced knobs (today: UseHighResolutionTiming, CaptureExceptions).
-            sb.Append("MinimumLevel=").Append(_minimumLevel).Append(';');
-            sb.Append("EnableLogging=").Append(_enableLogging).Append(';');
+
+            // Normalize as Freeze() would
+            var normalizedComponent = string.IsNullOrWhiteSpace(_defaultComponent)
+                ? "unknown"
+                : _defaultComponent.Trim();
+
+            var normalizedLevel = (_minimumLevel ?? string.Empty).Trim().ToLowerInvariant();
+            var effectiveEnableLogging = Defaults.LoggingAvailable && _enableLogging;
+
+            sb.Append("DefaultComponent=").Append(normalizedComponent).Append(';');
+            sb.Append("MinimumLevel=").Append(normalizedLevel).Append(';');
+            sb.Append("EnableLogging=").Append(effectiveEnableLogging).Append(';');
             sb.Append("EnableTracing=").Append(_enableTracing).Append(';');
             sb.Append("EnableMetrics=").Append(_enableMetrics).Append(';');
             sb.Append("StrictMetrics=").Append(_strictMetrics).Append(';');
@@ -87,30 +107,40 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
             sb.Append("MaxTraceBuffer=").Append(_maxTraceBuffer).Append(';');
             sb.Append("QueueCapacity=").Append(_dispatcherQueueCapacity).Append(';');
             sb.Append("ShutdownMs=").Append(_shutdownTimeoutMs).Append(';');
-            sb.Append("TraceSampleRate=").Append(EffectiveTraceSampleRate).Append(';');
+            sb.Append("TraceSampleRate=").Append(
+                EffectiveTraceSampleRate.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            ).Append(';');
             sb.Append("DispatcherFullMode=").Append((int)DispatcherFullMode).Append(';');
             sb.Append("RedactTraceMessage=").Append(_redactTraceMessage).Append(';');
             sb.Append("RedactExceptionMessage=").Append(_redactExceptionMessage).Append(';');
             sb.Append("RedactExceptionStack=").Append(_redactExceptionStack).Append(';');
-            sb.Append("MaxExceptionStackFrames=").Append(_maxExceptionStackFrames).Append(';'); // enforced in redactor
+            sb.Append("MaxExceptionStackFrames=").Append(
+                _maxExceptionStackFrames.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            ).Append(';');
+            sb.Append("StrictBootstrapOptions=").Append(StrictBootstrapOptions).Append(';');
+            sb.Append("StrictGlobalTagKeys=").Append(StrictGlobalTagKeys).Append(';');
 
-            // Global tags in stable, case-insensitive order
+            if (AllowedCustomGlobalTagKeys is not null)
+                foreach (var k in new SortedSet<string>(AllowedCustomGlobalTagKeys, StringComparer.OrdinalIgnoreCase))
+                    sb.Append("AK=").Append(k).Append(';');
+
             if (_globalTags is { Count: > 0 })
-            {
                 foreach (var kv in new SortedDictionary<string, string>(_globalTags, StringComparer.OrdinalIgnoreCase))
                     sb.Append("GT[").Append(kv.Key).Append("]=").Append(kv.Value).Append(';');
-            }
-            // Sensitive keys in stable order
+
             if (_sensitiveTagKeys is { Count: > 0 })
-            {
                 foreach (var k in new SortedSet<string>(_sensitiveTagKeys, StringComparer.OrdinalIgnoreCase))
-                sb.Append("SK=").Append(k).Append(';');
-            }
+                    sb.Append("SK=").Append(k).Append(';');
+
+            if (AllowedCustomMetricTagKeys is not null)
+                foreach (var k in new SortedSet<string>(AllowedCustomMetricTagKeys, StringComparer.OrdinalIgnoreCase))
+                    sb.Append("MK=").Append(k).Append(';');
 
             var bytes = Encoding.UTF8.GetBytes(sb.ToString());
             var hash = SHA256.HashData(bytes);
-                        return Convert.ToHexString(hash); // 64-char uppercase hex
-                    }
+            return Convert.ToHexString(hash);
+        }
+
         private int _shutdownTimeoutMs = Defaults.ShutdownTimeoutMs;
         public int ShutdownTimeoutMs
         {
@@ -123,7 +153,7 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
             get => _dispatcherQueueCapacity;
             set { ThrowIfFrozen(); _dispatcherQueueCapacity = value; }
         }
-        private static readonly string[] AllowedLevels = new[] { "trace", "debug", "info", "warn", "error", "fatal" };
+        private static readonly string[] AllowedLevels = Silica.DiagnosticsCore.Internal.AllowedLevels.TraceAndLogLevels;
 
         // ----- Backing fields -----
         private string _defaultComponent = Defaults.DefaultComponent;
@@ -152,6 +182,15 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
 
         private volatile bool _frozen;
 
+        /// <summary>
+        /// If true, GlobalTags keys must be in the base allowed set or explicitly allow‑listed.
+        /// </summary>
+        public bool StrictGlobalTagKeys { get; set; } = false;
+
+        /// <summary>
+        /// Additional allowed global tag keys when <see cref="StrictGlobalTagKeys"/> is true.
+        /// </summary>
+        public IEnumerable<string> AllowedCustomGlobalTagKeys { get; set; } = Array.Empty<string>();
         // ----- Properties (guarded by Freeze) -----
 
         /// <summary>
@@ -206,6 +245,7 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
         /// <summary>
         /// Use Stopwatch for high-resolution instrumentation.
         /// </summary>
+        [Obsolete("UseHighResolutionTiming is not enforced at runtime and will be removed in a future release.")]
         public bool UseHighResolutionTiming
         {
             get => _useHighResolutionTiming;
@@ -215,6 +255,7 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
         /// <summary>
         /// Capture exceptions and attach to emitted events.
         /// </summary>
+        [Obsolete("CaptureExceptions is not enforced at runtime and will be removed in a future release. Use redaction options instead.")]
         public bool CaptureExceptions
         {
             get => _captureExceptions;
@@ -356,6 +397,9 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
         /// </summary>
         public DiagnosticsOptions ValidateOrThrow(bool validateGlobalTagsAgainstLimits = true)
         {
+            if (_dispatcherQueueCapacity <= 0)
+                throw new ArgumentOutOfRangeException(nameof(DispatcherQueueCapacity), "Must be > 0.");
+
             // Basic numeric ranges
             if (_maxTagsPerEvent < 0)
                 throw new ArgumentOutOfRangeException(nameof(MaxTagsPerEvent), "Must be >= 0.");
@@ -388,6 +432,18 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
                         throw new ArgumentException($"GlobalTags[\"{kvp.Key}\"] has a null value.", nameof(GlobalTags));
                     if (_maxTagValueLength >= 0 && kvp.Value.Length > _maxTagValueLength)
                         throw new ArgumentException($"GlobalTags[\"{kvp.Key}\"] value length {kvp.Value.Length} exceeds MaxTagValueLength ({_maxTagValueLength}).", nameof(GlobalTags));
+                    if (StrictGlobalTagKeys)
+                    {
+                        var baseKeys = new HashSet<string>(new[]{
+                            TagKeys.Pool, TagKeys.Device, TagKeys.Operation, TagKeys.Component,
+                            TagKeys.Tenant, TagKeys.Status, TagKeys.Exception, TagKeys.Shard,
+                            TagKeys.Thread, TagKeys.Concurrency, TagKeys.DropCause,
+                            TagKeys.Region, TagKeys.WidgetId, TagKeys.Policy, TagKeys.Sink, TagKeys.Field
+                        }, StringComparer.OrdinalIgnoreCase);
+                        baseKeys.UnionWith(AllowedCustomGlobalTagKeys ?? Array.Empty<string>());
+                        if (!baseKeys.Contains(kvp.Key))
+                            throw new ArgumentException($"GlobalTags key '{kvp.Key}' not allowed under StrictGlobalTagKeys.", nameof(GlobalTags));
+                    }
                 }
             }
 
@@ -457,7 +513,7 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
                 MaxTraceBuffer = _maxTraceBuffer,
                 TraceSampleRate = _traceSampleRate,
                 SensitiveTagKeys = new List<string>(_sensitiveTagKeys),
-                DispatcherFullMode = DispatcherFullMode,
+                DispatcherFullMode = this.DispatcherFullMode,
                 RedactTraceMessage = _redactTraceMessage,
                 RedactExceptionMessage = _redactExceptionMessage,
                 RedactExceptionStack = _redactExceptionStack,
@@ -466,6 +522,10 @@ public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.Dispat
                 DispatcherQueueCapacity = _dispatcherQueueCapacity,
                 MaxExceptionStackFrames = _maxExceptionStackFrames
             };
+
+            clone.StrictGlobalTagKeys = this.StrictGlobalTagKeys;
+            clone.AllowedCustomGlobalTagKeys = this.AllowedCustomGlobalTagKeys?.ToArray() ?? Array.Empty<string>();
+            clone.AllowedCustomMetricTagKeys = this.AllowedCustomMetricTagKeys?.ToArray() ?? Array.Empty<string>();
             return clone;
         }
 

@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Silica.Observability\Silica.Observability\Silica.Observability.csproj" />
-  </ItemGroup>
-
 </Project>

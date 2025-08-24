@@ -16,12 +16,17 @@ namespace Silica.DiagnosticsCore.Metrics
         private readonly ConcurrentDictionary<string, Histogram<double>> _histograms = new();
         private readonly MetricRegistry _registry;
         private readonly Meter _meter;
+        private readonly TagValidator? _metricTagValidator;
         private volatile bool _disposed;
 
-        public MetricsManager(MetricRegistry? registry = null, string meterName = "Silica.DiagnosticsCore")
+        public MetricsManager(
+            MetricRegistry? registry = null,
+            string meterName = "Silica.DiagnosticsCore",
+            TagValidator? metricTagValidator = null)
         {
             _registry = registry ?? new MetricRegistry();
             _meter = new Meter(meterName ?? throw new ArgumentNullException(nameof(meterName)));
+            _metricTagValidator = metricTagValidator;
         }
 
         public void Register(MetricDefinition definition)
@@ -70,17 +75,58 @@ namespace Silica.DiagnosticsCore.Metrics
         public void Increment(string name, long value = 1, params KeyValuePair<string, object>[] tags)
         {
             ThrowIfDisposed();
-            if (!_registry.IsKnown(name)) return;
+            if (!_registry.IsKnown(name))
+            {
+                // Unknown metric: explicit accounting instead of silent no-op
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.UnknownMetricNoAutoreg,
+                    new KeyValuePair<string, object>(TagKeys.Metric, name));
+                return;
+            }
             if (_counters.TryGetValue(name, out var counter))
-                counter.Add(value, tags);
+            {
+                var effectiveTags = (_metricTagValidator is null || tags is null || tags.Length == 0)
+                    ? tags
+                    : _metricTagValidator.Validate(tags);
+                counter.Add(value, effectiveTags);
+                return;
+            }
+
+            // Known metric but not a counter instrument => type mismatch
+            AccountMetricDrop(
+                DiagCoreMetrics.MetricsDropped.Name,
+                DropCauses.TypeMismatch,
+                new KeyValuePair<string, object>(TagKeys.Metric, name));
+
         }
 
         public void Record(string name, double value, params KeyValuePair<string, object>[] tags)
         {
             ThrowIfDisposed();
-            if (!_registry.IsKnown(name)) return;
+            if (!_registry.IsKnown(name))
+            {
+                // Unknown metric: explicit accounting instead of silent no-op
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.UnknownMetricNoAutoreg,
+                    new KeyValuePair<string, object>(TagKeys.Metric, name));
+                return;
+            }
             if (_histograms.TryGetValue(name, out var hist))
-                hist.Record(value, tags);
+            {
+                var effectiveTags = (_metricTagValidator is null || tags is null || tags.Length == 0)
+                    ? tags
+                    : _metricTagValidator.Validate(tags);
+                hist.Record(value, effectiveTags);
+                return;
+            }
+
+            // Known metric but not a histogram instrument => type mismatch
+            AccountMetricDrop(
+                DiagCoreMetrics.MetricsDropped.Name,
+                DropCauses.TypeMismatch,
+                new KeyValuePair<string, object>(TagKeys.Metric, name));
         }
         public void Dispose()
         {
@@ -94,9 +140,8 @@ namespace Silica.DiagnosticsCore.Metrics
         {
             _counters.Clear();
             _histograms.Clear();
-            // MetricRegistry has no Clear(), so either replace it or leave as-is
-            // If you want to drop definitions too, reassign a new registry:
-            // _registry = new MetricRegistry();
+            // MetricRegistry has no Clear(); retained definitions intentionally persist for process lifetime.
+            // If you need to drop definitions, create a new MetricsManager instance with a fresh registry.
         }
         private void ThrowIfDisposed()
         {
@@ -104,5 +149,45 @@ namespace Silica.DiagnosticsCore.Metrics
                 throw new ObjectDisposedException(nameof(MetricsManager),
                     "MetricsManager has been disposed and cannot be reused.");
         }
+        // Ensure drop accounting works even if MetricsDropped wasn't registered yet.
+        // Avoid recursive Increment(path) by operating on instruments directly after registration.
+        private void AccountMetricDrop(
+            string dropMetricName,
+            string cause,
+            params KeyValuePair<string, object>[] extraTags)
+        {
+            try
+            {
+                // Register drop metric if needed
+                if (!_registry.IsKnown(dropMetricName))
+                {
+                    Register(DiagCoreMetrics.MetricsDropped);
+                }
+                // Retrieve or create the counter instrument
+                if (!_counters.TryGetValue(dropMetricName, out var dropCounter))
+                {
+                    // Register would have created it; GetOrAdd as a safety net
+                    dropCounter = _meter.CreateCounter<long>(dropMetricName, DiagCoreMetrics.MetricsDropped.Unit, DiagCoreMetrics.MetricsDropped.Description);
+                    _counters.TryAdd(dropMetricName, dropCounter);
+                }
+                // Build tag list: drop_cause + optional context
+                if (extraTags is { Length: > 0 })
+                {
+                    var all = new KeyValuePair<string, object>[extraTags.Length + 1];
+                    all[0] = new KeyValuePair<string, object>(TagKeys.DropCause, cause);
+                    Array.Copy(extraTags, 0, all, 1, extraTags.Length);
+                    dropCounter.Add(1, all);
+                }
+                else
+                {
+                    dropCounter.Add(1, new KeyValuePair<string, object>(TagKeys.DropCause, cause));
+                }
+            }
+            catch
+            {
+                // Swallow exporter/runtime errors; do not throw on the hot path.
+            }
+        }
+
     }
 }

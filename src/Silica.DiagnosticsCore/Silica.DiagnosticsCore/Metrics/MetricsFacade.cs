@@ -18,10 +18,21 @@ namespace Silica.DiagnosticsCore.Metrics
         private readonly Action<string>? _onDrop;
         private readonly IReadOnlyDictionary<string, string>? _globalTags;
         // Optional: surface a single warning metric when strict=false is used with a manager that doesn't auto-register
-        private volatile bool _warnedStrictLenientNoAutoReg;
+        private volatile bool _warnedLenientNoAutoReg;
+        private volatile bool _warnedLenientAutoReg;
+        private volatile bool _disposed;
+
         public void AddAllowedTagKeys(IEnumerable<string> keys)
         {
             _tagValidator.AddAllowedKeys(keys);
+           if (_inner is not NoOpMetricsManager)
+               try
+               {
+                   TryRegister(DiagCoreMetrics.IgnoredConfigFieldSet);
+                   _inner.Increment(DiagCoreMetrics.IgnoredConfigFieldSet.Name, 1,
+                       new KeyValuePair<string, object>(TagKeys.Field, "dynamic_tag_allowlist"));
+               }
+               catch { }
         }
 
     /// <param name="inner">The underlying metrics manager to emit to.</param>
@@ -49,10 +60,36 @@ namespace Silica.DiagnosticsCore.Metrics
             _onDrop = onDrop;
             _globalTags = globalTags;
             _ownsInner = ownsInner;
+            // Wire tag drop/truncation accounting for metrics emissions.
+            // Note: No-op when metrics are globally disabled via NoOpMetricsManager.
+            _tagValidator.SetCallbacks(
+                onTagRejectedCount: count =>
+                {
+                    if (_inner is NoOpMetricsManager) return;
+                    try
+                    {
+                        TryRegister(DiagCoreMetrics.MetricTagsRejected);
+                        _inner.Increment(DiagCoreMetrics.MetricTagsRejected.Name, count);
+                    }
+                    catch { /* swallow exporter/registration issues */ }
+                },
+                onTagTruncatedCount: count =>
+                {
+                    if (_inner is NoOpMetricsManager) return;
+                    try
+                    {
+                        TryRegister(DiagCoreMetrics.MetricTagsTruncated);
+                        _inner.Increment(DiagCoreMetrics.MetricTagsTruncated.Name, count);
+                    }
+                    catch { /* swallow exporter/registration issues */ }
+                });
+
         }
 
         public void Register(MetricDefinition definition)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(MetricsFacade));
+
             if (definition is null)
                 throw new ArgumentNullException(nameof(definition));
 
@@ -63,50 +100,152 @@ namespace Silica.DiagnosticsCore.Metrics
 
         public void Increment(string name, long value = 1, params KeyValuePair<string, object>[] tags)
         {
+            if (!VerifyTypeOrDrop(name, MetricType.Counter)) return;
             PublishIfAllowed(name, () =>
                 _inner.Increment(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
         }
 
         public void Record(string name, double value, params KeyValuePair<string, object>[] tags)
         {
+            if (!VerifyTypeOrDrop(name, MetricType.Histogram)) return;
             PublishIfAllowed(name, () =>
                 _inner.Record(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
         }
 
         private void PublishIfAllowed(string name, Action publish)
         {
+            if (_disposed) return;
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Metric name must not be null or whitespace.", nameof(name));
 
+            // Metrics disabled: avoid overhead and any misleading accounting/warnings.
+            if (_inner is NoOpMetricsManager) return;
+
             if (!_registry.IsKnown(name))
             {
-               // Account only when it will actually be dropped:
-               // - strict mode (blocked here), or
-               // - inner is MetricsManager (no auto-registration; emits nothing).
-               if (_strict || _inner is MetricsManager)
-                   _onDrop?.Invoke(name);
+                // Strict mode: drop and account precisely
+                if (_strict)
+                {
+                    CountDrop(DropCauses.UnknownMetricStrict);
+                    return;
+                }
 
-               if (_strict) return;
+                // Lenient mode:
+                if (_inner is MetricsManager)
+                {
+                    // Inner cannot auto-register; drop and warn once
+                    if (!_warnedLenientNoAutoReg)
+                    {
+                        _warnedLenientNoAutoReg = true;
+                        try
+                        {
+                            TryRegister(DiagCoreMetrics.MetricsLenientNoAutoreg);
+                            _inner.Increment(DiagCoreMetrics.MetricsLenientNoAutoreg.Name, 1);
+                        }
+                        catch { /* no-throw */ }
+                    }
+                    CountDrop(DropCauses.UnknownMetricNoAutoreg);
+                    return;
+                }
 
-               // Warn once in lenient mode. Distinguish unknown inner with a tag.
-               // Note: publish() is still called below. If _inner is MetricsManager,
-               // it will no-op on unknown metrics; the single 'lenient_no_autoreg'
-               // counter surfaces that behavior to operators.
-               if (!_warnedStrictLenientNoAutoReg)
-               {
-                   _warnedStrictLenientNoAutoReg = true;
-                   try
-                   {
-                       var tags = _inner is MetricsManager
-                           ? Array.Empty<KeyValuePair<string, object>>()
-                           : new[] { new KeyValuePair<string, object>(TagKeys.Field, "unknown_inner_autoreg") };
-                       _inner.Increment(DiagCoreMetrics.MetricsLenientNoAutoreg.Name, 1, tags);
-                   }
-                   catch { /* no-throw */ }
-               }              
+                // Inner may auto-register (schema drift risk) - surface once
+                if (!_warnedLenientAutoReg)
+                {
+                    _warnedLenientAutoReg = true;
+                    try
+                    {
+                        TryRegister(DiagCoreMetrics.MetricsLenientAutoregUsed);
+                        _inner.Increment(DiagCoreMetrics.MetricsLenientAutoregUsed.Name, 1);
+                    }
+                    catch { /* no-throw */ }
+                }            
             }
-            publish();
+           try { publish(); }
+           catch (ObjectDisposedException)
+           {
+               // Inner already disposed; account late emission and return.
+               try
+               {
+                   TryRegister(DiagCoreMetrics.MetricsDropped);
+                   _inner.Increment(
+                       DiagCoreMetrics.MetricsDropped.Name, 1,
+                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerDisposed));
+                }
+               catch { /* swallow */ }
+               _onDrop?.Invoke(name);
+           }
+           catch (InvalidOperationException)
+           {
+               try
+               {
+                   TryRegister(DiagCoreMetrics.MetricsDropped);
+                   _inner.Increment(
+                       DiagCoreMetrics.MetricsDropped.Name, 1,
+                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerError));
+               }
+               catch { /* swallow */ }
+               _onDrop?.Invoke(name);
+           }
+           catch (Exception)
+           {
+               DropInner(DropCauses.InnerException);
+           }
+
+            void DropInner(string cause)
+            {
+                try
+                {
+                    TryRegister(DiagCoreMetrics.MetricsDropped);
+                    _inner.Increment(DiagCoreMetrics.MetricsDropped.Name, 1,
+                        new KeyValuePair<string, object>(TagKeys.DropCause, cause));
+                }
+                catch { /* swallow */ }
+                _onDrop?.Invoke(name);
+            }
+            void CountDrop(string cause)
+            {
+               try
+               {
+                   TryRegister(DiagCoreMetrics.MetricsDropped);
+                   _inner.Increment(
+                       DiagCoreMetrics.MetricsDropped.Name, 1,
+                       new KeyValuePair<string, object>(TagKeys.DropCause, cause));
+               }
+               catch { /* swallow */ }
+               _onDrop?.Invoke(name);
+           }            
         }
+
+        // Verify that the metric is registered with the expected type; if mismatched,
+        // account a drop and prevent a silent no-op.
+        private bool VerifyTypeOrDrop(string name, MetricType expectedType)
+        {
+            try
+            {
+                // If unknown, allow PublishIfAllowed to handle strict/lenient paths.
+                if (!_registry.IsKnown(name)) return true;
+                var def = _registry.GetDefinition(name);
+                if (def.Type == expectedType) return true;
+            }
+            catch
+            {
+                // Registry may throw for edge conditions; defer to publish path.
+                return true;
+            }
+
+            // Known metric with mismatched type: count a precise drop.
+            try
+            {
+                TryRegister(DiagCoreMetrics.MetricsDropped);
+                _inner.Increment(
+                    DiagCoreMetrics.MetricsDropped.Name, 1,
+                    new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.TypeMismatch));
+            }
+            catch { /* swallow */ }
+            _onDrop?.Invoke(name);
+            return false;
+        }
+
         private KeyValuePair<string, object>[] Merge(KeyValuePair<string, object>[]? tags)
         {
             if ((_globalTags is null || _globalTags.Count == 0) && (tags is null || tags.Length == 0))
@@ -131,8 +270,9 @@ namespace Silica.DiagnosticsCore.Metrics
 
         public void Dispose()
         {
-            if (_ownsInner && _inner is IDisposable d)
-               d.Dispose();
+        if (_disposed) return;
+        _disposed = true;
+        if (_ownsInner && _inner is IDisposable d) d.Dispose();
         }
         public void TryRegister(MetricDefinition definition)
         {

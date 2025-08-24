@@ -1,7 +1,6 @@
 ﻿// File: Silica.DiagnosticsCore/Metrics/DiagCoreMetrics.cs
 using System;
 using System.Collections.Generic;
-using System.Xml.Linq;
 
 
 namespace Silica.DiagnosticsCore.Metrics
@@ -69,6 +68,14 @@ namespace Silica.DiagnosticsCore.Metrics
             DefaultTags: NoTags
         );
 
+        public static readonly MetricDefinition TracesEmitted = new(
+            Name: "diagcore.traces.emitted",
+            Type: MetricType.Counter,
+            Description: "Count of trace events successfully dispatched",
+            Unit: "entries",
+            DefaultTags: NoTags
+        );
+
         /// <summary>
         /// Count of trace events that had redaction applied.
         /// </summary>
@@ -128,6 +135,40 @@ namespace Silica.DiagnosticsCore.Metrics
             Type: MetricType.Histogram,
             Description: "Queue depth measured when dispatcher exceeded shutdown timeout",
             Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ShutdownDisposeErrors = new(
+            Name: "diagcore.bootstrap.dispose_errors",
+            Type: MetricType.Counter,
+            Description: "Count of dispose exceptions encountered during DiagnosticsCore shutdown",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition MetricsLenientAutoregUsed = new(
+            Name: "diagcore.metrics.lenient_autoreg_used",
+            Type: MetricType.Counter,
+            Description: "Emissions proceeded on unregistered metric due to lenient mode with auto-registration inner",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition PumpsRemainingOnTimeout = new(
+            Name: "diagcore.traces.dispatcher.pumps_remaining_on_timeout",
+            Type: MetricType.Histogram,
+            Description: "Count of pump tasks still active when shutdown timed out",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+        public static readonly MetricDefinition DispatcherSinkRegistered = new(
+            Name: "diagcore.traces.dispatcher.sink_registered",
+            Type: MetricType.Counter,
+            Description: "Count of sinks registered on the dispatcher",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition DispatcherSinkUnregistered = new(
+            Name: "diagcore.traces.dispatcher.sink_unregistered",
+            Type: MetricType.Counter,
+            Description: "Count of sinks unregistered from the dispatcher",
+            Unit: "entries",
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
     }

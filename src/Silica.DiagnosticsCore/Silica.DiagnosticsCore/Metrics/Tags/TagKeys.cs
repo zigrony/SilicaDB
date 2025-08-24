@@ -24,5 +24,6 @@ namespace Silica.DiagnosticsCore.Metrics
         public const string Policy = "policy";
         public const string Sink = "sink";
         public const string Field = "field";
+        public const string Metric = "metric";       // Metric name (for drop accounting)
     }
 }

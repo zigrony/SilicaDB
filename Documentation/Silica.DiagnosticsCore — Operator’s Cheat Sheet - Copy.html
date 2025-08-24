@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Silica.DiagnosticsCore — Operator’s Cheat Sheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #151a2e;
+      --panel-2: #1b2140;
+      --text: #e6e9f2;
+      --muted: #9aa3b2;
+      --accent: #5b8cff;
+      --border: #263055;
+      --good: #2ec27e;
+      --warn: #f5c542;
+      --bad: #ff6b6b;
+      --link: #82aaff;
+      --table-stripe: #141a33;
+      --chip-bg: #20284a;
+      --code: #c5d3ff;
+      --shadow: 0 6px 30px rgba(0,0,0,0.35);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --panel-2: #f2f5ff;
+        --text: #0e1525;
+        --muted: #4a5568;
+        --accent: #365dfb;
+        --border: #e2e8f0;
+        --good: #178a57;
+        --warn: #b88300;
+        --bad: #d64545;
+        --link: #2b50e2;
+        --table-stripe: #f8faff;
+        --chip-bg: #eef2ff;
+        --code: #1e293b;
+        --shadow: 0 6px 30px rgba(22,28,45,0.08);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem; }
+    .title { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    .title h1 { font-size: 1.5rem; margin: 0; letter-spacing: 0.2px; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; }
+
+    .toolbar {
+      display: flex; gap: 0.75rem; align-items: center; margin-top: 0.8rem; flex-wrap: wrap;
+    }
+    .search {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0.75rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .search input {
+      border: 0; background: transparent; color: var(--text); outline: none; min-width: 240px;
+    }
+    .chip {
+      font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: var(--chip-bg); color: var(--text); border: 1px solid var(--border);
+    }
+
+    main { max-width: 1100px; margin: 1.25rem auto 3rem; padding: 0 1rem; display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+
+    section {
+      background: linear-gradient(180deg, var(--panel), rgba(0,0,0,0));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    section header {
+      position: relative; top: auto; background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 0; box-shadow: none;
+    }
+
+    section .content { padding: 1rem 1rem 1.25rem; }
+
+    h2 { font-size: 1.1rem; margin: 0; letter-spacing: 0.2px; }
+    p { color: var(--muted); margin: 0.5rem 0 0; }
+
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 0.75rem; background: transparent; font-size: 0.95rem;
+    }
+    thead th {
+      text-align: left; padding: 0.75rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); background: transparent;
+    }
+    tbody td {
+      padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background: var(--table-stripe); }
+    code { color: var(--code); background: rgba(130,170,255,0.08); padding: 0.05rem 0.35rem; border-radius: 6px; border: 1px solid var(--border); }
+
+    .taglist { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+    .tag { padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); color: var(--text); font-size: 0.8rem; }
+    .note { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; }
+
+    .legend { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .legend .k { color: var(--muted); }
+    .legend .v { color: var(--text); }
+
+    footer { max-width: 1100px; margin: 1rem auto 3rem; padding: 0 1rem; color: var(--muted); }
+
+    .pill { font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px; }
+    .pill-counter { background: rgba(46,194,126,0.08); border: 1px solid rgba(46,194,126,0.4); color: var(--good); }
+    .pill-hist { background: rgba(91,140,255,0.08); border: 1px solid rgba(91,140,255,0.4); color: var(--accent); }
+    .pill-gauge { background: rgba(245,197,66,0.08); border: 1px solid rgba(245,197,66,0.4); color: var(--warn); }
+
+    .toc {
+      display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      padding: 0.75rem; border-top: 1px dashed var(--border); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.08));
+    }
+    .toc a {
+      text-decoration: none; color: var(--link); padding: 0.4rem 0.55rem; border-radius: 8px; border: 1px solid var(--border); background: var(--panel);
+    }
+    .toc a:hover { background: var(--panel-2); }
+
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.8rem; background: var(--panel); border: 1px solid var(--border); border-bottom-width: 2px; padding: 0.1rem 0.35rem; border-radius: 6px; color: var(--text);
+    }
+
+    .section-intro { margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="title">
+        <h1>Silica.DiagnosticsCore — Operator’s Cheat Sheet</h1>
+        <span class="subtitle">Production observability map: metrics, meanings, and where they’re emitted</span>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 21l-4.3-4.3m1.6-4.3a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <input id="search" type="search" placeholder="Filter metrics by name, meaning, tags…" oninput="filterAll(this.value)" aria-label="Filter metrics" />
+        </label>
+        <span class="chip">Counters <span class="pill pill-counter">count</span></span>
+        <span class="chip">Histograms <span class="pill pill-hist">distribution</span></span>
+        <span class="chip">Gauges <span class="pill pill-gauge">observable</span></span>
+      </div>
+      <div class="toc">
+        <a href="#bootstrap">Bootstrap & lifecycle</a>
+        <a href="#metrics">Metrics pipeline health</a>
+        <a href="#traces">Trace pipeline health</a>
+        <a href="#dispatcher">Dispatcher performance</a>
+        <a href="#gauges">Gauges & observables</a>
+        <a href="#usage">How to use this</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="bootstrap">
+      <header class="wrap">
+        <h2>Bootstrap & lifecycle metrics</h2>
+        <p class="section-intro">Visibility around startup, configuration drift, and shutdown integrity.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Type</th>
+              <th>Meaning</th>
+              <th>Incremented in</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>diagcore.bootstrap.options_conflict</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Start called with different <code>DiagnosticsOptions</code> fingerprint than current instance (lenient mode)</td>
+              <td><code>DiagnosticsCoreBootstrap.Start</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.bootstrap.ignored_config_field_set</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>A config knob was set but is not enforced by the pipeline</td>
+              <td><code>DiagnosticsCoreBootstrap.Start</code>, <code>TraceDispatcher</code></td>
+              <td class="taglist"><span class="tag">field</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.bootstrap.dispose_errors</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Dispose threw during shutdown</td>
+              <td><code>DiagnosticsCoreBootstrap.Stop</code></td>
+              <td class="taglist"><span class="tag">component</span><span class="tag">exception</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">Use these to detect config drift and ensure shutdown completes cleanly across components.</p>
+      </div>
+    </section>
+
+    <section id="metrics">
+      <header class="wrap">
+        <h2>Metrics pipeline health</h2>
+        <p class="section-intro">Schema enforcement, tag governance, and emission outcomes.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Type</th>
+              <th>Meaning</th>
+              <th>Incremented in</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>diagcore.metrics.dropped</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Metric emission dropped by policy or error</td>
+              <td><code>MetricsFacade</code>, <code>MetricsManager</code></td>
+              <td class="taglist"><span class="tag">drop_cause</span><span class="tag">metric</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.metrics.tags_truncated</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Metric tag value truncated to policy</td>
+              <td><code>TagValidator</code> callbacks</td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.metrics.tags_rejected</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Metric tag rejected (disallowed, too many, invalid type)</td>
+              <td><code>TagValidator</code> callbacks</td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.metrics.lenient_no_autoreg</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Emission dropped: strict=false, manager does not auto‑register</td>
+              <td><code>MetricsFacade</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.metrics.lenient_autoreg_used</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Emission proceeded on unregistered metric due to lenient mode with auto‑register inner</td>
+              <td><code>MetricsFacade</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">If <code>diagcore.metrics.dropped</code> rises, filter by <span class="kbd">drop_cause</span> to isolate strict/lenient paths, type mismatches, or inner errors.</p>
+      </div>
+    </section>
+
+    <section id="traces">
+      <header class="wrap">
+        <h2>Trace pipeline health</h2>
+        <p class="section-intro">End‑to‑end emission outcomes, tag governance, and redaction visibility.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Type</th>
+              <th>Meaning</th>
+              <th>Incremented in</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>diagcore.traces.dropped</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Trace event dropped by sink or policy</td>
+              <td><code>TraceManager</code>, <code>TraceDispatcher</code>, <code>BoundedInMemoryTraceSink</code></td>
+              <td class="taglist"><span class="tag">drop_cause</span><span class="tag">sink</span><span class="tag">policy</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.emitted</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Trace event successfully dispatched</td>
+              <td><code>TraceManager</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.redacted</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Trace event had redaction applied (tags/message/exception)</td>
+              <td><code>DefaultTraceRedactor</code></td>
+              <td class="taglist"><span class="tag">field</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.tags_dropped</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Trace tag rejected by policy</td>
+              <td><code>TagValidator</code> callbacks in <code>TraceManager</code></td>
+              <td class="taglist"><span class="tag">field</span> (invalid_key, too_many, invalid_type, value_too_long)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.tags_truncated</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Trace tag value truncated to policy</td>
+              <td><code>TagValidator</code> callbacks in <code>TraceManager</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">Use <code>drop_cause</code> to separate policy enforcement (<em>below_minimum</em>, <em>sampled</em>) from sink health (<em>pump_fault</em>, <em>queue_full</em>, <em>dispatcher_disposed</em>).</p>
+      </div>
+    </section>
+
+    <section id="dispatcher">
+      <header class="wrap">
+        <h2>Dispatcher performance</h2>
+        <p class="section-intro">Pump health, per‑sink performance, and shutdown behavior.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Type</th>
+              <th>Meaning</th>
+              <th>Incremented in</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>diagcore.traces.sink_emit_duration_ms</code></td>
+              <td><span class="pill pill-hist">histogram</span></td>
+              <td>Duration of <code>sink.Emit</code> calls</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist"><span class="tag">sink</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.sink_emit_long</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td><code>sink.Emit</code> exceeded 1s or persistent fault signal</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist"><span class="tag">sink</span><span class="tag">policy</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.shutdown_queue_depth</code></td>
+              <td><span class="pill pill-hist">histogram</span></td>
+              <td>Queue depth when shutdown exceeded timeout</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.pumps_remaining_on_timeout</code></td>
+              <td><span class="pill pill-hist">histogram</span></td>
+              <td>Pump tasks still active when shutdown timed out</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.sink_registered</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Sink registered on dispatcher</td>
+              <td><code>TraceDispatcher.RegisterSink</code></td>
+              <td class="taglist"><span class="tag">sink</span><span class="tag">policy</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.sink_unregistered</code></td>
+              <td><span class="pill pill-counter">counter</span></td>
+              <td>Sink unregistered from dispatcher</td>
+              <td><code>TraceDispatcher.UnregisterSink</code></td>
+              <td class="taglist"><span class="tag">sink</span><span class="tag">policy</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">Track <code>sink_emit_duration_ms</code> p95/p99 per sink; pair with <code>queue_full</code> drops to identify back‑pressure.</p>
+      </div>
+    </section>
+
+    <section id="gauges">
+      <header class="wrap">
+        <h2>Gauges & observables</h2>
+        <p class="section-intro">Stable, low‑cardinality views for capacity and lifecycle.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Type</th>
+              <th>Meaning</th>
+              <th>Emitted by</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.queue_capacity</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Configured bounded queue capacity per sink (global)</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.sinks</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Number of registered trace sinks</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.pumps_active</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Active pump tasks for registered sinks</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.dispatcher.queue_depth_by_sink</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Approximate pending or in‑flight items aggregated by sink type</td>
+              <td><code>TraceDispatcher</code></td>
+              <td class="taglist"><span class="tag">sink</span></td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.bounded_buffer.utilization</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Retained fraction of bounded trace buffer</td>
+              <td><code>BoundedInMemoryTraceSink</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.bounded_buffer.size</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Current buffered trace count</td>
+              <td><code>BoundedInMemoryTraceSink</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.traces.bounded_buffer.dropped_total</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>Total traces dropped due to sink overflow (monotonic within lifecycle/reset)</td>
+              <td><code>BoundedInMemoryTraceSink</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+            <tr>
+              <td><code>diagcore.bootstrap.started_at_unix_seconds</code></td>
+              <td><span class="pill pill-gauge">gauge</span></td>
+              <td>UTC start time of DiagnosticsCore as Unix seconds</td>
+              <td><code>DiagnosticsCoreBootstrap</code></td>
+              <td class="taglist">(none)</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">These are ideal for dashboards: capacity, concurrency, and lifecycle at a glance with minimal cardinality.</p>
+      </div>
+    </section>
+
+    <section id="usage">
+      <header class="wrap">
+        <h2>How to use this cheat sheet</h2>
+      </header>
+      <div class="content">
+        <ul>
+          <li><strong>Dashboards:</strong> Group by metric prefix (<code>diagcore.bootstrap.*</code>, <code>diagcore.metrics.*</code>, <code>diagcore.traces.*</code>) for subsystem views.</li>
+          <li><strong>Alerting:</strong> sustained rises in any <code>*_dropped</code>; <code>options_conflict</code> > 0; or <code>dispose_errors</code> > 0 warrant investigation.</li>
+          <li><strong>Forensics:</strong> filter by <span class="kbd">drop_cause</span>, <span class="kbd">sink</span>, <span class="kbd">field</span>, or <span class="kbd">policy</span> to pinpoint exactly where and why events were lost or coerced.</li>
+        </ul>
+        <p class="note">Use the search box at the top to quickly filter metrics across sections by name, meaning, or tag keywords.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div>Tip: Pair dispatcher duration histograms with queue‑full drops to catch slow sinks before they cascade.</div>
+  </footer>
+
+  <script>
+    function rowMatchesText(row, text) {
+      const t = text.toLowerCase();
+      if (!t) return true;
+      const cells = Array.from(row.querySelectorAll('td'));
+      return cells.some(td => td.textContent.toLowerCase().includes(t));
+    }
+    function filterTable(table, text) {
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(r => r.style.display = rowMatchesText(r, text) ? '' : 'none');
+    }
+    function filterAll(text) {
+      document.querySelectorAll('table.filterable').forEach(tbl => filterTable(tbl, text));
+    }
+  </script>
+</body>
+</html>

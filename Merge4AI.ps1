@@ -2,7 +2,8 @@ param(
     [string]$srcPath = "C:\GitHubRepos\SilicaDB\src\",
     [string]$dstPath = "C:\temp\",
     [string]$folder = "Silica.DiagnosticsCore",
-    [int]$fileSize = 100000
+    #[string]$folder = "Silica.Logging",
+    [int]$fileSize = 80000
 )
 
 

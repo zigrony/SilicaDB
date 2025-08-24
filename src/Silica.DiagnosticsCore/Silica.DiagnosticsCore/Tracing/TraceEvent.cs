@@ -61,7 +61,12 @@ namespace Silica.DiagnosticsCore.Tracing
                 : throw new ArgumentNullException(nameof(operation));
 
             Status = status ?? string.Empty;
-            Tags = tags ?? new Dictionary<string, string>(0, StringComparer.OrdinalIgnoreCase);
+            if (tags is null)
+                Tags = new Dictionary<string, string>(0, StringComparer.OrdinalIgnoreCase);
+            else
+                // Defensive copy to preserve immutability even if caller mutates their dictionary later
+                Tags = new Dictionary<string, string>(tags, StringComparer.OrdinalIgnoreCase);
+
             Message = message ?? string.Empty;
             Exception = exception;
             CorrelationId = correlationId != Guid.Empty ? correlationId : Guid.NewGuid();

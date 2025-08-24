@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Silica.DiagnosticsCore — Developer API Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #151a2e;
+      --panel-2: #1b2140;
+      --text: #e6e9f2;
+      --muted: #9aa3b2;
+      --accent: #5b8cff;
+      --border: #263055;
+      --good: #2ec27e;
+      --warn: #f5c542;
+      --bad: #ff6b6b;
+      --link: #82aaff;
+      --table-stripe: #141a33;
+      --chip-bg: #20284a;
+      --code: #c5d3ff;
+      --shadow: 0 6px 30px rgba(0,0,0,0.35);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --panel-2: #f2f5ff;
+        --text: #0e1525;
+        --muted: #4a5568;
+        --accent: #365dfb;
+        --border: #e2e8f0;
+        --good: #178a57;
+        --warn: #b88300;
+        --bad: #d64545;
+        --link: #2b50e2;
+        --table-stripe: #f8faff;
+        --chip-bg: #eef2ff;
+        --code: #1e293b;
+        --shadow: 0 6px 30px rgba(22,28,45,0.08);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem; }
+    .title { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    .title h1 { font-size: 1.5rem; margin: 0; letter-spacing: 0.2px; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; }
+
+    .toolbar { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.8rem; flex-wrap: wrap; }
+    .search {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0.75rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .search input {
+      border: 0; background: transparent; color: var(--text); outline: none; min-width: 280px;
+    }
+
+    .toc {
+      display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      padding: 0.75rem; border-top: 1px dashed var(--border); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.08));
+    }
+    .toc a {
+      text-decoration: none; color: var(--link); padding: 0.4rem 0.55rem; border-radius: 8px; border: 1px solid var(--border); background: var(--panel);
+    }
+    .toc a:hover { background: var(--panel-2); }
+
+    main { max-width: 1100px; margin: 1.25rem auto 3rem; padding: 0 1rem; display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+
+    section {
+      background: linear-gradient(180deg, var(--panel), rgba(0,0,0,0));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    section header {
+      position: relative; top: auto; background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 0; box-shadow: none; padding: 1rem;
+    }
+    section .content { padding: 1rem 1rem 1.25rem; }
+
+    h2 { font-size: 1.1rem; margin: 0; letter-spacing: 0.2px; }
+    p { color: var(--muted); margin: 0.5rem 0 0; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; background: transparent; font-size: 0.95rem; }
+    thead th {
+      text-align: left; padding: 0.75rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); background: transparent;
+    }
+    tbody td {
+      padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background: var(--table-stripe); }
+    code, pre code { color: var(--code); background: rgba(130,170,255,0.08); padding: 0.05rem 0.35rem; border-radius: 6px; border: 1px solid var(--border); }
+    pre { margin-top: 0.75rem; background: rgba(130,170,255,0.05); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; overflow: auto; }
+    .note { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.8rem; background: var(--panel); border: 1px solid var(--border); border-bottom-width: 2px; padding: 0.1rem 0.35rem; border-radius: 6px; color: var(--text);
+    }
+    .taglist { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+    .tag { padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); color: var(--text); font-size: 0.8rem; }
+    .callouts { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
+    .callout { border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; padding: 0.6rem 0.75rem; }
+    .callout.good { border-left-color: var(--good); }
+    .callout.warn { border-left-color: var(--warn); }
+    .callout.bad { border-left-color: var(--bad); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="title">
+        <h1>Silica.DiagnosticsCore — Developer API Guide</h1>
+        <span class="subtitle">How to integrate metrics, tracing, and diagnostics into your application with strict, predictable behavior</span>
+      </div>
+      <div class="toolbar">
+        <label class="search" aria-label="Filter API">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 21l-4.3-4.3m1.6-4.3a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <input id="search" type="search" placeholder="Filter members, options, examples…" oninput="filterAll(this.value)" />
+        </label>
+      </div>
+      <div class="toc">
+        <a href="#getting-started">Getting started</a>
+        <a href="#configuration">Configuration reference</a>
+        <a href="#metrics-api">Metrics API</a>
+        <a href="#tracing-api">Tracing API</a>
+        <a href="#advanced-usage">Advanced usage</a>
+        <a href="#testing-troubleshooting">Testing and troubleshooting</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="getting-started">
+      <header class="wrap">
+        <h2>Getting started</h2>
+        <p>Bootstrap once, use the facades anywhere, and shut down cleanly. Favor strict contracts and low-cardinality tags.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>DiagnosticsCoreBootstrap.Start(DiagnosticsOptions)</code></td>
+              <td>Method</td>
+              <td>Initializes metrics, traces, tag policies, and dispatcher with a single options object.</td>
+              <td>Idempotent by fingerprint; on drift in lenient mode, emits <code>diagcore.bootstrap.options_conflict</code>.</td>
+            </tr>
+            <tr>
+              <td><code>DiagnosticsCoreBootstrap.Stop()</code></td>
+              <td>Method</td>
+              <td>Flushes and disposes pipeline components with bounded shutdown.</td>
+              <td>On errors, increments <code>diagcore.bootstrap.dispose_errors</code> and continues best-effort shutdown.</td>
+            </tr>
+            <tr>
+              <td><code>IMetricsFacade</code></td>
+              <td>Interface</td>
+              <td>Entry point for counters, histograms, and gauges.</td>
+              <td>Respects registration and tag policies; exposes drop accounting.</td>
+            </tr>
+            <tr>
+              <td><code>ITraceManager</code></td>
+              <td>Interface</td>
+              <td>Creates and emits trace events, applies redaction, and dispatches to sinks.</td>
+              <td>Backed by <code>TraceDispatcher</code> with per-sink pumps.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-csharp">// Program startup (e.g., HostBuilder or Main)
+var options = new DiagnosticsOptions
+{
+    Strict = true,                    // Enforce contracts at runtime
+    AutoRegisterMetrics = false,      // Fail on unknown metrics
+    DropPolicy = DropPolicy.FailFast, // Drop or fail based on policy
+    ShutdownTimeout = TimeSpan.FromSeconds(10),
+    MaxQueueCapacity = 10_000,
+    TagPolicy = new TagPolicy
+    {
+        MaxTags = 8,
+        MaxValueLength = 80,
+        AllowedKeys = new[] { "region", "component", "operation" }
+    },
+    TraceSinks =
+    {
+        new ConsoleTraceSinkOptions { MinimumLevel = TraceLevel.Info },
+        new BoundedInMemoryTraceSinkOptions { Capacity = 5000 }
+    }
+};
+
+DiagnosticsCoreBootstrap.Start(options);
+
+// Obtain facades via DI or static resolver (example)
+IMetricsFacade metrics = Services.Get&lt;IMetricsFacade&gt;();
+ITraceManager trace = Services.Get&lt;ITraceManager&gt;();
+
+// ... application runs ...
+
+// On shutdown
+DiagnosticsCoreBootstrap.Stop();</code></pre>
+
+        <div class="callouts">
+          <div class="callout warn">
+            <strong>Important:</strong> Any option set but not enforced is surfaced via <code>diagcore.bootstrap.ignored_config_field_set</code> with a <span class="kbd">field</span> tag. Treat as a misconfiguration.
+          </div>
+          <div class="callout good">
+            <strong>Tip:</strong> Pin tag keys up front and keep values short. Truncations and rejections are counted via <code>diagcore.*.tags_truncated</code> and <code>diagcore.*.tags_rejected</code>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="configuration">
+      <header class="wrap">
+        <h2>Configuration reference</h2>
+        <p>Every knob is either enforced or reported as ignored. No false affordances.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Type</th>
+              <th>Effect</th>
+              <th>Operational notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Strict</code></td>
+              <td>bool</td>
+              <td>Enforces registration and tag schema; rejects invalid emissions.</td>
+              <td>Use in production. Violations increment <code>diagcore.metrics.dropped</code> / <code>diagcore.traces.dropped</code> with <span class="kbd">drop_cause=contract</span>.</td>
+            </tr>
+            <tr>
+              <td><code>AutoRegisterMetrics</code></td>
+              <td>bool</td>
+              <td>Auto-creates metrics on first use when not strict.</td>
+              <td>When false in lenient mode, increments <code>diagcore.metrics.lenient_no_autoreg</code> on unknown metric.</td>
+            </tr>
+            <tr>
+              <td><code>DropPolicy</code></td>
+              <td>enum</td>
+              <td>Controls behavior on pressure or faults (e.g. <code>Drop</code>, <code>FailFast</code>, <code>Backpressure</code>).</td>
+              <td>All drops are counted with explicit <span class="kbd">drop_cause</span> tags for root-cause isolation.</td>
+            </tr>
+            <tr>
+              <td><code>ShutdownTimeout</code></td>
+              <td>TimeSpan</td>
+              <td>Upper bound for dispatcher shutdown.</td>
+              <td>Timeout exposes queue depth and pumps remaining via <code>diagcore.traces.dispatcher.*</code> histograms.</td>
+            </tr>
+            <tr>
+              <td><code>MaxQueueCapacity</code></td>
+              <td>int</td>
+              <td>Global bounded capacity used by dispatcher queues.</td>
+              <td>Reflected in gauge <code>diagcore.traces.dispatcher.queue_capacity</code>.</td>
+            </tr>
+            <tr>
+              <td><code>TagPolicy</code></td>
+              <td>object</td>
+              <td>Limits and allowlist for tag keys/values.</td>
+              <td>Violations: <code>tags_truncated</code>, <code>tags_rejected</code>. Keep keys stable to avoid cardinality explosion.</td>
+            </tr>
+            <tr>
+              <td><code>TraceSinks</code></td>
+              <td>collection</td>
+              <td>Registered sinks with per-sink policy.</td>
+              <td>Registration/unregistration surfaced via <code>dispatcher.sink_registered</code>/<code>sink_unregistered</code>.</td>
+            </tr>
+            <tr>
+              <td><code>Redactor</code></td>
+              <td>ITraceRedactor</td>
+              <td>Applies structured redaction to events.</td>
+              <td>Counts via <code>diagcore.traces.redacted</code> tagged by <span class="kbd">field</span>.</td>
+            </tr>
+            <tr>
+              <td><code>TagValidator</code></td>
+              <td>ITagValidator</td>
+              <td>Custom validation beyond policy limits.</td>
+              <td>Use to enforce schema by component/operation.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-csharp">// Example: strict prod config with explicit schema
+var options = new DiagnosticsOptions
+{
+    Strict = true,
+    AutoRegisterMetrics = false,
+    TagPolicy = new TagPolicy
+    {
+        MaxTags = 8,
+        MaxValueLength = 64,
+        AllowedKeys = new[] { "region", "component", "operation", "status" }
+    },
+    Redactor = new CompositeRedactor(
+        new PiiRedactor(), new SecretsRedactor(), new LengthRedactor(64))
+};</code></pre>
+      </div>
+    </section>
+
+    <section id="metrics-api">
+      <header class="wrap">
+        <h2>Metrics API</h2>
+        <p>Counters for events, histograms for distributions, gauges for instantaneous state. Keep tags low-cardinality.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Kind</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>IMetricsFacade.RegisterCounter(name, schema?)</code></td>
+              <td>Counter</td>
+              <td>Registers a counter with optional tag schema hints.</td>
+              <td><code>metrics.RegisterCounter("orders.processed")</code></td>
+            </tr>
+            <tr>
+              <td><code>IMetricsFacade.Counter(name).Increment(delta=1, tags?)</code></td>
+              <td>Counter</td>
+              <td>Increments with optional per-emission tags.</td>
+              <td><code>metrics.Counter("orders.processed").Increment(1, new Tags { ["region"]="use1" });</code></td>
+            </tr>
+            <tr>
+              <td><code>IMetricsFacade.Histogram(name).Record(value, tags?)</code></td>
+              <td>Histogram</td>
+              <td>Records a value to a distribution.</td>
+              <td><code>metrics.Histogram("api.latency_ms").Record(sw.ElapsedMilliseconds);</code></td>
+            </tr>
+            <tr>
+              <td><code>IMetricsFacade.Gauge(name).Observe(Func&lt;double&gt; provider, tags?)</code></td>
+              <td>Gauge</td>
+              <td>Registers an observable gauge; polled by runtime.</td>
+              <td><code>metrics.Gauge("queue.depth").Observe(() =&gt; queue.Count);</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-csharp">// Example: request handling metric pattern
+var ordersProcessed = metrics.RegisterCounter("orders.processed");
+var latency = metrics.Histogram("orders.latency_ms");
+
+public async Task PlaceOrderAsync(OrderRequest req)
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        await _service.PlaceAsync(req);
+        ordersProcessed.Increment(1, new Tags { ["operation"] = "place", ["status"] = "ok" });
+    }
+    catch (Exception ex)
+    {
+        ordersProcessed.Increment(1, new Tags { ["operation"] = "place", ["status"] = "error" });
+        throw;
+    }
+    finally
+    {
+        sw.Stop();
+        latency.Record(sw.ElapsedMilliseconds, new Tags { ["operation"] = "place" });
+    }
+}</code></pre>
+
+        <div class="callouts">
+          <div class="callout good">
+            <strong>Guideline:</strong> Prefer a fixed tag set like <span class="kbd">region</span>, <span class="kbd">component</span>, <span class="kbd">operation</span>, <span class="kbd">status</span>. Avoid identifiers (orderId, userId) as tags.
+          </div>
+          <div class="callout bad">
+            <strong>Anti-pattern:</strong> Creating metrics dynamically per customer or per request. Register metrics statically and vary only low-cardinality tags.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tracing-api">
+      <header class="wrap">
+        <h2>Tracing API</h2>
+        <p>Emit structured trace events with tags and optional exception. Redaction and tag validation run before dispatch.</p>
+      </header>
+      <div class="content">
+        <table class="filterable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ITraceManager.Emit(TraceEvent evt)</code></td>
+              <td>Method</td>
+              <td>Emits a single event through validator, redactor, and dispatcher.</td>
+              <td><code>trace.Emit(new TraceEvent("OrderPlaced") { Tags = { ["operation"]="place" } });</code></td>
+            </tr>
+            <tr>
+              <td><code>TraceEvent</code></td>
+              <td>Class</td>
+              <td>Message template, tags, timestamp, optional exception and severity.</td>
+              <td><code>new TraceEvent("CacheMiss") { Severity = TraceLevel.Warn }</code></td>
+            </tr>
+            <tr>
+              <td><code>TraceDispatcher</code></td>
+              <td>Component</td>
+              <td>Queues events and pumps to sinks; enforces capacity and timeouts.</td>
+              <td>Per-sink pumps; queue and pump gauges available.</td>
+            </tr>
+          </tbody>
+        </table>
+
+<pre><code class="language-csharp">// Example: structured traces with redaction and error capture
+try
+{
+    var user = await _users.GetAsync(req.UserId);
+    trace.Emit(new TraceEvent("UserLoaded")
+    {
+        Severity = TraceLevel.Info,
+        Tags = { ["component"] = "users", ["operation"] = "get", ["status"] = "ok" },
+        Message = $"Loaded user {user.PublicId}"
+    });
+}
+catch (Exception ex)
+{
+    trace.Emit(new TraceEvent("UserLoadFailed")
+    {
+        Severity = TraceLevel.Error,
+        Exception = ex,
+        Tags = { ["component"] = "users", ["operation"] = "get", ["status"] = "error" },
+        Message = "Failed to load user"
+    });
+    throw;
+}</code></pre>
+
+        <div class="callouts">
+          <div class="callout warn">
+            <strong>Redaction:</strong> Sensitive fields like emails, secrets, and tokens must be removed or masked by your <code>ITraceRedactor</code>. Redaction counts increment <code>diagcore.traces.redacted</code>.
+          </div>
+          <div class="callout good">
+            <strong>Sink health:</strong> Track <code>diagcore.traces.sink_emit_duration_ms</code> and <code>diagcore.traces.dropped</code> with <span class="kbd">drop_cause</span> to identify slow or failing sinks.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="advanced-usage">
+      <header class="wrap">
+        <h2>Advanced usage</h2>
+        <p>Extend sinks, enforce tag schema, and redaction — while keeping operations observable.</p>
+      </header>
+      <div class="content">
+        <h3 style="margin:0.25rem 0 0.5rem;">Custom trace sink</h3>
+        <pre><code class="language-csharp">public sealed class HttpTraceSink : ITraceSink, IDisposable
+{
+    private readonly HttpClient _http;
+    public string Name =&gt; "http";
+
+    public HttpTraceSink(HttpClient http) =&gt; _http = http;
+
+    public async Task EmitAsync(IReadOnlyList&lt;TraceEvent&gt; batch, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Serialize(batch);
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/traces")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json")
+        };
+        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public void Dispose() =&gt; _http.Dispose();
+}
+
+// Registration
+options.TraceSinks.Add(new HttpTraceSinkOptions { /* per-sink policy */ });</code></pre>
+
+        <h3 style="margin:0.75rem 0 0.5rem;">Custom tag validator</h3>
+        <pre><code class="language-csharp">public sealed class OperationTagValidator : ITagValidator
+{
+    private static readonly HashSet&lt;string&gt; AllowedOps = new(StringComparer.OrdinalIgnoreCase)
+    { "place", "cancel", "refund" };
+
+    public TagValidationResult Validate(in TagContext ctx)
+    {
+        if (ctx.Key.Equals("operation", StringComparison.OrdinalIgnoreCase) &amp;&amp; !AllowedOps.Contains(ctx.Value))
+            return TagValidationResult.Reject("operation", "invalid_value");
+        return TagValidationResult.Accept();
+    }
+}</code></pre>
+
+        <h3 style="margin:0.75rem 0 0.5rem;">Composite redactor</h3>
+        <pre><code class="language-csharp">public sealed class CompositeRedactor : ITraceRedactor
+{
+    private readonly ITraceRedactor[] _inner;
+    public CompositeRedactor(params ITraceRedactor[] inner) =&gt; _inner = inner;
+
+    public void Redact(TraceEvent evt)
+    {
+        foreach (var r in _inner) r.Redact(evt);
+    }
+}
+
+public sealed class SecretsRedactor : ITraceRedactor
+{
+    private static readonly string[] SecretKeys = { "api_key", "token", "password" };
+
+    public void Redact(TraceEvent evt)
+    {
+        foreach (var k in SecretKeys)
+            if (evt.Tags.Remove(k, out var value))
+                evt.Tags["redacted."+k] = "***";
+    }
+}</code></pre>
+
+        <div class="callouts">
+          <div class="callout good">
+            <strong>Design note:</strong> Keep sinks fail-fast and pure on input. Back-pressure and retries belong in the dispatcher, not inside sinks.
+          </div>
+          <div class="callout warn">
+            <strong>Policy:</strong> Any sink-specific knob that isn’t honored at runtime will raise <code>ignored_config_field_set</code> with <span class="kbd">field</span>=that knob. Do not leave dead options.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="testing-troubleshooting">
+      <header class="wrap">
+        <h2>Testing and troubleshooting</h2>
+        <p>Deterministic tests, observable pipelines, and common pitfalls to avoid.</p>
+      </header>
+      <div class="content">
+        <h3 style="margin:0.25rem 0 0.5rem;">In-memory testing</h3>
+        <pre><code class="language-csharp">// Arrange a bounded in-memory sink and strict metrics
+var sink = new BoundedInMemoryTraceSink(capacity: 256);
+var options = new DiagnosticsOptions
+{
+    Strict = true,
+    AutoRegisterMetrics = false,
+    TraceSinks = { sink }
+};
+DiagnosticsCoreBootstrap.Start(options);
+
+// Act
+trace.Emit(new TraceEvent("TestEvent") { Tags = { ["component"] = "tests" } });
+
+// Assert
+Assert.True(sink.TryDequeue(out var evt));
+Assert.Equal("TestEvent", evt.Name);
+
+// Cleanup
+DiagnosticsCoreBootstrap.Stop();</code></pre>
+
+        <h3 style="margin:0.75rem 0 0.5rem;">Operational visibility</h3>
+        <ul>
+          <li><strong>Counters:</strong> <code>diagcore.metrics.dropped</code>, <code>diagcore.traces.dropped</code>, <code>diagcore.traces.emitted</code>, <code>diagcore.traces.redacted</code>.</li>
+          <li><strong>Histograms:</strong> <code>diagcore.traces.sink_emit_duration_ms</code>, <code>diagcore.traces.dispatcher.shutdown_queue_depth</code>.</li>
+          <li><strong>Gauges:</strong> <code>diagcore.traces.dispatcher.queue_capacity</code>, <code>diagcore.traces.dispatcher.sinks</code>, <code>...pumps_active</code>.</li>
+        </ul>
+
+        <h3 style="margin:0.75rem 0 0.5rem;">Concurrency and lifecycle</h3>
+        <ul>
+          <li><strong>Thread safety:</strong> Metric handles are thread-safe; prefer caching handles per metric name rather than resolving on every call.</li>
+          <li><strong>Shutdown:</strong> Always call <code>Stop()</code>; timeouts surface queue depth and pumps remaining forensics.</li>
+          <li><strong>Async correctness:</strong> Avoid blocking sinks; ensure <code>EmitAsync</code> honors <code>CancellationToken</code>.</li>
+        </ul>
+
+        <h3 style="margin:0.75rem 0 0.5rem;">Common pitfalls</h3>
+        <ul>
+          <li><strong>High-cardinality tags:</strong> Reject or truncate IDs and free-form text; use message body for detail, not tags.</li>
+          <li><strong>Silent options:</strong> If you don’t see <code>ignored_config_field_set</code> when testing bad configs, the option might be wired; validate by deliberate misconfig.</li>
+          <li><strong>Dynamic metrics:</strong> Register once at startup; do not create metrics per tenant or request.</li>
+        </ul>
+
+        <pre><code class="language-csharp">// Minimal DI wiring example (pseudo-code)
+services.AddSingleton&lt;IMetricsFacade, MetricsFacade&gt;();
+services.AddSingleton&lt;ITraceManager, TraceManager&gt;();
+services.AddHostedService&lt;DiagnosticsHostedLifecycle&gt;(); // calls Start/Stop around host
+
+public sealed class DiagnosticsHostedLifecycle : IHostedService
+{
+    public Task StartAsync(CancellationToken ct)
+    {
+        DiagnosticsCoreBootstrap.Start(_options);
+        return Task.CompletedTask;
+    }
+    public Task StopAsync(CancellationToken ct)
+    {
+        DiagnosticsCoreBootstrap.Stop();
+        return Task.CompletedTask;
+    }
+}</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap" style="color: var(--muted); margin-bottom: 3rem;">
+    <div>Build dashboards around fixed prefixes (<code>diagcore.bootstrap.*</code>, <code>diagcore.metrics.*</code>, <code>diagcore.traces.*</code>). Alert on sustained rises in <code>*dropped</code> and any nonzero <code>dispose_errors</code> or <code>options_conflict</code>.</div>
+  </footer>
+
+  <script>
+    function rowMatchesText(row, text) {
+      const t = text.toLowerCase();
+      if (!t) return true;
+      const cells = Array.from(row.querySelectorAll('td, th'));
+      return cells.some(td => td.textContent.toLowerCase().includes(t));
+    }
+    function filterTable(table, text) {
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(r => r.style.display = rowMatchesText(r, text) ? '' : 'none');
+    }
+    function filterAll(text) {
+      document.querySelectorAll('table.filterable').forEach(tbl => filterTable(tbl, text));
+    }
+  </script>
+</body>
+</html>

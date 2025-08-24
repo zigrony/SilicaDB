@@ -18,19 +18,27 @@ namespace Silica.DiagnosticsCore.Tracing
                 return;
 
             // Format a simple log line
-            var msg = $"{DateTimeOffset.UtcNow:O} [{traceEvent.Status}] {traceEvent.Component}/{traceEvent.Operation} " +
+            var msg = $"{traceEvent.Timestamp:O} [{traceEvent.Status}] {traceEvent.Component}/{traceEvent.Operation} " +
                       $"{traceEvent.Message} cid={traceEvent.CorrelationId:D} sid={traceEvent.SpanId:D}";
             // In production, avoid Console.WriteLine to prevent blocking on slow stdout
 #if DEBUG
-            Console.WriteLine(msg);
+            // Only write to stdout in DEBUG when explicitly enabled
+            if (string.Equals(
+                Environment.GetEnvironmentVariable("SILICA_DEBUG_CONSOLE_LOG"),
+                "1",
+                StringComparison.Ordinal))
+            {
+                Console.WriteLine(msg);
+            }
 #endif
             Trace.WriteLine(msg);
         }
 
         private bool IsLevelAllowed(string status)
         {
-            string[] order = { "trace", "debug", "info", "warn", "error", "fatal" };
-            int idxStatus = Array.IndexOf(order, (status ?? "").Trim().ToLowerInvariant());
+            string[] order = Silica.DiagnosticsCore.Internal.AllowedLevels.TraceAndLogLevels;
+            var s = (status ?? "").Trim().ToLowerInvariant();
+            int idxStatus = Array.IndexOf(order, s);
             int idxMin = Array.IndexOf(order, _minLevel);
             if (idxStatus < 0) idxStatus = Array.IndexOf(order, "info");
             return idxStatus >= idxMin;

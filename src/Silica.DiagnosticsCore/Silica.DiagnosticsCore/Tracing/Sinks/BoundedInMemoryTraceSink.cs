@@ -29,7 +29,21 @@ namespace Silica.DiagnosticsCore.Tracing
             // Observable utilization ratio via canonical metrics manager (single meter in the process)
             if (_metrics is not null && registerGauges)
             {
-                _metrics.Register(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
+                // Local helper: if facade, TryRegister to avoid duplicate schema exceptions
+                void RegisterOnce(Silica.DiagnosticsCore.Metrics.MetricDefinition def)
+                {
+                    if (_metrics is MetricsFacade mf) mf.TryRegister(def);
+                    else _metrics.Register(def);
+                }
+                // Ensure drop counter exists for overflow accounting
+                try
+                {
+                    if (_metrics is MetricsFacade mf) mf.TryRegister(DiagCoreMetrics.TracesDropped);
+                    else _metrics.Register(DiagCoreMetrics.TracesDropped);
+                }
+                catch { /* swallow */ }
+
+                RegisterOnce(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
                     Name: "diagcore.traces.bounded_buffer.utilization",
                     Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
                     Description: "Retained fraction of bounded trace buffer",
@@ -40,7 +54,8 @@ namespace Silica.DiagnosticsCore.Tracing
                         var size = Volatile.Read(ref _size);
                         return new[] { new System.Diagnostics.Metrics.Measurement<double>(size / (double)_maxSize) };
                     }));
-                _metrics.Register(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
+
+                RegisterOnce(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
                     Name: "diagcore.traces.bounded_buffer.size",
                     Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
                     Description: "Current buffered trace count",
@@ -51,7 +66,8 @@ namespace Silica.DiagnosticsCore.Tracing
                         var size = Volatile.Read(ref _size);
                         return new[] { new System.Diagnostics.Metrics.Measurement<long>(size) };
                     }));
-                _metrics.Register(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
+
+                RegisterOnce(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
                     Name: "diagcore.traces.bounded_buffer.dropped_total",
                     Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
                     Description: "Total traces dropped due to sink overflow (monotonic within lifecycle/reset)",
@@ -77,7 +93,7 @@ namespace Silica.DiagnosticsCore.Tracing
                 {
                     Interlocked.Increment(ref _droppedCount);
                     _metrics?.Increment(DiagCoreMetrics.TracesDropped.Name, 1,
-                    new KeyValuePair<string, object>(TagKeys.DropCause, "sink_overflow"),
+                    new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.SinkOverflow),
                     new KeyValuePair<string, object>(TagKeys.Sink, nameof(BoundedInMemoryTraceSink)));
                     return;
                 }

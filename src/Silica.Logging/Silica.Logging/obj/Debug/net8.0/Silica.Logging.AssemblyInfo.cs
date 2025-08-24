@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Logging")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85aeeb583977e41ddda5ba6963a3bfdf7cc899af")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34614bdff734d9e092ea74f5ab27458b9eedc694")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Logging")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Logging")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
