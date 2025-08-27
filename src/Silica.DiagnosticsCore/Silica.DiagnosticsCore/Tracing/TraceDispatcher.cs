@@ -32,7 +32,7 @@ namespace Silica.DiagnosticsCore.Tracing
             public required string Policy;
             public long Depth; // atomic via Interlocked
             public volatile bool Draining; // suppress fault noise during controlled drains
-
+            public required CancellationTokenSource Cts; // per-sink cancellation (linked to dispatcher)
         }
         private readonly ConcurrentDictionary<ITraceSink, SinkState> _states = new();
 
@@ -42,6 +42,45 @@ namespace Silica.DiagnosticsCore.Tracing
         private readonly int _shutdownTimeoutMs;
         private volatile bool _disposed;
         private readonly CancellationTokenSource _cts = new();
+        private readonly bool _enforceRedaction;
+
+        public sealed record HealthSnapshot(
+            int RegisteredSinks,
+            int ActivePumps,
+            long TotalQueueDepth,
+            IReadOnlyDictionary<string, long> QueueDepthBySinkType,
+            bool IsCancelling);
+
+        public HealthSnapshot GetHealthSnapshot()
+        {
+            var byType = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            long total = 0;
+            foreach (var kv in _states)
+            {
+                var sinkType = kv.Key.GetType().Name;
+                var depth = Interlocked.Read(ref kv.Value.Depth);
+                total += depth;
+                if (byType.TryGetValue(sinkType, out var existing)) byType[sinkType] = existing + depth;
+                else byType[sinkType] = depth;
+            }
+
+            // Count only pumps that are still active (not completed or faulted).
+            int active = 0;
+            foreach (var pump in _pumps)
+            {
+                var task = pump.Value;
+                if (task is null) continue;
+                if (!task.IsCompleted) active++;
+            }
+
+            return new HealthSnapshot(
+                RegisteredSinks: Volatile.Read(ref _sinks).Length,
+                ActivePumps: active,
+                TotalQueueDepth: total,
+                QueueDepthBySinkType: byType,
+                IsCancelling: _cts.IsCancellationRequested);
+        }
+
         // Ensure we register counters/histograms used by dispatcher even when registerGauges=false
         private void EnsureCoreMetricsRegistered()
         {
@@ -76,9 +115,11 @@ namespace Silica.DiagnosticsCore.Tracing
         Silica.DiagnosticsCore.Metrics.IMetricsManager? metrics = null,
         int queueCapacity = 1024,
         int shutdownTimeoutMs = 5000,
-        bool registerGauges = true)
+        bool registerGauges = true,
+        bool enforceRedaction = false)
         {
             _metrics = metrics;
+            _enforceRedaction = enforceRedaction;
 
             EnsureCoreMetricsRegistered();
 
@@ -148,7 +189,7 @@ namespace Silica.DiagnosticsCore.Tracing
                     DefaultTags: Array.Empty<KeyValuePair<string, object>>(),
                     LongCallback: () => new[] { new Measurement<long>(_pumps.Count) }));
 
-
+                // Aggregate depths by sink type, not by instance, to avoid high-cardinality series
                 RegisterOnce(new Silica.DiagnosticsCore.Metrics.MetricDefinition(
                     Name: "diagcore.traces.dispatcher.queue_depth_by_sink",
                     Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
@@ -201,8 +242,12 @@ namespace Silica.DiagnosticsCore.Tracing
                 if (_cts.IsCancellationRequested)
                     throw new ObjectDisposedException(nameof(TraceDispatcher), "Dispatcher is shutting down.");
                 var snapshot = Volatile.Read(ref _sinks);
-                if (Array.Exists(snapshot, s => ReferenceEquals(s, sink)))
-                    return; // already registered
+                // Avoid closure allocation from Array.Exists; manual scan
+                for (int i = 0; i < snapshot.Length; i++)
+                {
+                    if (ReferenceEquals(snapshot[i], sink))
+                        return; // already registered
+                }
 
                 // Create channel for this sink
                 var effectiveMode = fullMode;
@@ -243,12 +288,16 @@ namespace Silica.DiagnosticsCore.Tracing
                     FullMode = effectiveMode
                 });
 
+                // Create a per-sink CTS linked to the dispatcher token
+                var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+
                 var state = new SinkState
                 {
                     Channel = channel,
                     Policy = effectiveMode.ToString().ToLowerInvariant(),
                     Depth = 0,
-                    Draining = false
+                    Draining = false,
+                    Cts = linked
                 };
 
                 _states[sink] = state;
@@ -263,7 +312,15 @@ namespace Silica.DiagnosticsCore.Tracing
                 updated[^1] = sink;
                 Volatile.Write(ref _sinks, updated);
 
-                _pumps[sink] = Task.Run(() => PumpAsync(sink, channel, _cts.Token));
+                // Dedicated, continuous consumer for sink queues
+                _pumps[sink] = Task.Factory
+                    .StartNew(
+                        () => PumpAsync(sink, channel, linked.Token),
+                        CancellationToken.None,
+                        TaskCreationOptions.LongRunning,
+                        TaskScheduler.Default)
+                    .Unwrap();
+
                 // Surface registration as a metric (trace emission handled at bootstrap)
                 try
                 {
@@ -282,6 +339,21 @@ namespace Silica.DiagnosticsCore.Tracing
         {
             if (evt is null) throw new ArgumentNullException(nameof(evt));
 
+            // Enforce redaction/validation boundary if enabled
+            if (_enforceRedaction && !evt.IsSanitized)
+            {
+                try
+                {
+                    _metrics?.Increment(
+                        DiagCoreMetrics.TracesDropped.Name, 1,
+                        new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.Unredacted),
+                        new KeyValuePair<string, object>(TagKeys.Component, evt.Component),
+                        new KeyValuePair<string, object>(TagKeys.Operation, evt.Operation));
+                }
+                catch { /* swallow */ }
+                return;
+            }
+
             // Hard-stop after disposal; account the drop once per call
             if (_disposed || _cts.IsCancellationRequested)
             {
@@ -292,11 +364,13 @@ namespace Silica.DiagnosticsCore.Tracing
                     for (int i = 0; i < sinks.Length; i++)
                     {
                         var sinkType = sinks[i].GetType().Name;
+                        var policy = _sinkPolicies.TryGetValue(sinks[i], out var pol) ? pol : "unknown";
                         _metrics?.Increment(
                             DiagCoreMetrics.TracesDropped.Name,
                             1,
                             new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.DispatcherDisposed),
-                            new KeyValuePair<string, object>(TagKeys.Sink, sinkType));
+                            new KeyValuePair<string, object>(TagKeys.Sink, sinkType),
+                            new KeyValuePair<string, object>(TagKeys.Policy, policy));
                     }
                     if (sinks.Length == 0)
                         _metrics?.Increment(DiagCoreMetrics.TracesDropped.Name, 1,
@@ -306,6 +380,23 @@ namespace Silica.DiagnosticsCore.Tracing
                 return;
             }
             var snapshot = Volatile.Read(ref _sinks);
+
+            // No sinks registered: drop with precise cause to surface misconfiguration early.
+            if (snapshot.Length == 0)
+            {
+                try
+                {
+                    if (_metrics is MetricsFacade mf) mf.TryRegister(DiagCoreMetrics.TracesDropped);
+                    _metrics?.Increment(
+                        DiagCoreMetrics.TracesDropped.Name,
+                        1,
+                        new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.UnregisteredSink),
+                        // Keep cardinality low; avoid tagging a dynamic sink name here.
+                        new KeyValuePair<string, object>(TagKeys.Field, "no_sinks"));
+                }
+                catch { /* swallow */ }
+                return;
+            }
             for (int i = 0; i < snapshot.Length; i++)
             {
                 if (_states.TryGetValue(snapshot[i], out var st))
@@ -330,7 +421,8 @@ namespace Silica.DiagnosticsCore.Tracing
                                 Silica.DiagnosticsCore.Metrics.DiagCoreMetrics.TracesDropped.Name,
                                 1,
                                 new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.DropCause, DropCauses.PumpFault),
-                                new KeyValuePair<string, object>(TagKeys.Sink, sinkType));
+                                new KeyValuePair<string, object>(TagKeys.Sink, sinkType),
+                                new KeyValuePair<string, object>(TagKeys.Policy, policy));
                         }
                         else
                         {
@@ -375,7 +467,7 @@ namespace Silica.DiagnosticsCore.Tracing
                         sink.Emit(evt);
                         consecutiveErrors = 0;
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         try
                         {
@@ -383,7 +475,8 @@ namespace Silica.DiagnosticsCore.Tracing
                                 DiagCoreMetrics.TracesDropped.Name,
                                 1,
                                 new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.SinkError),
-                                new KeyValuePair<string, object>(TagKeys.Sink, sink.GetType().Name));
+                                new KeyValuePair<string, object>(TagKeys.Sink, sink.GetType().Name),
+                                new KeyValuePair<string, object>(TagKeys.Exception, ex.GetType().Name));
                             consecutiveErrors++;
                             if (consecutiveErrors == 5)
                             {
@@ -398,7 +491,7 @@ namespace Silica.DiagnosticsCore.Tracing
                         catch { /* swallow */ }
                         // Tiny backoff to avoid hot-looping on a dead sink
                         if (consecutiveErrors >= 5)
-                            await Task.Delay(10, ct);
+                            await Task.Delay(10, ct).ConfigureAwait(false);
 
                     }
                     finally
@@ -430,7 +523,7 @@ namespace Silica.DiagnosticsCore.Tracing
             {
                 // Normal shutdown via cancellation; do not surface as a fault.
             }
-            catch
+            catch (Exception ex)
             {
                 // Pump fault: record once on termination to surface operator signal
                 try
@@ -439,7 +532,8 @@ namespace Silica.DiagnosticsCore.Tracing
                      Silica.DiagnosticsCore.Metrics.DiagCoreMetrics.TracesDropped.Name,
                     1,
                     new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.DropCause, DropCauses.PumpFault),
-                    new KeyValuePair<string, object>(TagKeys.Sink, sink.GetType().Name)); 
+                    new KeyValuePair<string, object>(TagKeys.Sink, sink.GetType().Name),
+                    new KeyValuePair<string, object>(TagKeys.Exception, ex.GetType().Name));
                 }
                 catch { /* swallow */ }            
             }
@@ -482,7 +576,8 @@ namespace Silica.DiagnosticsCore.Tracing
 
                 // Publish new snapshot without the sink
                 var snapshot = Volatile.Read(ref _sinks);
-                var list = new List<ITraceSink>(snapshot.Length);
+                // Pre-size for all but the removed sink to avoid growth
+                var list = new List<ITraceSink>(snapshot.Length > 0 ? snapshot.Length - 1 : 0);
                 foreach (var s in snapshot)
                     if (!ReferenceEquals(s, sink))
                         list.Add(s);
@@ -515,9 +610,19 @@ namespace Silica.DiagnosticsCore.Tracing
                     catch { /* swallow */ }
                 }
 
+                // If the pump is still not done after optional wait, cancel this sink's pump explicitly
+                if (!pumpTask.IsCompleted && _states.TryGetValue(sink, out var stCancel))
+                {
+                    try { stCancel.Cts.Cancel(); } catch { /* swallow */ }
+                }
+
                 pumpTask.ContinueWith(_ =>
                 {
-                    _states.TryRemove(sink, out SinkState _);                 // ✅ SinkState
+                    if (_states.TryRemove(sink, out var removed))
+                    {
+                        try { removed.Cts.Dispose(); } catch { /* swallow */ }
+                    }
+
                     _queues.TryRemove(sink, out Channel<TraceEvent> _);       // ✅ Channel<TraceEvent>
                     _sinkPolicies.TryRemove(sink, out string _);              // ✅ string
                     _pumps.TryRemove(sink, out Task _);                        // ✅ Task
@@ -562,6 +667,11 @@ namespace Silica.DiagnosticsCore.Tracing
             // 3) If not drained, cancel pumps to break out and account backlog
             if (!drained)
             {
+                // Cancel per-sink first to allow fine-grained teardown
+                foreach (var kv in _states)
+                {
+                    try { kv.Value.Cts.Cancel(); } catch { /* swallow */ }
+                }
                 try { _cts.Cancel(); } catch { /* swallow */ }
                 try { Task.WhenAll(_pumps.Values).Wait(TimeSpan.FromMilliseconds(100)); } catch { /* swallow */ }
             }
@@ -617,6 +727,11 @@ namespace Silica.DiagnosticsCore.Tracing
 
 
             // 5) Cleanup
+            // Dispose per-sink CTS
+            foreach (var kv in _states)
+            {
+                try { kv.Value.Cts.Dispose(); } catch { /* swallow */ }
+            }
             try { _cts.Dispose(); } catch { /* swallow */ }
             _states.Clear();
             _queues.Clear();

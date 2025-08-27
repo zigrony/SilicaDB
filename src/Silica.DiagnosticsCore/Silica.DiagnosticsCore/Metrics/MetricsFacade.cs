@@ -100,6 +100,22 @@ namespace Silica.DiagnosticsCore.Metrics
 
         public void Increment(string name, long value = 1, params KeyValuePair<string, object>[] tags)
         {
+            // Reject negative increments (counters are monotonic)
+            if (value < 0)
+            {
+                try
+                {
+                    TryRegister(DiagCoreMetrics.MetricsDropped);
+                    _inner.Increment(
+                        DiagCoreMetrics.MetricsDropped.Name, 1,
+                        new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InvalidValue),
+                        new KeyValuePair<string, object>(TagKeys.Metric, name));
+                }
+                catch { /* swallow */ }
+                _onDrop?.Invoke(name);
+                return;
+            }
+
             if (!VerifyTypeOrDrop(name, MetricType.Counter)) return;
             PublishIfAllowed(name, () =>
                 _inner.Increment(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
@@ -107,6 +123,22 @@ namespace Silica.DiagnosticsCore.Metrics
 
         public void Record(string name, double value, params KeyValuePair<string, object>[] tags)
         {
+            // Reject non-finite values for histograms
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                try
+                {
+                    TryRegister(DiagCoreMetrics.MetricsDropped);
+                    _inner.Increment(
+                        DiagCoreMetrics.MetricsDropped.Name, 1,
+                        new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InvalidValue),
+                        new KeyValuePair<string, object>(TagKeys.Metric, name));
+                }
+                catch { /* swallow */ }
+                _onDrop?.Invoke(name);
+                return;
+            }
+
             if (!VerifyTypeOrDrop(name, MetricType.Histogram)) return;
             PublishIfAllowed(name, () =>
                 _inner.Record(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
@@ -130,8 +162,9 @@ namespace Silica.DiagnosticsCore.Metrics
                     return;
                 }
 
-                // Lenient mode:
-                if (_inner is MetricsManager)
+                // Lenient mode: only the test harness supports auto-registration.
+                // Default to non-autoreg for all other managers to avoid schema drift in prod.
+                if (!(_inner is InMemoryMetricsManager))
                 {
                     // Inner cannot auto-register; drop and warn once
                     if (!_warnedLenientNoAutoReg)
@@ -148,7 +181,8 @@ namespace Silica.DiagnosticsCore.Metrics
                     return;
                 }
 
-                // Inner may auto-register (schema drift risk) - surface once
+                // Inner is InMemoryMetricsManager — auto-registration allowed in tests.
+                // Surface once so it’s visible during local/dev work.
                 if (!_warnedLenientAutoReg)
                 {
                     _warnedLenientAutoReg = true;
@@ -169,9 +203,10 @@ namespace Silica.DiagnosticsCore.Metrics
                    TryRegister(DiagCoreMetrics.MetricsDropped);
                    _inner.Increment(
                        DiagCoreMetrics.MetricsDropped.Name, 1,
-                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerDisposed));
+                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerDisposed),
+                       new KeyValuePair<string, object>(TagKeys.Metric, name));
                 }
-               catch { /* swallow */ }
+                catch { /* swallow */ }
                _onDrop?.Invoke(name);
            }
            catch (InvalidOperationException)
@@ -181,9 +216,10 @@ namespace Silica.DiagnosticsCore.Metrics
                    TryRegister(DiagCoreMetrics.MetricsDropped);
                    _inner.Increment(
                        DiagCoreMetrics.MetricsDropped.Name, 1,
-                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerError));
-               }
-               catch { /* swallow */ }
+                       new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InnerError),
+                       new KeyValuePair<string, object>(TagKeys.Metric, name));
+                }
+                catch { /* swallow */ }
                _onDrop?.Invoke(name);
            }
            catch (Exception)
@@ -197,7 +233,8 @@ namespace Silica.DiagnosticsCore.Metrics
                 {
                     TryRegister(DiagCoreMetrics.MetricsDropped);
                     _inner.Increment(DiagCoreMetrics.MetricsDropped.Name, 1,
-                        new KeyValuePair<string, object>(TagKeys.DropCause, cause));
+                        new KeyValuePair<string, object>(TagKeys.DropCause, cause),
+                        new KeyValuePair<string, object>(TagKeys.Metric, name));
                 }
                 catch { /* swallow */ }
                 _onDrop?.Invoke(name);
@@ -209,9 +246,10 @@ namespace Silica.DiagnosticsCore.Metrics
                    TryRegister(DiagCoreMetrics.MetricsDropped);
                    _inner.Increment(
                        DiagCoreMetrics.MetricsDropped.Name, 1,
-                       new KeyValuePair<string, object>(TagKeys.DropCause, cause));
-               }
-               catch { /* swallow */ }
+                       new KeyValuePair<string, object>(TagKeys.DropCause, cause),
+                       new KeyValuePair<string, object>(TagKeys.Metric, name));
+                }
+                catch { /* swallow */ }
                _onDrop?.Invoke(name);
            }            
         }
@@ -239,7 +277,8 @@ namespace Silica.DiagnosticsCore.Metrics
                 TryRegister(DiagCoreMetrics.MetricsDropped);
                 _inner.Increment(
                     DiagCoreMetrics.MetricsDropped.Name, 1,
-                    new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.TypeMismatch));
+                    new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.TypeMismatch),
+                    new KeyValuePair<string, object>(TagKeys.Metric, name));
             }
             catch { /* swallow */ }
             _onDrop?.Invoke(name);
@@ -271,13 +310,22 @@ namespace Silica.DiagnosticsCore.Metrics
         public void Dispose()
         {
         if (_disposed) return;
+
         _disposed = true;
-        if (_ownsInner && _inner is IDisposable d) d.Dispose();
+
+            if (_ownsInner && _inner is IDisposable d)
+            {
+                try { d.Dispose(); } catch { /* swallow exporter/inner disposal faults */ }
+            }
+
         }
         public void TryRegister(MetricDefinition definition)
         {
+            if (_disposed) return;
             if (!_registry.IsKnown(definition.Name))
-                Register(definition);
+            {
+                try { Register(definition); } catch { /* swallow */ }
+            }
         }
     }
 }

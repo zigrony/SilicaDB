@@ -2,6 +2,11 @@
 {
     public static class DropCauses
     {
+        public const string OverflowDropNewest = "overflow_dropnewest";
+        public const string OverflowDropOldest = "overflow_dropoldest";
+        public const string CircuitOpen = "circuit_open";
+        public const string WriteLatencyExceeded = "write_latency_exceeded";
+
         public const string UnknownMetricStrict = "unknown_metric_strict";
         public const string UnknownMetricNoAutoreg = "unknown_metric_no_autoreg";
         public const string TypeMismatch = "type_mismatch";
@@ -24,5 +29,7 @@
         public const string Sampled = "sampled";
         public const string Redacted = "redacted";
         public const string SinkInitFailed = "sink_init_failed";
+        public const string Unredacted = "unredacted";
+        public const string InvalidValue = "invalid_value";
     }
 }

@@ -38,6 +38,11 @@ namespace Silica.DiagnosticsCore.Metrics
             if (string.IsNullOrWhiteSpace(Name))
                 throw new ArgumentException("Metric name must be provided.", nameof(Name));
 
+            if (Description is null)
+                throw new ArgumentNullException(nameof(Description), "Description must not be null (use empty string if none).");
+            if (Unit is null)
+                throw new ArgumentNullException(nameof(Unit), "Unit must not be null (use empty string if none).");
+
             if (!Enum.IsDefined(typeof(MetricType), Type))
                 throw new ArgumentOutOfRangeException(nameof(Type), Type, "Unknown MetricType value.");
 

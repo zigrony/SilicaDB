@@ -75,6 +75,26 @@ namespace Silica.DiagnosticsCore.Metrics
         public void Increment(string name, long value = 1, params KeyValuePair<string, object>[] tags)
         {
             ThrowIfDisposed();
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                // Invalid name: account as invalid_operation for operators; avoid registry exceptions.
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.InvalidOperation);
+                return;
+            }
+
+            if (value < 0)
+            {
+                // Negative counter increments are invalid
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.InvalidValue,
+                    new KeyValuePair<string, object>(TagKeys.Metric, name));
+                return;
+            }
+
             if (!_registry.IsKnown(name))
             {
                 // Unknown metric: explicit accounting instead of silent no-op
@@ -104,6 +124,25 @@ namespace Silica.DiagnosticsCore.Metrics
         public void Record(string name, double value, params KeyValuePair<string, object>[] tags)
         {
             ThrowIfDisposed();
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                // Invalid name: account as invalid_operation; avoid registry exceptions.
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.InvalidOperation);
+                return;
+            }
+
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                AccountMetricDrop(
+                    DiagCoreMetrics.MetricsDropped.Name,
+                    DropCauses.InvalidValue,
+                    new KeyValuePair<string, object>(TagKeys.Metric, name));
+                return;
+            }
+
             if (!_registry.IsKnown(name))
             {
                 // Unknown metric: explicit accounting instead of silent no-op

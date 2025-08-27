@@ -1,0 +1,6 @@
+2025-08-24T16:15:29.1941510Z [info] Harness/Op1 This is a test trace event cid=b09b73d2-62db-4ac8-8bf4-7e3e80485908 sid=719c2ba2-0657-4b05-9c03-ed379df6728d
+2025-08-24T16:15:29.1945134Z [warn] Harness/Op2 Something happened cid=b90644af-a554-4410-b081-6a7f5287130f sid=c127343f-d059-4c47-9374-d2846f00c546
+2025-08-24T16:15:29.1963069Z [info] observability/bootstrap shutdown_initiated cid=605c36d5-d77b-4894-a407-0214ef88b7f0 sid=ce17565f-b00d-4791-86c2-fb90e7b262bd tags=field=shutdown,policy=dropwrite
+2025-08-24T16:20:14.3680380Z [info] Harness/Op1 This is a test trace event cid=d4703b29-635a-4363-8c16-5949724f76be sid=70a3908b-eba0-459f-b710-d17ddccfc602
+2025-08-24T16:20:14.3683142Z [warn] Harness/Op2 Something happened cid=ba3aa7bb-58cd-4203-aaa2-0880d43d23ae sid=0e1c0525-680c-463a-b760-e7a748a2b926
+2025-08-24T16:20:14.3699566Z [info] observability/bootstrap shutdown_initiated cid=4db54c4d-3ccd-45b1-b2ab-c43e79b62278 sid=9fc4751e-f118-4932-a5d9-57af7f34cd4d tags=field=shutdown,policy=dropwrite

@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Silica.DiagnosticsCore.Metrics
 {
@@ -93,7 +92,17 @@ namespace Silica.DiagnosticsCore.Metrics
             {
                 Definition = definition ?? throw new ArgumentNullException(nameof(definition));
                 Value = value;
-                Tags = tags?.ToArray() ?? Array.Empty<KeyValuePair<string, object>>();
+                if (tags is null)
+                {
+                    Tags = Array.Empty<KeyValuePair<string, object>>();
+                }
+                else
+                {
+                    // Copy without LINQ
+                    var list = new List<KeyValuePair<string, object>>();
+                    foreach (var t in tags) list.Add(t);
+                    Tags = list.ToArray();
+                }
             }
         }
     }

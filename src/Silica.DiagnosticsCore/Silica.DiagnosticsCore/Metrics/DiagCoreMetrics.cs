@@ -16,13 +16,6 @@ namespace Silica.DiagnosticsCore.Metrics
         private static readonly KeyValuePair<string, object>[] NoTags =
             Array.Empty<KeyValuePair<string, object>>();
 
-        public static readonly MetricDefinition TraceTagsTruncated = new(
-                                        Name: "diagcore.traces.tags_truncated",
-                                        Type: MetricType.Counter,
-                                        Description: "Count of trace tag values truncated to policy",
-                                        Unit: "entries",
-                                        DefaultTags: NoTags);
-
         public static readonly MetricDefinition MetricTagsTruncated = new(
                                         Name: "diagcore.metrics.tags_truncated",
                                         Type: MetricType.Counter,
@@ -38,14 +31,26 @@ namespace Silica.DiagnosticsCore.Metrics
                                         DefaultTags: NoTags);
 
         /// <summary>
-        /// Count of individual trace tags dropped by policy (disallowed, too many, invalid, or truncated).
+        /// Count of individual trace tags dropped by policy (disallowed, too many, invalid type, or value too long).
         /// </summary>
         public static readonly MetricDefinition TraceTagsDropped = new(
-                                    Name: "diagcore.traces.tags_dropped",
-                                    Type: MetricType.Counter,
-                                    Description: "Count of trace tags dropped by policy",
-                                    Unit: "entries",
-                                    DefaultTags: NoTags);
+            Name: "diagcore.traces.tags_dropped",
+            Type: MetricType.Counter,
+            Description: "Count of trace tags dropped by policy",
+            Unit: "entries",
+            DefaultTags: NoTags);
+
+        /// <summary>
+        /// Count of individual trace tags dropped by policy (disallowed, too many, invalid, or truncated).
+        /// </summary>
+        // Count of individual trace tag values truncated to policy
+        public static readonly MetricDefinition TraceTagsTruncated = new(
+            Name: "diagcore.traces.tags_truncated",
+            Type: MetricType.Counter,
+            Description: "Count of trace tag values truncated to policy",
+            Unit: "entries",
+            DefaultTags: NoTags);
+
         /// <summary>
         /// Count of metric emissions dropped by policy.
         /// </summary>
@@ -151,6 +156,101 @@ namespace Silica.DiagnosticsCore.Metrics
             Unit: "entries",
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
+        // ---- ConsoleTraceSink self-metrics (observable gauges) ----
+        public static readonly MetricDefinition ConsoleSinkQueueDepth = new(
+            Name: "diagcore.traces.console_sink.queue_depth",
+            Type: MetricType.ObservableGauge,
+            Description: "Current queued messages waiting to be written by ConsoleTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkDroppedTotal = new(
+            Name: "diagcore.traces.console_sink.dropped_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total messages dropped inside ConsoleTraceSink (channel full)",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkMessagesWrittenTotal = new(
+            Name: "diagcore.traces.console_sink.messages_written_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total messages written by ConsoleTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkWriteErrorsTotal = new(
+            Name: "diagcore.traces.console_sink.write_errors_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total write errors encountered by ConsoleTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkActive = new(
+            Name: "diagcore.traces.console_sink.active",
+            Type: MetricType.ObservableGauge,
+            Description: "Whether ConsoleTraceSink worker is active (1) or stopped (0)",
+            Unit: "flag",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkLastWriteLatencyMs = new(
+            Name: "diagcore.traces.console_sink.last_write_latency_ms",
+            Type: MetricType.ObservableGauge,
+            Description: "Latency of the last write observed by ConsoleTraceSink (ms, DEBUG only)",
+            Unit: "ms",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+ 
+        // ---- ConsoleTraceSink production counters and histogram ----
+        public static readonly MetricDefinition ConsoleSinkMessagesWritten = new(
+            Name: "diagcore.traces.console_sink.messages_written",
+            Type: MetricType.Counter,
+            Description: "Messages written by ConsoleTraceSink",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkWriteErrors = new(
+            Name: "diagcore.traces.console_sink.write_errors",
+            Type: MetricType.Counter,
+            Description: "Write errors encountered by ConsoleTraceSink",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkDrops = new(
+            Name: "diagcore.traces.console_sink.drops",
+            Type: MetricType.Counter,
+            Description: "Messages dropped inside ConsoleTraceSink (channel or policy)",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkWriteLatencyMs = new(
+            Name: "diagcore.traces.console_sink.write_latency_ms",
+            Type: MetricType.Histogram,
+            Description: "Console write latency distribution (ms)",
+            Unit: "ms",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // ConsoleTraceSink: count of writes exceeding the guard threshold (not a drop)
+        public static readonly MetricDefinition ConsoleSinkWriteLatencyExceeded = new(
+            Name: "diagcore.traces.console_sink.write_latency_exceeded",
+            Type: MetricType.Counter,
+            Description: "Count of writes that exceeded the configured latency guard in ConsoleTraceSink",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkWaits = new(
+            Name: "diagcore.traces.console_sink.waits",
+            Type: MetricType.Counter,
+            Description: "Bounded waits before enqueue due to BlockWithTimeout policy",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition ConsoleSinkWaitTimeouts = new(
+            Name: "diagcore.traces.console_sink.wait_timeouts",
+            Type: MetricType.Counter,
+            Description: "Timeouts when attempting to enqueue due to BlockWithTimeout policy",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
         public static readonly MetricDefinition PumpsRemainingOnTimeout = new(
             Name: "diagcore.traces.dispatcher.pumps_remaining_on_timeout",
             Type: MetricType.Histogram,
@@ -169,6 +269,108 @@ namespace Silica.DiagnosticsCore.Metrics
             Type: MetricType.Counter,
             Description: "Count of sinks unregistered from the dispatcher",
             Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // ---- BoundedInMemoryTraceSink optional rolling-window accounting ----
+        public static readonly MetricDefinition BoundedBufferEvictedTotal = new(
+            Name: "diagcore.traces.bounded_buffer.evicted_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total traces evicted due to evict-oldest overflow policy",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // ---- FileTraceSink metrics ----
+        public static readonly MetricDefinition FileSinkWaits = new(
+            Name: "diagcore.traces.file_sink.waits",
+            Type: MetricType.Counter,
+            Description: "Number of times FileTraceSink waited for queue space",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkWaitTimeouts = new(
+            Name: "diagcore.traces.file_sink.wait_timeouts",
+            Type: MetricType.Counter,
+            Description: "Number of times FileTraceSink wait timed out",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkMessagesWritten = new(
+            Name: "diagcore.traces.file_sink.messages_written",
+            Type: MetricType.Counter,
+            Description: "Messages successfully written by FileTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkWriteLatencyMs = new(
+            Name: "diagcore.traces.file_sink.write_latency_ms",
+            Type: MetricType.Histogram,
+            Description: "Latency of file writes in milliseconds",
+            Unit: "ms",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // FileTraceSink: count of writes exceeding the guard threshold (not a drop)
+        public static readonly MetricDefinition FileSinkWriteLatencyExceeded = new(
+            Name: "diagcore.traces.file_sink.write_latency_exceeded",
+            Type: MetricType.Counter,
+            Description: "Count of writes that exceeded the configured latency guard in FileTraceSink",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkWriteErrors = new(
+            Name: "diagcore.traces.file_sink.write_errors",
+            Type: MetricType.Counter,
+            Description: "Number of file write errors",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkDrops = new(
+            Name: "diagcore.traces.file_sink.drops",
+            Type: MetricType.Counter,
+            Description: "Number of messages dropped by FileTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkQueueDepth = new(
+            Name: "diagcore.traces.file_sink.queue_depth",
+            Type: MetricType.ObservableGauge,
+            Description: "Current queue depth for FileTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkDroppedTotal = new(
+            Name: "diagcore.traces.file_sink.dropped_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total dropped messages by FileTraceSink (monotonic within lifecycle/reset)",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+
+        public static readonly MetricDefinition FileSinkMessagesWrittenTotal = new(
+            Name: "diagcore.traces.file_sink.messages_written_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total messages written by FileTraceSink",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkWriteErrorsTotal = new(
+            Name: "diagcore.traces.file_sink.write_errors_total",
+            Type: MetricType.ObservableGauge,
+            Description: "Total file write errors",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkActive = new(
+            Name: "diagcore.traces.file_sink.active",
+            Type: MetricType.ObservableGauge,
+            Description: "Whether FileTraceSink is active (1) or inactive (0)",
+            Unit: "count",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition FileSinkLastWriteLatencyMs = new(
+            Name: "diagcore.traces.file_sink.last_write_latency_ms",
+            Type: MetricType.ObservableGauge,
+            Description: "Last observed file write latency in ms",
+            Unit: "ms",
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
     }

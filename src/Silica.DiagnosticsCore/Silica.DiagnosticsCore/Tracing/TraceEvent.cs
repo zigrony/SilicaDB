@@ -40,6 +40,9 @@ namespace Silica.DiagnosticsCore.Tracing
         /// <summary>Identifier for the specific span this event belongs to, if applicable.</summary>
         public Guid SpanId { get; }
 
+        // Internal mark to assert redaction/validation has been applied
+        internal bool IsSanitized { get; }
+
         public TraceEvent(
             DateTimeOffset timestamp,
             string component,
@@ -49,7 +52,8 @@ namespace Silica.DiagnosticsCore.Tracing
             string? message,
             Exception? exception,
             Guid correlationId,
-            Guid spanId)
+            Guid spanId,
+            bool sanitized = false)
         {
             Timestamp = timestamp;
             Component = !string.IsNullOrWhiteSpace(component)
@@ -71,6 +75,7 @@ namespace Silica.DiagnosticsCore.Tracing
             Exception = exception;
             CorrelationId = correlationId != Guid.Empty ? correlationId : Guid.NewGuid();
             SpanId = spanId != Guid.Empty ? spanId : Guid.NewGuid();
+            IsSanitized = sanitized;
         }
 
         /// <summary>
@@ -96,7 +101,8 @@ namespace Silica.DiagnosticsCore.Tracing
                 Message,
                 Exception,
                 CorrelationId,
-                SpanId);
+                SpanId,
+                IsSanitized);
         }
     }
 }

@@ -13,6 +13,7 @@ namespace Silica.DiagnosticsCore.Tracing
     public sealed class DefaultTraceRedactor : ITraceRedactor
     {
         public const string RedactedPlaceholder = "***";
+        private static readonly string[] NewLineSplit = new[] { "\r\n", "\n" };
         private readonly bool _redactMessage;
         private readonly bool _redactExceptionMessage;
         private readonly bool _redactExceptionStack;
@@ -133,7 +134,7 @@ namespace Silica.DiagnosticsCore.Tracing
                 if (!string.IsNullOrEmpty(st))
                 {
                     // crude split by line; cross-platform tolerant
-                    var frames = st.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    var frames = st.Split(NewLineSplit, StringSplitOptions.None);
                     if (frames.Length > _maxExceptionStackFrames)
                     {
                         // Specific accounting for stack truncation by frame limit; do not replace exception object
@@ -157,16 +158,19 @@ namespace Silica.DiagnosticsCore.Tracing
             }
             if (redactTags || _redactMessage || anyExceptionRedaction)
             {
-                if (redactTags)
-                    _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
-                        new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "tags"));
-                if (_redactMessage)
-                    _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
-                        new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "message"));
-                // Only raise generic "exception" when we actually redact message/stack.
-                if (anyExceptionRedaction && (_redactExceptionMessage || _redactExceptionStack))
-                    _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
-                        new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "exception"));
+                try
+                {
+                    if (redactTags)
+                        _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
+                            new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "tags"));
+                    if (_redactMessage)
+                        _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
+                            new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "message"));
+                    if (anyExceptionRedaction && (_redactExceptionMessage || _redactExceptionStack))
+                        _metrics?.Increment(DiagCoreMetrics.TracesRedacted.Name, 1,
+                            new KeyValuePair<string, object>(Silica.DiagnosticsCore.Metrics.TagKeys.Field, "exception"));
+                }
+                catch { /* swallow */ }
             }
 
             if (!redactTags && !_redactMessage && !anyExceptionRedaction)
@@ -184,16 +188,32 @@ namespace Silica.DiagnosticsCore.Tracing
             out Dictionary<string, string> output)
         {
             output = default!;
-            // Fast path: if no sensitive keys present, nothing to do.
-            var sensitiveSet = sensitive as HashSet<string> ?? new HashSet<string>(sensitive, StringComparer.OrdinalIgnoreCase);
-            bool masked = input.Keys.Any(k => sensitiveSet.Contains(k));
-            if (!masked) return false;
+            // Build a set if not already a HashSet for O(1) lookups.
+            HashSet<string> sensitiveSet = sensitive as HashSet<string>
+                ?? new HashSet<string>(sensitive, StringComparer.OrdinalIgnoreCase);
+
+            // First pass: detect if any sensitive key exists without allocating.
+            bool found = false;
+            foreach (var key in input.Keys)
+            {
+                if (sensitiveSet.Contains(key))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+
+            // Second pass: build the redacted dictionary.
             var result = new Dictionary<string, string>(input.Count, StringComparer.OrdinalIgnoreCase);
             foreach (var kv in input)
+            {
                 result[kv.Key] = sensitiveSet.Contains(kv.Key) ? RedactedPlaceholder : kv.Value;
+            }
             output = result;
             return true;
         }
+
 
         // Replace CloneWithInnerChain with:
         private static Exception CloneWithInnerChain(Exception root, Exception? inner, int maxDepth)

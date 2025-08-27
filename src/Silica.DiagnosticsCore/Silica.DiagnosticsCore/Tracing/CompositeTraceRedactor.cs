@@ -1,7 +1,6 @@
 ﻿// File: Silica.DiagnosticsCore/Tracing/Redactors/CompositeTraceRedactor.cs
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Silica.DiagnosticsCore.Tracing
 {
@@ -28,7 +27,14 @@ namespace Silica.DiagnosticsCore.Tracing
             if (redactors is null)
                 throw new ArgumentNullException(nameof(redactors));
 
-            var list = redactors as IList<ITraceRedactor> ?? redactors.ToList();
+            IList<ITraceRedactor>? list = redactors as IList<ITraceRedactor>;
+            if (list == null)
+            {
+                var tmp = new List<ITraceRedactor>();
+                foreach (var r in redactors)
+                    tmp.Add(r);
+                list = tmp;
+            }
             if (list.Count == 0)
                 throw new ArgumentException("At least one redactor must be provided.", nameof(redactors));
 

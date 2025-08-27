@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Threading.Channels;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.DiagnosticsCore.Internal;
+using static Silica.DiagnosticsCore.DiagnosticsOptions;
 
 namespace Silica.DiagnosticsCore
 {
@@ -14,7 +15,7 @@ namespace Silica.DiagnosticsCore
     /// Canonical configuration for diagnostics: metrics, tracing, and instrumentation.
     /// Mutable for construction, then Freeze() to normalize and lock values.
     /// </summary>
-    public sealed class DiagnosticsOptions
+    public sealed class DiagnosticsOptions : ISinkShutdownDrainTimeoutConfig
     {
         /// <summary>
         /// Additional allowed metric tag keys beyond the base set. Intended for low-cardinality, schema-governed tags.
@@ -22,6 +23,7 @@ namespace Silica.DiagnosticsCore
         public IEnumerable<string> AllowedCustomMetricTagKeys { get; set; } = Array.Empty<string>();
 
         public bool StrictBootstrapOptions { get; set; } = true;
+
         // ----- Defaults and allowed sets -----
         public static class Defaults
         {
@@ -29,11 +31,7 @@ namespace Silica.DiagnosticsCore
             public const string MinimumLevel = "info"; // allowed: trace, debug, info, warn, error, fatal
             public const int InMemoryCapacity = 10_000;
 
-#if DEBUG
             public const bool LoggingAvailable = true;
-#else
-            public const bool LoggingAvailable = false;
-#endif
  
             [Obsolete("UseHighResolutionTiming is not enforced by the pipeline and will be removed in a future release.")]
             public const bool UseHighResolutionTiming = true;
@@ -44,11 +42,7 @@ namespace Silica.DiagnosticsCore
             public const bool EnableTracing = true;
             public const bool EnableMetrics = true;
 
-#if DEBUG
             public const bool EnableLogging = true;
-#else
-    public const bool EnableLogging = false;
-#endif
 
             public const bool StrictMetrics = true;
             public const int MaxTagsPerEvent = 10;
@@ -56,18 +50,25 @@ namespace Silica.DiagnosticsCore
             public const int MaxTraceBuffer = 8192;
             public const double EffectiveTraceSampleRate = 1.0; // when TraceSampleRate is null
             public const int DispatcherQueueCapacity = 1024;
+            public const int SinkShutdownDrainTimeoutMs = 750;
             public const int ShutdownTimeoutMs = 5000;
             public const BoundedChannelFullMode DispatcherFullMode = BoundedChannelFullMode.DropWrite;
             public const bool RedactTraceMessage = false;
             public const bool RedactExceptionMessage = false;
             public const bool RedactExceptionStack = false;
             public const int MaxExceptionStackFrames = int.MaxValue;
+            public const bool RequireTraceRedaction = true;
+            public const int MaxTraceMessageLength = 4096;
+            public const int MaxInnerExceptionDepth = int.MaxValue;
         }
 
         private bool _redactTraceMessage = Defaults.RedactTraceMessage;
         private bool _redactExceptionMessage = Defaults.RedactExceptionMessage;
         private bool _redactExceptionStack = Defaults.RedactExceptionStack;
         private int _maxExceptionStackFrames = Defaults.MaxExceptionStackFrames;
+        private int _maxTraceMessageLength = Defaults.MaxTraceMessageLength;
+        private int _maxInnerExceptionDepth = Defaults.MaxInnerExceptionDepth;
+
         public bool RedactTraceMessage { get => _redactTraceMessage; set { ThrowIfFrozen(); _redactTraceMessage = value; } }
         public bool RedactExceptionMessage { get => _redactExceptionMessage; set { ThrowIfFrozen(); _redactExceptionMessage = value; } }
         public bool RedactExceptionStack { get => _redactExceptionStack; set { ThrowIfFrozen(); _redactExceptionStack = value; } }
@@ -75,6 +76,36 @@ namespace Silica.DiagnosticsCore
         {
             get => _maxExceptionStackFrames;
             set { ThrowIfFrozen(); _maxExceptionStackFrames = Math.Max(1, value); }
+        }
+
+        /// <summary>
+        /// Maximum allowed length for the trace message. Values longer than this are truncated.
+        /// </summary>
+        public int MaxTraceMessageLength
+        {
+            get => _maxTraceMessageLength;
+            set { ThrowIfFrozen(); _maxTraceMessageLength = Math.Max(1, value); }
+        }
+        /// <summary>
+        /// Maximum number of inner exception levels to preserve when redacting exceptions.
+        /// </summary>
+        public int MaxInnerExceptionDepth
+        {
+            get => _maxInnerExceptionDepth;
+            set { ThrowIfFrozen(); _maxInnerExceptionDepth = Math.Max(0, value); }
+        }
+
+        /// <summary>
+        /// Milliseconds to wait for sink shutdown drain before forcing cancel.
+        /// </summary>
+        public int SinkShutdownDrainTimeoutMs { get; set; } = Defaults.SinkShutdownDrainTimeoutMs;
+        /// <summary>
+        /// Optional contract for sinks to read a configured shutdown drain timeout without reflection.
+        /// Implement this on DiagnosticsOptions if you want sinks to pick up the value.
+        /// </summary>
+        public interface ISinkShutdownDrainTimeoutConfig
+        {
+            int SinkShutdownDrainTimeoutMs { get; }
         }
 
         public BoundedChannelFullMode DispatcherFullMode { get; set; } = Defaults.DispatcherFullMode;
@@ -117,8 +148,25 @@ namespace Silica.DiagnosticsCore
             sb.Append("MaxExceptionStackFrames=").Append(
                 _maxExceptionStackFrames.ToString(System.Globalization.CultureInfo.InvariantCulture)
             ).Append(';');
+
+            sb.Append("MaxTraceMessageLength=").Append(
+                _maxTraceMessageLength.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            ).Append(';');
+
+            sb.Append("MaxInnerExceptionDepth=").Append(
+                _maxInnerExceptionDepth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            ).Append(';');
+
+
             sb.Append("StrictBootstrapOptions=").Append(StrictBootstrapOptions).Append(';');
             sb.Append("StrictGlobalTagKeys=").Append(StrictGlobalTagKeys).Append(';');
+            sb.Append("RequireTraceRedaction=").Append(_requireTraceRedaction).Append(';');
+
+            // Console sink knobs
+            sb.Append("ConsolePolicy=").Append(_consoleSinkDropPolicy).Append(';');
+            sb.Append("ConsoleTags=").Append(_consoleSinkIncludeTags).Append(';');
+            sb.Append("ConsoleEx=").Append(_consoleSinkIncludeException).Append(';');
+            sb.Append("ConsoleJson=").Append(_consoleSinkJson).Append(';');
 
             if (AllowedCustomGlobalTagKeys is not null)
                 foreach (var k in new SortedSet<string>(AllowedCustomGlobalTagKeys, StringComparer.OrdinalIgnoreCase))
@@ -181,6 +229,14 @@ namespace Silica.DiagnosticsCore
         private ReadOnlyCollection<string>? _sensitiveTagKeysRo;
 
         private volatile bool _frozen;
+        private bool _requireTraceRedaction = Defaults.RequireTraceRedaction;
+
+        public bool RequireTraceRedaction
+        {
+            get => _requireTraceRedaction;
+            set { ThrowIfFrozen(); _requireTraceRedaction = value; }
+        }
+
 
         /// <summary>
         /// If true, GlobalTags keys must be in the base allowed set or explicitly allow‑listed.
@@ -191,6 +247,37 @@ namespace Silica.DiagnosticsCore
         /// Additional allowed global tag keys when <see cref="StrictGlobalTagKeys"/> is true.
         /// </summary>
         public IEnumerable<string> AllowedCustomGlobalTagKeys { get; set; } = Array.Empty<string>();
+        // ----- ConsoleTraceSink knobs (ops-configurable, fingerprinted) -----
+        public enum ConsoleDropPolicy { DropNewest, DropOldest, BlockWithTimeout }
+
+        private ConsoleDropPolicy _consoleSinkDropPolicy = ConsoleDropPolicy.DropNewest;
+        public ConsoleDropPolicy ConsoleSinkDropPolicy
+        {
+            get => _consoleSinkDropPolicy;
+            set { ThrowIfFrozen(); _consoleSinkDropPolicy = value; }
+        }
+
+        private bool _consoleSinkIncludeTags = false;
+        public bool ConsoleSinkIncludeTags
+        {
+            get => _consoleSinkIncludeTags;
+            set { ThrowIfFrozen(); _consoleSinkIncludeTags = value; }
+        }
+
+        private bool _consoleSinkIncludeException = false;
+        public bool ConsoleSinkIncludeException
+        {
+            get => _consoleSinkIncludeException;
+            set { ThrowIfFrozen(); _consoleSinkIncludeException = value; }
+        }
+
+        private bool _consoleSinkJson = false;
+        public bool ConsoleSinkJson
+        {
+            get => _consoleSinkJson;
+            set { ThrowIfFrozen(); _consoleSinkJson = value; }
+        }
+
         // ----- Properties (guarded by Freeze) -----
 
         /// <summary>
@@ -410,6 +497,12 @@ namespace Silica.DiagnosticsCore
             if (_inMemoryCapacity < 0)
                 throw new ArgumentOutOfRangeException(nameof(InMemoryCapacity), "Must be >= 0.");
 
+            if (_maxTraceMessageLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxTraceMessageLength), "Must be >= 1.");
+            if (_maxInnerExceptionDepth < 0)
+                throw new ArgumentOutOfRangeException(nameof(MaxInnerExceptionDepth), "Must be >= 0.");
+
+
             // Trace sample rate range if present
             if (_traceSampleRate is double rate && (rate < 0.0 || rate > 1.0))
                 throw new ArgumentOutOfRangeException(nameof(TraceSampleRate), "Must be between 0.0 and 1.0.");
@@ -438,7 +531,8 @@ namespace Silica.DiagnosticsCore
                             TagKeys.Pool, TagKeys.Device, TagKeys.Operation, TagKeys.Component,
                             TagKeys.Tenant, TagKeys.Status, TagKeys.Exception, TagKeys.Shard,
                             TagKeys.Thread, TagKeys.Concurrency, TagKeys.DropCause,
-                            TagKeys.Region, TagKeys.WidgetId, TagKeys.Policy, TagKeys.Sink, TagKeys.Field
+                            TagKeys.Region, TagKeys.WidgetId, TagKeys.Policy, TagKeys.Sink, TagKeys.Field,
+                            TagKeys.Metric
                         }, StringComparer.OrdinalIgnoreCase);
                         baseKeys.UnionWith(AllowedCustomGlobalTagKeys ?? Array.Empty<string>());
                         if (!baseKeys.Contains(kvp.Key))
@@ -523,9 +617,43 @@ namespace Silica.DiagnosticsCore
                 MaxExceptionStackFrames = _maxExceptionStackFrames
             };
 
+            clone.MaxTraceMessageLength = _maxTraceMessageLength;
+            clone.MaxInnerExceptionDepth = _maxInnerExceptionDepth;
+
+            clone.RequireTraceRedaction = this.RequireTraceRedaction;
             clone.StrictGlobalTagKeys = this.StrictGlobalTagKeys;
-            clone.AllowedCustomGlobalTagKeys = this.AllowedCustomGlobalTagKeys?.ToArray() ?? Array.Empty<string>();
-            clone.AllowedCustomMetricTagKeys = this.AllowedCustomMetricTagKeys?.ToArray() ?? Array.Empty<string>();
+            // Copy AllowedCustomGlobalTagKeys
+            if (this.AllowedCustomGlobalTagKeys is null)
+            {
+                clone.AllowedCustomGlobalTagKeys = Array.Empty<string>();
+            }
+            else
+            {
+                // Materialize to array without LINQ
+                var buffer = new List<string>();
+                foreach (var k in this.AllowedCustomGlobalTagKeys)
+                    buffer.Add(k);
+                clone.AllowedCustomGlobalTagKeys = buffer.ToArray();
+            }
+            // Copy AllowedCustomMetricTagKeys
+            if (this.AllowedCustomMetricTagKeys is null)
+            {
+                clone.AllowedCustomMetricTagKeys = Array.Empty<string>();
+            }
+            else
+            {
+                var bufferM = new List<string>();
+                foreach (var k in this.AllowedCustomMetricTagKeys)
+                    bufferM.Add(k);
+                clone.AllowedCustomMetricTagKeys = bufferM.ToArray();
+            }
+
+            // Console sink knobs
+            clone.ConsoleSinkDropPolicy = this.ConsoleSinkDropPolicy;
+            clone.ConsoleSinkIncludeTags = this.ConsoleSinkIncludeTags;
+            clone.ConsoleSinkIncludeException = this.ConsoleSinkIncludeException;
+            clone.ConsoleSinkJson = this.ConsoleSinkJson;
+
             return clone;
         }
 

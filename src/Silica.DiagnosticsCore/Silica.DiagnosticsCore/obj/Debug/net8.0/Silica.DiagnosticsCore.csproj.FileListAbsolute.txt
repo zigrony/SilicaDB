@@ -1,0 +1,12 @@
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\bin\Debug\net8.0\Silica.DiagnosticsCore.deps.json
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\bin\Debug\net8.0\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.sourcelink.json
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\refint\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\ref\Silica.DiagnosticsCore.dll

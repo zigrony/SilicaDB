@@ -269,9 +269,6 @@ namespace Silica.DiagnosticsCore.Tracing
 
             if (string.IsNullOrWhiteSpace(operation))
             {
-#if DEBUG
-                throw new ArgumentException("Operation must not be null or whitespace.", nameof(operation));
-#else
                 _metrics?.Increment(
                     DiagCoreMetrics.TracesDropped.Name,
                     1,
@@ -279,31 +276,22 @@ namespace Silica.DiagnosticsCore.Tracing
                     new KeyValuePair<string, object>(TagKeys.Component, dropComponent),
                     new KeyValuePair<string, object>(TagKeys.Operation, dropOperation));
                 return false;
-#endif
             }
             if (string.IsNullOrWhiteSpace(status))
             {
-#if DEBUG
-                throw new ArgumentException("Status must not be null or whitespace.", nameof(status));
-#else
                 _metrics?.Increment(DiagCoreMetrics.TracesDropped.Name, 1,
                     new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.InvalidStatus),
                     new KeyValuePair<string, object>(TagKeys.Component, dropComponent),
                     new KeyValuePair<string, object>(TagKeys.Operation, dropOperation));
                 return false;
-#endif
             }
             if (message is null)
             {
-#if DEBUG
-                throw new ArgumentNullException(nameof(message));
-#else
                 _metrics?.Increment(DiagCoreMetrics.TracesDropped.Name, 1,
                     new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.NullMessage),
                     new KeyValuePair<string, object>(TagKeys.Component, dropComponent),
                     new KeyValuePair<string, object>(TagKeys.Operation, dropOperation));
                 return false;
-#endif
             }
             // Validate status against allowed set before normalization
             var sNorm = (status ?? "").Trim().ToLowerInvariant();
@@ -405,8 +393,16 @@ namespace Silica.DiagnosticsCore.Tracing
                     finalTags[t.Key] = System.Convert.ToString(t.Value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
                 evt = new TraceEvent(
                     evt.Timestamp, evt.Component, evt.Operation, evt.Status,
-                    finalTags, evt.Message, evt.Exception, evt.CorrelationId, evt.SpanId);
+                    finalTags, evt.Message, evt.Exception, evt.CorrelationId, evt.SpanId, sanitized: true);
             }
+            else
+            {
+                // No validator: still mark as sanitized post-redaction
+                evt = new TraceEvent(
+                    evt.Timestamp, evt.Component, evt.Operation, evt.Status,
+                    evt.Tags, evt.Message, evt.Exception, evt.CorrelationId, evt.SpanId, sanitized: true);
+            }
+
             _dispatcher.Dispatch(evt);
             _metrics?.Increment(DiagCoreMetrics.TracesEmitted.Name, 1);
             return true;

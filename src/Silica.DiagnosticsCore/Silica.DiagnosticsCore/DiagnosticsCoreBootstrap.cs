@@ -6,6 +6,7 @@ using Silica.DiagnosticsCore.Tracing;
 using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Diagnostics.Metrics;
+using static Silica.DiagnosticsCore.DiagnosticsOptions;
 
 namespace Silica.DiagnosticsCore
 {
@@ -23,10 +24,10 @@ namespace Silica.DiagnosticsCore
        {
            get
            {
-               lock (_gate)
-                   return _current is not null;
-           }
-       }
+                // _current is volatile; lock is unnecessary for a simple read
+                return System.Threading.Volatile.Read(ref _current) is not null;
+            }
+        }
         private static readonly object _gate = new();
 
         public sealed record BootstrapInstance(
@@ -44,13 +45,56 @@ namespace Silica.DiagnosticsCore
                 "DiagnosticsCoreBootstrap.Start(...) must be called first.");
 
         public sealed record DiagnosticsCoreStatus(
-    bool IsStarted,
-    string Fingerprint,
-    DateTimeOffset StartedAt,
-    string DispatcherPolicy,
-    bool MetricsEnabled,
-    bool TracingEnabled,
-    IReadOnlyDictionary<string, string> GlobalTags);
+            bool IsStarted,
+            string Fingerprint,
+            DateTimeOffset StartedAt,
+            string DispatcherPolicy,
+            bool MetricsEnabled,
+            bool TracingEnabled,
+            IReadOnlyDictionary<string, string> GlobalTags);
+
+        public sealed record DiagnosticsHealth(
+            bool IsStarted,
+            DateTimeOffset StartedAt,
+            string DispatcherPolicy,
+            int RegisteredSinks,
+            int ActivePumps,
+            long TotalQueueDepth,
+            IReadOnlyDictionary<string, long> QueueDepthBySinkType,
+            bool IsCancelling);
+
+        public static DiagnosticsHealth GetHealth()
+        {
+            lock (_gate)
+            {
+                var inst = _current;
+                if (inst is null)
+                {
+                    return new DiagnosticsHealth(
+                        IsStarted: false,
+                        StartedAt: default,
+                        DispatcherPolicy: string.Empty,
+                        RegisteredSinks: 0,
+                        ActivePumps: 0,
+                        TotalQueueDepth: 0,
+                        QueueDepthBySinkType: new Dictionary<string, long>(0),
+                        IsCancelling: false);
+                }
+                var snap = inst.Dispatcher.GetHealthSnapshot();
+                var effectivePolicy = inst.Options.DispatcherFullMode == BoundedChannelFullMode.Wait
+                    ? BoundedChannelFullMode.DropWrite.ToString().ToLowerInvariant()
+                    : inst.Options.DispatcherFullMode.ToString().ToLowerInvariant();
+                return new DiagnosticsHealth(
+                    IsStarted: true,
+                    StartedAt: inst.StartedAt,
+                    DispatcherPolicy: effectivePolicy,
+                    RegisteredSinks: snap.RegisteredSinks,
+                    ActivePumps: snap.ActivePumps,
+                    TotalQueueDepth: snap.TotalQueueDepth,
+                    QueueDepthBySinkType: new Dictionary<string, long>(snap.QueueDepthBySinkType, StringComparer.OrdinalIgnoreCase),
+                    IsCancelling: snap.IsCancelling);
+            }
+        }
 
         public static DiagnosticsCoreStatus GetStatus()
         {
@@ -176,7 +220,7 @@ namespace Silica.DiagnosticsCore
                     TagKeys.Tenant, TagKeys.Status, TagKeys.Exception, TagKeys.Shard,
                     TagKeys.Thread, TagKeys.Concurrency, TagKeys.DropCause,
                     TagKeys.Region, TagKeys.WidgetId, TagKeys.Policy,
-                    TagKeys.Sink, TagKeys.Field
+                    TagKeys.Sink, TagKeys.Field, TagKeys.Metric
                 };
 
                 var registry = new MetricRegistry();
@@ -196,8 +240,9 @@ namespace Silica.DiagnosticsCore
                 // Choose inner metrics manager (pass validator explicitly, no reflection)
                 effectiveInner =
                         options.EnableMetrics
-                            ? (innerMetrics ?? new MetricsManager(registry, meterName: "Silica.DiagnosticsCore"))
+                            ? (innerMetrics ?? new MetricsManager(registry, meterName: "Silica.DiagnosticsCore", metricTagValidator: tagValidator))
                             : new NoOpMetricsManager();
+
 
                 var ownManager = options.EnableMetrics && innerMetrics is null;
 
@@ -260,6 +305,16 @@ namespace Silica.DiagnosticsCore
 
                     if (options.CaptureExceptions != DiagnosticsOptions.Defaults.CaptureExceptions)
                         ignoredFieldsForTrace.Add("CaptureExceptions");
+                    // ConsoleSinkJson is not implemented by ConsoleTraceSink; surface as ignored.
+                    if (options.ConsoleSinkJson)
+                    {
+                        metrics.Increment(
+                            DiagCoreMetrics.IgnoredConfigFieldSet.Name, 1,
+                            new KeyValuePair<string, object>(TagKeys.Field, "ConsoleSinkJson"));
+
+                        // Also emit a one-time warn trace later via ignoredFieldsForTrace
+                        ignoredFieldsForTrace.Add("ConsoleSinkJson");
+                    }
 
                 }
 
@@ -276,7 +331,8 @@ namespace Silica.DiagnosticsCore
                     metrics,
                     options.DispatcherQueueCapacity,
                     options.ShutdownTimeoutMs,
-                    registerGauges: registerInfraGauges && options.EnableMetrics);
+                    registerGauges: registerInfraGauges && options.EnableMetrics,
+                    enforceRedaction: options.RequireTraceRedaction);
 
                 var redactor = new DefaultTraceRedactor(
                     options.SensitiveTagKeysReadonly,
@@ -284,7 +340,9 @@ namespace Silica.DiagnosticsCore
                     redactMessage: options.RedactTraceMessage,
                     redactExceptionMessage: options.RedactExceptionMessage,
                     redactExceptionStack: options.RedactExceptionStack,
-                    maxExceptionStackFrames: options.MaxExceptionStackFrames);
+                    maxExceptionStackFrames: options.MaxExceptionStackFrames,
+                    maxInnerExceptionDepth: options.MaxInnerExceptionDepth,
+                    maxMessageLength: options.MaxTraceMessageLength);
 
                 var defaultComponent = string.IsNullOrWhiteSpace(options.DefaultComponent)
                     ? "unknown"
@@ -295,12 +353,6 @@ namespace Silica.DiagnosticsCore
                     options.MaxTagsPerEvent,
                     options.MaxTagValueLength,
                     onTagDropCount: null);
-                if (options.EnableMetrics)
-                {
-                    traceTagValidator.SetCallbacks(
-                        onTagRejectedCount: c => { if (c > 0) metrics.Increment(DiagCoreMetrics.TraceTagsDropped.Name, c); },
-                        onTagTruncatedCount: c => { if (c > 0) metrics.Increment(DiagCoreMetrics.TraceTagsTruncated.Name, c); });
-                }
 
                 // Always allow currently-set global keys and any governed global keys
                 traceTagValidator.AddAllowedKeys(options.GlobalTags?.Keys ?? Array.Empty<string>());
@@ -357,32 +409,46 @@ namespace Silica.DiagnosticsCore
                 {
                     try
                     {
-                        
-#if DEBUG
-                        dispatcher.RegisterSink(new LoggingTraceSink(options.MinimumLevel), options.DispatcherFullMode);
-#else
-                        // In release, avoid registering potentially blocking listeners
-                        metrics?.Increment(DiagCoreMetrics.IgnoredConfigFieldSet.Name, 1,
-                            new KeyValuePair<string, object>(TagKeys.Field, "EnableLogging_may_block_trace_listeners"));
+                        // Map Console drop policy and wire sink with formatting/config knobs
+                        var dp = options.ConsoleSinkDropPolicy switch
+                        {
+                            DiagnosticsOptions.ConsoleDropPolicy.DropOldest => ConsoleTraceSink.DropPolicy.DropOldest,
+                            DiagnosticsOptions.ConsoleDropPolicy.BlockWithTimeout => ConsoleTraceSink.DropPolicy.BlockWithTimeout,
+                            _ => ConsoleTraceSink.DropPolicy.DropNewest
+                        };
+                        var sink =
+                            new ConsoleTraceSink(
+                                options.MinimumLevel,
+                                metrics,
+                                dropPolicy: dp,
+                                blockTimeout: TimeSpan.FromMilliseconds(10),
+                                queueCapacity: options.DispatcherQueueCapacity,
+                                shutdownDrainTimeoutMs: (options as DiagnosticsOptions.ISinkShutdownDrainTimeoutConfig)?.SinkShutdownDrainTimeoutMs)
+                            .WithFormatting(
+                                includeTags: options.ConsoleSinkIncludeTags,
+                                includeException: options.ConsoleSinkIncludeException
+                                );
+                        dispatcher.RegisterSink(sink, options.DispatcherFullMode);
+                        // Emit a sink registration trace for operator visibility (parity with bounded sink)
                         try
                         {
-                            var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                            var tagsReg = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                             {
-                                { TagKeys.Field, "EnableLogging_may_block_trace_listeners" }
+                                { TagKeys.Sink, nameof(ConsoleTraceSink) },
+                                { TagKeys.Policy, (options.DispatcherFullMode == BoundedChannelFullMode.Wait
+                                    ? BoundedChannelFullMode.DropWrite
+                                    : options.DispatcherFullMode).ToString().ToLowerInvariant() }
                             };
-                            traceMgr.Emit(TraceCategory.Observability, "bootstrap", "warn", tags,
-                                "LoggingTraceSink disabled in Release to avoid blocking.");
+                            traceMgr.Emit(TraceCategory.Observability, "dispatcher", "info", tagsReg, "sink_registered");
                         }
                         catch { /* never fail startup on diagnostics emission */ }
-
-#endif
                     }
                     catch (Exception)
                     {
                         // Surface sink init failure
                         metrics?.Increment(DiagCoreMetrics.TracesDropped.Name, 1,
                             new KeyValuePair<string, object>(TagKeys.DropCause, DropCauses.SinkInitFailed),
-                            new KeyValuePair<string, object>(TagKeys.Sink, "LoggingTraceSink"));
+                            new KeyValuePair<string, object>(TagKeys.Sink, "ConsoleTraceSink"));
                     }
 
                 }
@@ -391,7 +457,10 @@ namespace Silica.DiagnosticsCore
                 var bounded = new BoundedInMemoryTraceSink(
                     options.MaxTraceBuffer,
                     metrics,
-                    registerGauges: registerInfraGauges && options.EnableMetrics);
+                    registerGauges: registerInfraGauges && options.EnableMetrics
+                    // Keep default append-only policy; opt-in rolling window by setting evictOldestOnOverflow: true
+                    // evictOldestOnOverflow: true
+                    );
 
                 dispatcher.RegisterSink(bounded, options.DispatcherFullMode);
                 // Emit a sink registration trace for operator visibility
@@ -467,19 +536,23 @@ namespace Silica.DiagnosticsCore
                 catch { /* never fail startup on diagnostics emission */ }
 
                 // Register an observable gauge for start time (Unix seconds) for dashboards
-                try
+                // Only when metrics are enabled and we own the meter to avoid re-registration conflicts.
+                if (options.EnableMetrics && ownManager)
                 {
-                    var startSeconds = startedAt.ToUnixTimeSeconds();
-                    var def = new Silica.DiagnosticsCore.Metrics.MetricDefinition(
-                        Name: "diagcore.bootstrap.started_at_unix_seconds",
-                        Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
-                        Description: "UTC start time of DiagnosticsCore as Unix seconds",
-                        Unit: "s",
-                        DefaultTags: Array.Empty<KeyValuePair<string, object>>(),
-                        DoubleCallback: () => new[] { new Measurement<double>(startSeconds) });
-                    metrics.Register(def);
+                    try
+                    {
+                        var startSeconds = startedAt.ToUnixTimeSeconds();
+                        var def = new Silica.DiagnosticsCore.Metrics.MetricDefinition(
+                            Name: "diagcore.bootstrap.started_at_unix_seconds",
+                            Type: Silica.DiagnosticsCore.Metrics.MetricType.ObservableGauge,
+                            Description: "UTC start time of DiagnosticsCore as Unix seconds",
+                            Unit: "s",
+                            DefaultTags: Array.Empty<KeyValuePair<string, object>>(),
+                            DoubleCallback: () => new[] { new Measurement<double>(startSeconds) });
+                        metrics.Register(def);
+                    }
+                    catch { /* swallow exporter/registration errors */ }
                 }
-                catch { /* swallow exporter/registration errors */ }
 
                 return _current;
             }
@@ -554,20 +627,10 @@ namespace Silica.DiagnosticsCore
                 // 4. Dispose metrics last
                 SafeDispose("MetricsFacade", instance.Metrics);
 
-                // 5. Throw to inform caller if any dispose errors
-                try
-                {
-                    var status = disposeErrors is { Count: > 0 } ? "partial" : "clean";
-                    var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                    {
-                        { TagKeys.Field, "shutdown_complete" },
-                        { TagKeys.Policy, instance.Options.DispatcherFullMode.ToString().ToLowerInvariant() },
-                        { TagKeys.Status, status }
-                    };
-                    instance.Traces?.Emit(TraceCategory.Observability, "bootstrap", "info", tags,
-                        $"errors={(disposeErrors?.Count ?? 0)}");
-                }
-                catch { /* swallow */ }
+                // 5. Final note:
+                // Avoid emitting traces after dispatcher/metrics teardown — they cannot be delivered.
+                // Shutdown quality is surfaced via metrics (diagcore.bootstrap.dispose_errors) and pump backlog metrics.
+
 
                 if (disposeErrors is { Count: > 0 } && throwOnErrors)
                     throw new AggregateException("One or more errors occurred during DiagnosticsCore shutdown.", disposeErrors);
