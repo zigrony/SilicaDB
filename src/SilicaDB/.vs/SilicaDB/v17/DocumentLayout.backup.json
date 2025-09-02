@@ -3,13 +3,19 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\tracedispatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\primitives\\asyncrangelatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\sinks\\filetracesink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\pagewritelease.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\sinks\\consoletracesink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\pagereadlease.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\frame.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\bufferpoolmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,49 +25,75 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "AsyncRangeLatch.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Primitives\\AsyncRangeLatch.cs",
+              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\Primitives\\AsyncRangeLatch.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Primitives\\AsyncRangeLatch.cs",
+              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\Primitives\\AsyncRangeLatch.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-02T12:34:13.864Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PageWriteLease.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
+              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
+              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAbAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-02T12:34:04.353Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "FileTraceSink.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
-              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs*",
-              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs*",
-              "ViewState": "AgIAAB4CAAAAAAAAAAAtwDcCAABmAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-25T20:14:30.451Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "ConsoleTraceSink.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\ConsoleTraceSink.cs",
-              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\ConsoleTraceSink.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\ConsoleTraceSink.cs*",
-              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\ConsoleTraceSink.cs*",
-              "ViewState": "AgIAALMBAAAAAAAAAAAtwMwBAABmAAAAAAAAAA==",
+              "Title": "PageReadLease.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
+              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
+              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-25T20:13:27.081Z",
+              "WhenOpened": "2025-09-02T12:33:55.523Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "TraceDispatcher.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
-              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs*",
-              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\TraceDispatcher.cs*",
-              "ViewState": "AgIAAKUAAAAAAAAAAADgv78AAABjAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "Frame.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Frame.cs",
+              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\Frame.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\Frame.cs",
+              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\Frame.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-25T20:12:03.883Z",
+              "WhenOpened": "2025-09-02T12:33:39.42Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "BufferPoolManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
+              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-02T12:33:38.295Z",
               "EditorCaption": ""
             }
           ]

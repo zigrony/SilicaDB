@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -18,6 +22,11 @@ namespace Silica.Evictions
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvicted;
         private bool _disposed;
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
+
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
@@ -40,6 +49,23 @@ namespace Silica.Evictions
             _capacity = capacity;
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _onEvicted = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow */ }
+
         }
 
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
@@ -70,21 +96,28 @@ namespace Silica.Evictions
                         _buckets[newFreq] = list;
                     }
                     list.AddLast(key);
-
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return val;
                 }
                 hit = false;
             }
 
             // miss → build
+            var swFactory = Stopwatch.StartNew();
             val = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
             newFreq = 1;
 
             List<(TKey, TValue)> evicted = null;
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 if (_map.ContainsKey(key))
+                {
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return _map[key].Value;
+                }
 
                 // insert at freq=1 bucket
                 _map[key] = (val, 1);
@@ -98,17 +131,32 @@ namespace Silica.Evictions
 
                 if (Volatile.Read(ref _count) > _capacity)
                 {
-                    // evict lowest-frequency, oldest in that bucket
-                    var lowest = _buckets.First();
-                    var oldestKey = lowest.Value.First.Value;
-                    lowest.Value.RemoveFirst();
-                    if (lowest.Value.Count == 0)
-                        _buckets.Remove(lowest.Key);
+                    // Evict lowest-frequency, oldest in that bucket (no LINQ)
+                    int lowestFreq = 0;
+                    LinkedList<TKey>? lowestList = null;
+                    using (var enumerator = _buckets.GetEnumerator())
+                    {
+                        if (enumerator.MoveNext())
+                        {
+                            var kvp = enumerator.Current;
+                            lowestFreq = kvp.Key;
+                            lowestList = kvp.Value;
+                        }
+                    }
+                    if (lowestList is not null && lowestList.First is not null)
+                    {
+                        var oldestKey = lowestList.First.Value;
+                        lowestList.RemoveFirst();
+                        if (lowestList.Count == 0)
+                            _buckets.Remove(lowestFreq);
 
-                    var removedVal = _map[oldestKey].Value;
-                    _map.Remove(oldestKey);
-                    Interlocked.Decrement(ref _count);
-                    evicted = new List<(TKey, TValue)> { (oldestKey, removedVal) };
+                        var removedVal = _map[oldestKey].Value;
+                        _map.Remove(oldestKey);
+                        Interlocked.Decrement(ref _count);
+                        evicted = new List<(TKey, TValue)> { (oldestKey, removedVal) };
+                        // LFU policy eviction
+                        try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Lfu); } catch { }
+                    }
                 }
             }
 

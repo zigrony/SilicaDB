@@ -26,6 +26,16 @@
           "bin/placeholder/Silica.Concurrency.dll": {}
         }
       },
+      "Silica.DiagnosticsCore/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Silica.DiagnosticsCore.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.DiagnosticsCore.dll": {}
+        }
+      },
       "Silica.Durability/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
@@ -44,7 +54,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
-          "Silica.Observability": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0"
         },
         "compile": {
           "bin/placeholder/Silica.Evictions.dll": {}
@@ -95,6 +105,11 @@
       "type": "project",
       "path": "../Silica.Concurrency/Silica.Concurrency/Silica.Concurrency.csproj",
       "msbuildProject": "../Silica.Concurrency/Silica.Concurrency/Silica.Concurrency.csproj"
+    },
+    "Silica.DiagnosticsCore/1.0.0": {
+      "type": "project",
+      "path": "../Silica.DiagnosticsCore/Silica.DiagnosticsCore/Silica.DiagnosticsCore.csproj",
+      "msbuildProject": "../Silica.DiagnosticsCore/Silica.DiagnosticsCore/Silica.DiagnosticsCore.csproj"
     },
     "Silica.Durability/1.0.0": {
       "type": "project",

@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <title>Silica.DiagnosticsCore API Documentation</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Contract‑first diagnostics for .NET: tracing, metrics, redaction, and pipeline bootstrap. Offline, single‑file HTML with C# and PowerShell examples." />
+
+  <!-- Offline, inline CSS inspired by learn.microsoft.com look and feel -->
+  <style>
+    :root{
+      --bg: #ffffff;
+      --surface: #f6f7f8;
+      --text: #0b0b0c;
+      --muted: #5f6a72;
+      --brand: #2563eb;
+      --brand-ink: #0f172a;
+      --border: #e5e7eb;
+      --code-bg: #0b1020;
+      --code-fg: #e6edf3;
+      --kbd-bg:#f3f4f6;
+    }
+    [data-theme="dark"]{
+      --bg:#0b0f14; --surface:#0f1621; --text:#edf2f7; --muted:#8aa0b3; --brand:#62a0ff;
+      --brand-ink:#eaf2ff; --border:#1f2837; --code-bg:#0b1020; --code-fg:#e6edf3; --kbd-bg:#1f2937;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:400 16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    .app-root{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    @media (max-width: 960px){.app-root{grid-template-columns:1fr}}
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px;position:sticky;top:0;height:100vh;overflow:auto}
+    @media (max-width:960px){.sidebar{position:static;height:auto}}
+    .toc{margin:0 0 16px}
+    .toc ul{list-style:none;padding-left:0;margin:8px 0}
+    .toc li{margin:6px 0}
+    .toc a{color:var(--text);text-decoration:none}
+    .toc a:hover{color:var(--brand)}
+    .search-wrap{display:flex;gap:8px;align-items:center;background:#fff0;border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+    .search-wrap input{border:0;background:transparent;color:var(--text);outline:none;width:100%}
+    .sidebar-footer{display:flex;gap:8px;flex-direction:column;margin-top:16px;color:var(--muted);font-size:13px}
+    .theming-control{border:1px solid var(--border);background:transparent;color:var(--text);padding:6px 10px;border-radius:6px;cursor:pointer}
+    .content{padding:24px 36px}
+    .docs-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:16px}
+    .docs-title{font-size:20px;font-weight:700}
+    .docs-badge{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:999px;color:var(--muted);font-size:12px;margin-left:8px}
+    .docs-section{margin:28px 0}
+    h1,h2,h3{scroll-margin-top:80px}
+    h1{font-size:28px;margin:0 0 8px}
+    h2{font-size:22px;margin:24px 0 8px}
+    h3{font-size:18px;margin:14px 0 8px}
+    p{margin:10px 0;color:var(--text)}
+    blockquote{background:var(--surface);border-left:4px solid var(--brand);margin:12px 0;padding:10px 12px;border-radius:4px}
+    table{border-collapse:collapse;width:100%;margin:8px 0 14px}
+    th,td{border:1px solid var(--border);padding:8px;vertical-align:top}
+    th{background:var(--surface);text-align:left}
+    code,pre,kbd{font-family:ui-monospace,Menlo,Consolas,monospace}
+    pre{background:var(--code-bg);color:var(--code-fg);border-radius:8px;padding:12px;overflow:auto}
+    .code-block-wrap{position:relative}
+    .copy-btn{position:absolute;top:8px;right:8px;border:1px solid #ffffff33;background:#00000022;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer}
+    .tab-nav{display:flex;gap:8px;margin:10px 0}
+    .tab-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:6px 10px;border-radius:6px;cursor:pointer}
+    .tab-btn.active{background:var(--brand);border-color:var(--brand);color:#fff}
+    details{border:1px solid var(--border);border-radius:8px;background:var(--bg);margin:12px 0}
+    summary{list-style:none;padding:10px 12px;cursor:pointer;font-weight:600;border-bottom:1px solid var(--border)}
+    summary::-webkit-details-marker{display:none}
+    details[open] summary{border-bottom:1px solid var(--border)}
+    details > *:not(summary){padding:0 12px 12px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:960px){.two-col{grid-template-columns:1fr}}
+    .note{background:#2563eb10;border:1px solid #2563eb40;border-radius:6px;padding:10px}
+    .kbd{background:var(--kbd-bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;color:var(--muted)}
+    .lead{color:var(--muted)}
+    .badge{display:inline-block;background:var(--brand);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px}
+    .api-metadata{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+	/* Highlight the active nav link */
+	.toc a.active {
+	  background-color: var(--brand);   /* your brand blue */
+	  color: #fff;                      /* white text for contrast */
+	  border-radius: 4px;
+	  padding: 4px 8px;
+	  display: block;                   /* so background fills the link area */
+	}
+    /* TOC: collapsible API group */
+    #toc-list li.toc-group > ul {
+      display: none;                 /* hidden by default */
+      padding-left: 16px;            /* indent children */
+      margin-top: 6px;
+    }
+    #toc-list li.toc-group.open > ul {
+      display: block;
+    }
+    #toc-list li.toc-group > a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #toc-list li.toc-group > a::after {
+      content: "▸";
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: 8px;
+      transition: transform 120ms ease;
+    }
+    #toc-list li.toc-group.open > a::after {
+      content: "▾";
+    }
+    #toc-list li.toc-group > ul a {
+      font-size: 0.95em;             /* slight visual hierarchy */
+    }
+
+	.toc-group nav {
+	  padding-left: 1.25rem; /* indent */
+	  display: flex;
+	  flex-direction: column;
+	}
+	
+.req-badge {
+  background-color: #ffcc00; /* warning yellow */
+  color: #000;
+  font-size: 0.75em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+  /* ===== Section separation & header emphasis ===== */
+  .docs-section {
+    padding-top: 24px;
+    margin-top: 24px;
+    border-top: 1px solid #e0e0e0; /* subtle divider line */
+  }
+
+  .docs-section > h1 {
+    border-bottom: 2px solid var(--muted); /* stronger header underline */
+    padding-bottom: 4px;
+    margin-bottom: 16px;
+	font-size: 2em;
+  }
+
+  .docs-section > h2,
+  .docs-section > h3 {
+    border-bottom: 2px solid var(--muted); /* stronger header underline */
+    padding-bottom: 4px;
+    margin-bottom: 16px;
+  }
+.docs-section details summary {
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.5em; /* space for arrow */
+}
+
+.docs-section details summary::before {
+  content: "▸"; /* right-pointing triangle */
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.docs-section details[open] summary::before {
+  transform: rotate(0deg); /* points down when open */
+}
+
+.docs-section details[open] summary::before {
+  content: "▾"; /* expanded arrow */
+}
+
+  </style>
+</head>
+<body>
+  <div class="app-root">
+    <aside class="sidebar" aria-label="Main sidebar navigation">
+      <nav class="toc" role="navigation">
+        <form class="search-wrap" id="search-form" role="search" aria-label="Search documentation">
+          <span class="search-icon">🔎</span>
+          <input type="search" id="search-input" autocomplete="off" placeholder="Search types, members, tags..." />
+        </form>
+        <ul id="toc-list">
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#quickstart">Quickstart</a></li>
+          <li><a href="#concepts">Core concepts</a></li>
+          <li id="toc-api" class="toc-group"><a href="#api">API reference</a>
+            <ul>
+              <li><a href="#api-diagnosticscorebootstrap">DiagnosticsCoreBootstrap</a></li>
+              <li><a href="#api-diagnosticsoptions">DiagnosticsOptions</a></li>
+              <li><a href="#api-tracemanager">TraceManager</a></li>
+              <li><a href="#api-traceevent">TraceEvent</a></li>
+              <li><a href="#api-tracedispatcher">TraceDispatcher</a></li>
+              <li><a href="#api-sinks">Sinks</a></li>
+              <li><a href="#api-metricsfacade">MetricsFacade</a></li>
+              <li><a href="#api-imetricsmanager">IMetricsManager + MetricsManager</a></li>
+              <li><a href="#api-metricdefinition">MetricDefinition + MetricRegistry</a></li>
+              <li><a href="#api-tagvalidator">TagValidator + TagKeys + DropCauses</a></li>
+              <li><a href="#api-redaction">DefaultTraceRedactor + CompositeTraceRedactor</a></li>
+              <li><a href="#api-instrumentation">Instrumentation (TimingScope, LockScope)</a></li>
+              <li><a href="#api-extensions">Extensions (EvictionMetrics, StorageMetrics)</a></li>
+            </ul>
+          </li>
+          <li><a href="#signals">Operator signals</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <span>&copy; 2025 Silica.DiagnosticsCore</span>
+        <button class="theming-control" id="toggle-theme" aria-label="Toggle theme" title="Toggle theme">☀️ Theme</button>
+        <span class="lead">Observability‑as‑code</span>
+      </div>
+    </aside>
+
+    <main class="content" id="docs-main">
+      <header class="docs-header">
+        <div>
+          <span class="docs-title">Silica.DiagnosticsCore</span>
+          <span class="docs-badge">v1.0</span>
+        </div>
+      </header>
+
+
+<!-- Overview -->
+<section id="overview" class="docs-section">
+  <h1>Overview</h1>
+  <p class="lead">
+    <strong>Silica.DiagnosticsCore</strong> is a contract-first diagnostics library for .NET. It gives you precise, low‑cardinality
+    tracing, metrics, and redaction with a production-safe bootstrap — no frameworks required.
+  </p>
+  <blockquote>
+    <b>Mission:</b> turn observability into a first‑class engineering artifact that’s easy to run, easy to audit, and hard to misuse.
+  </blockquote>
+
+<section id="why-silica-diagnosticscore" class="docs-section">
+  <h2>Why Silica.DiagnosticsCore?</h2>
+  <p>
+    <strong>Silica.DiagnosticsCore</strong> is more than just another logging or metrics library — 
+    it’s a <em>diagnostics foundation</em> designed for production‑grade systems where 
+    correctness, observability, and maintainability are non‑negotiable.
+  </p>
+
+  <h3>Purpose‑Built for Enterprise Readiness</h3>
+<ul>
+  <li>
+    <strong>Contract‑First Design</strong> — Every public API is explicitly defined, versioned, and documented before implementation. 
+    This means:
+    <ul>
+      <li>Predictable behavior across releases — no “surprise” changes in method signatures or semantics.</li>
+      <li>Clear upgrade paths — deprecations are announced and documented, not silently broken.</li>
+      <li>Dual‑language parity — every API is documented with both C# and PowerShell examples, so mixed‑skill teams can adopt it without friction.</li>
+    </ul>
+  </li>
+
+  <li>
+    <strong>Concurrency‑Safe</strong> — Designed for correctness under load from day one:
+    <ul>
+      <li>Strict <em>lock‑ordering discipline</em> to prevent deadlocks.</li>
+      <li>Atomic operations for counters, gauges, and state transitions.</li>
+      <li>Async‑safe patterns — no hidden thread‑affinity bugs or race conditions when using <code>async/await</code>.</li>
+      <li>Tested under simulated high‑concurrency workloads to validate behavior before release.</li>
+    </ul>
+  </li>
+
+  <li>
+    <strong>Operational Visibility</strong> — Goes beyond “write a message to a file” by unifying three complementary observability pillars:
+    <ul>
+      <li>
+        <strong>Logs</strong> — Timestamped, structured records of discrete events.  
+        Example:  
+        <pre><code>{"timestamp":"2025-08-31T22:15:00Z","level":"Error","event":"OrderFailed","orderId":1234,"reason":"PaymentDeclined"}</code></pre>
+        Logs are best for <em>what happened</em> and <em>why</em> — they capture context and detail for troubleshooting.
+      </li>
+      <li>
+        <strong>Metrics</strong> — Numeric measurements over time, optimized for aggregation and alerting.  
+        Example:  
+        <pre><code>orders_processed_total{status="success"} 1523</code></pre>
+        Metrics are best for <em>how the system is performing</em> — they power dashboards and SLO/SLA monitoring.
+      </li>
+      <li>
+        <strong>Traces</strong> — End‑to‑end records of a single request or operation as it flows through the system, broken into spans.  
+        Example:  
+        <pre><code>TraceId=abc123  [Start: OrderProcessing] -> [ValidatePayment] -> [ReserveInventory] -> [ShipOrder]</code></pre>
+        Traces are best for <em>where time is spent</em> and <em>how components interact</em> — they reveal bottlenecks and dependencies.
+      </li>
+    </ul>
+    In Silica.DiagnosticsCore, these three are <em>correlated</em> automatically — a log entry can be tied to the trace it occurred in, and metrics can be tagged with the same operation context.
+  </li>
+</ul>
+
+  <h3>Why Not Just Use a Generic Logger?</h3>
+  <p>
+    Generic logging frameworks stop at “write a message somewhere.” 
+    <strong>Silica.DiagnosticsCore</strong> goes further:
+  </p>
+  <ul>
+    <li><strong>Unified Diagnostics Layer</strong> — Logging, metrics, and tracing share a common configuration and lifecycle.</li>
+    <li><strong>Dual‑Language Examples</strong> — Every method is documented with both C# and PowerShell usage, lowering the barrier for mixed‑skill teams.</li>
+    <li><strong>Offline‑Ready Documentation</strong> — Ships with a self‑contained, searchable docs portal for air‑gapped environments.</li>
+  </ul>
+
+  <h3>Example: Tracing a Critical Operation</h3>
+  <pre><code class="language-csharp">
+// C#
+using var trace = TraceManager.Start("OrderProcessing");
+trace.AddTag("OrderId", order.Id);
+trace.LogInfo("Validating order");
+...
+trace.LogInfo("Order processed successfully");
+  </code></pre>
+
+  <pre><code class="language-powershell">
+# PowerShell
+$trace = [Silica.DiagnosticsCore.TraceManager]::Start("OrderProcessing")
+$trace.AddTag("OrderId", $order.Id)
+$trace.LogInfo("Validating order")
+...
+$trace.LogInfo("Order processed successfully")
+$trace.Dispose()
+  </code></pre>
+
+  <p>
+    In both cases, logs, metrics, and trace spans are automatically correlated — 
+    no manual context‑plumbing required.
+  </p>
+
+  <h3>When You Should Choose Silica.DiagnosticsCore</h3>
+  <ul>
+    <li>You need <strong>consistent diagnostics</strong> across C# services and PowerShell automation.</li>
+    <li>You operate in <strong>regulated or high‑reliability environments</strong> where every event must be traceable.</li>
+    <li>You want <strong>future‑proof observability</strong> without rewriting your instrumentation when requirements change.</li>
+  </ul>
+</section>
+
+  <h2>What are metrics and tracing?</h2>
+  <p><b>Metrics</b> are the numbers that tell you how your system is behaving over time — like a health chart for your application.
+    They capture counts, rates, and measurements such as request throughput, error rates, or average response times.
+    Metrics are aggregated and ideal for dashboards, alerts, and long‑term trend analysis.</p>
+  <p><b>Tracing</b> is the story of what happened inside your system. Each trace event is like a postcard from a specific moment in your code:
+    “User checked out an order,” “Payment API call failed,” “Cache miss for key X.” Traces can be linked together with correlation IDs
+    to follow a request’s journey across services, making it easier to debug and understand complex flows.</p>
+
+  <h2>How Silica.DiagnosticsCore handles them</h2>
+  <ul>
+    <li><b>Contract‑first design:</b> Every metric and trace tag has a defined schema to prevent drift and keep dashboards clean.</li>
+    <li><b>Low‑cardinality enforcement:</b> Tag validators ensure you don’t accidentally explode monitoring costs with unbounded label values.</li>
+    <li><b>Deterministic sampling:</b> Traces are sampled in a stable, correlation‑ID‑based way so you can follow a request across services without gaps.</li>
+    <li><b>Redaction boundary:</b> Sensitive data is masked before it leaves your process, and the dispatcher can enforce that only sanitized events are emitted.</li>
+    <li><b>Production‑safe bootstrap:</b> The <code>DiagnosticsCoreBootstrap</code> starts everything in a known‑good state, pre‑registers common metrics, and guards against misconfiguration.</li>
+  </ul>
+
+  <h2>Real‑world usage</h2>
+  <ul>
+    <li><b>E‑commerce checkout:</b> Metrics track orders per minute, payment gateway latency, and cart abandonment rate. Traces capture each step of the checkout flow, with correlation IDs linking web, payment, and inventory services.</li>
+    <li><b>API service:</b> Metrics measure request throughput, error counts, and p95 latency. Traces log incoming requests, downstream calls, and exceptions, making it easy to debug slow or failing endpoints.</li>
+    <li><b>Background jobs:</b> Metrics count jobs processed, failures, and average processing time. Traces record each job’s lifecycle, including retries and external resource calls.</li>
+    <li><b>On‑call operations:</b> When an alert fires, metrics show the scope and trend of the problem, while traces pinpoint the exact failing operation and its context.</li>
+  </ul>
+
+  <h2>Why it matters</h2>
+  <p><b>For a layperson:</b> Metrics are your system’s health chart; tracing is its diary. Together, they let you see both the big picture and the fine details, so you can keep things running smoothly and fix problems fast.</p>
+  <p><b>For a developer:</b> Silica.DiagnosticsCore gives you a disciplined, low‑friction way to instrument your code. You get strong contracts, safe defaults, and operational visibility without bolting on a heavy framework — and without leaving room for silent failures or runaway cardinality.</p>
+
+</section>
+
+      <!-- Quickstart -->
+      <section id="quickstart" class="docs-section">
+<h2 id="quickstart">
+  QuickStart
+  <span class="req-badge" title="Runtime requirements">
+    ⚠ Requires PowerShell&nbsp;7.4+, .NET&nbsp;8.0+, Windows/macOS/Linux
+  </span>
+</h2>
+<section id="requirements" class="docs-subsection">
+  <h3>Requirements</h3>
+  <ul>
+    <li><strong>PowerShell&nbsp;7.4+</strong> — required for .NET&nbsp;8.0 assemblies. Windows PowerShell&nbsp;5.1 is not supported.</li>
+    <li><strong>.NET&nbsp;8.0 Runtime</strong> — included with PowerShell&nbsp;7.4+, or install separately from <a href="https://dotnet.microsoft.com/en-us/download/dotnet/8.0" target="_blank" rel="noopener">Microsoft .NET downloads</a>.</li>
+    <li><strong>Supported OS:</strong> Windows&nbsp;10/11, macOS&nbsp;11+, and modern Linux distributions (Ubuntu&nbsp;20.04+, Debian&nbsp;11+, Fedora&nbsp;36+, etc.).</li>
+  </ul>
+
+  <h4>Check Your PowerShell Version</h4>
+  <pre><code>$PSVersionTable.PSVersion</code></pre>
+  <p>If the <code>Major</code> number is less than <code>7</code>, upgrade using the official guide:</p>
+  <p>
+    <a href="https://learn.microsoft.com/powershell/scripting/install/installing-powershell" target="_blank" rel="noopener">
+      Installing PowerShell — Microsoft Docs
+    </a>
+  </p>
+
+  <h4>Windows Quick Install</h4>
+  <pre><code>winget install --id Microsoft.Powershell --source winget</code></pre>
+</section>
+
+
+        <p>Start the diagnostics pipeline, emit a metric and a trace, then shut down cleanly.</p>
+        <details>
+          <summary>Quickstart (C#)</summary>
+          <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">using System;
+using System.Collections.Generic;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+
+// 1) Configure and freeze
+var options = new DiagnosticsOptions
+{
+    EnableTracing = true,
+    EnableMetrics = true,
+    EnableLogging = true,      // ConsoleTraceSink
+    MinimumLevel = "info",
+    GlobalTags = new Dictionary&lt;string,string&gt;(StringComparer.OrdinalIgnoreCase)
+    {
+        { TagKeys.Component, "SampleApp" },
+        { TagKeys.Region, "us-east-1" }
+    }
+}.Freeze();
+
+// 2) Start
+var core = DiagnosticsCoreBootstrap.Start(options);
+
+// 3) Register a metric and emit
+var req = new MetricDefinition("app.requests_total", MetricType.Counter, "Total requests", "count", Array.Empty&lt;KeyValuePair&lt;string,object&gt;&gt;());
+core.Metrics.Register(req);
+core.Metrics.Increment("app.requests_total", 1,
+    new KeyValuePair&lt;string,object&gt;(TagKeys.Operation, "login"));
+
+// 4) Emit a trace
+core.Traces.Emit("Web", "Login", "info", new Dictionary&lt;string,string&gt; { { "route", "/login" } }, "login started");
+
+// 5) Stop gracefully
+DiagnosticsCoreBootstrap.Stop();</code></pre>
+        </details>
+        <details>
+          <summary>Quickstart (PowerShell)</summary>
+          <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-powershell"># Load your assembly if not package-referenced by the host
+Add-Type -Path ".\bin\Silica.DiagnosticsCore.dll"
+
+# 1) Configure
+$options = [Silica.DiagnosticsCore.DiagnosticsOptions]::new()
+$options.EnableTracing = $true
+$options.EnableMetrics = $true
+$options.EnableLogging = $true
+$options.MinimumLevel = "info"
+$options.GlobalTags = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$options.GlobalTags.Add([Silica.DiagnosticsCore.Metrics.TagKeys]::Component, "SampleApp")
+$options = $options.Freeze()
+
+# 2) Start
+$inst = [Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::Start($options)
+
+# 3) Register a metric and emit
+$md = [Silica.DiagnosticsCore.Metrics.MetricDefinition]::new(
+  "app.requests_total",
+  [Silica.DiagnosticsCore.Metrics.MetricType]::Counter,
+  "Total requests", "count",
+  [System.Array]::Empty([System.Collections.Generic.KeyValuePair[string,object]]))
+
+$inst.Metrics.Register($md)
+$inst.Metrics.Increment("app.requests_total", 1)
+
+# 4) Emit a trace
+$tags = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$tags.Add("route","/login")
+$inst.Traces.Emit("Web","Login","info",$tags,"login started")
+
+# 5) Stop
+[Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::Stop()</code></pre>
+        </details>
+      </section>
+
+      <!-- Concepts -->
+      <section id="concepts" class="docs-section">
+        <h2>Core concepts</h2>
+        <div class="two-col">
+          <div>
+            <h3>Immutable configuration</h3>
+            <p><b>Layman:</b> like a flight plan: you agree once, then fly it. <br/><b>Developer:</b> configure
+              <code>DiagnosticsOptions</code>, call <code>Freeze()</code> to normalize+lock, and compare fingerprints for drift.</p>
+          </div>
+          <div>
+            <h3>Contract‑first tags</h3>
+            <p><b>Layman:</b> labels that stay neat and predictable. <br/><b>Developer:</b> <code>TagValidator</code> enforces allowed keys,
+              max count, and length; <code>TagKeys</code> gives canonical names; violations are dropped with metrics.</p>
+          </div>
+          <div>
+            <h3>Deterministic sampling</h3>
+            <p><b>Layman:</b> we keep just enough events to see the story. <br/><b>Developer:</b> SplitMix64 hash on correlationId ensures stable sampling across services.</p>
+          </div>
+          <div>
+            <h3>Redaction boundary</h3>
+            <p><b>Layman:</b> sensitive bits are masked before they leave home. <br/><b>Developer:</b> <code>DefaultTraceRedactor</code> masks tags, message, exception data; dispatcher can require <i>sanitized</i> events.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- API Reference -->
+      <section id="api" class="docs-section">
+        <h2>API reference</h2>
+
+        <!-- DiagnosticsCoreBootstrap -->
+        <details id="api-diagnosticscorebootstrap">
+          <summary>DiagnosticsCoreBootstrap</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore</span>
+            <span class="pill">Type: static class</span>
+          </div>
+          <p><b>Summary:</b> Idempotent lifecycle for the diagnostics pipeline. Wires metrics, tracing, sinks, and governance.</p>
+          <p><b>Remarks (layman):</b> Think of this as the “on/off” switch for your observability system. Start once, reuse everywhere, then stop when the app shuts down.</p>
+          <p><b>Remarks (developer):</b> <code>Start</code> requires frozen <code>DiagnosticsOptions</code>. A stable fingerprint prevents accidental restarts; <code>Restart</code> swaps only when configuration changes. Health/status calls are thread‑safe.</p>
+          <table>
+            <thead><tr><th>Member</th><th>Signature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Start</td><td>BootstrapInstance Start(DiagnosticsOptions options, IMetricsManager? inner = null)</td><td>Initialize and freeze config, wire metrics + tracers + sinks. Returns a live instance.</td></tr>
+              <tr><td>TryStart</td><td>bool TryStart(DiagnosticsOptions options, out BootstrapInstance? instance, IMetricsManager? inner = null)</td><td>Start if not already running; returns false and current instance otherwise.</td></tr>
+              <tr><td>Restart</td><td>BootstrapInstance Restart(DiagnosticsOptions options, IMetricsManager? inner = null)</td><td>Stop and start only if fingerprints differ.</td></tr>
+              <tr><td>Stop</td><td>void Stop(bool throwOnErrors = true)</td><td>Graceful shutdown; surfaces backlog metrics.</td></tr>
+              <tr><td>GetStatus</td><td>DiagnosticsCoreStatus GetStatus()</td><td>Static snapshot of flags, fingerprint, tags, and policy.</td></tr>
+              <tr><td>GetHealth</td><td>DiagnosticsHealth GetHealth()</td><td>Runtime counters: sinks, pumps, queue depths, cancellation flag.</td></tr>
+              <tr><td>Instance</td><td>BootstrapInstance Instance</td><td>Current singleton instance; throws if not started.</td></tr>
+            </tbody>
+          </table>
+          <details>
+            <summary>Examples (C# / PowerShell)</summary>
+            <div class="tab-nav">
+              <button class="tab-btn active" data-tab="boot-cs">C#</button>
+              <button class="tab-btn" data-tab="boot-ps">PowerShell</button>
+            </div>
+            <div class="tab-content" data-tab="boot-cs">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">// Start with default options (frozen)
+var options = new DiagnosticsOptions { EnableTracing = true, EnableMetrics = true }.Freeze();
+var inst = DiagnosticsCoreBootstrap.Start(options);
+
+// Read health
+var health = DiagnosticsCoreBootstrap.GetHealth();
+Console.WriteLine($"Sinks={health.RegisteredSinks}, Depth={health.TotalQueueDepth}");
+
+// Stop
+DiagnosticsCoreBootstrap.Stop();</code></pre>
+            </div>
+            <div class="tab-content" data-tab="boot-ps" style="display:none">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-powershell">$opts = [Silica.DiagnosticsCore.DiagnosticsOptions]::new()
+$opts.EnableTracing = $true
+$opts.EnableMetrics = $true
+$opts = $opts.Freeze()
+
+$inst = [Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::Start($opts)
+$health = [Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::GetHealth()
+"Depth=$($health.TotalQueueDepth)"
+
+[Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::Stop()</code></pre>
+            </div>
+          </details>
+        </details>
+
+        <!-- DiagnosticsOptions -->
+        <details id="api-diagnosticsoptions">
+          <summary>DiagnosticsOptions</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore</span>
+            <span class="pill">Type: sealed class</span>
+          </div>
+          <p><b>Summary:</b> Canonical configuration for metrics, tracing, sinks, and redaction. Mutable for setup; immutable after <code>Freeze()</code>.</p>
+          <p><b>Remarks (layman):</b> A single sheet of switches and dials your app uses to decide what to capture and how safe to be. Once locked, everyone follows it.</p>
+          <p><b>Remarks (developer):</b> Properties like <code>MinimumLevel</code>, <code>TraceSampleRate</code>, <code>DispatcherQueueCapacity</code>, <code>RequireTraceRedaction</code> and redaction controls (<code>RedactTraceMessage</code>, etc.) normalize on freeze. Fingerprint detects drift.</p>
+          <table>
+            <thead><tr><th>Member</th><th>Type / Signature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Freeze()</td><td>DiagnosticsOptions</td><td>Normalize and validate; lock further mutation.</td></tr>
+              <tr><td>ComputeFingerprint()</td><td>string</td><td>Stable SHA‑256 over effective normalized values.</td></tr>
+              <tr><td>EnableTracing / EnableMetrics / EnableLogging</td><td>bool</td><td>Subsystem toggles (ConsoleTraceSink when logging enabled).</td></tr>
+              <tr><td>MinimumLevel</td><td>string</td><td>Minimum severity for emission. Allowed: <code>trace</code>, <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>, <code>fatal</code> (case‑insensitive).</td></tr>
+              <tr><td>DefaultComponent</td><td>string</td><td>Fallback component name when callers omit one. Normalized to non‑empty during <code>Freeze()</code> (fallback: <code>"unknown"</code>).</td></tr>
+              <tr><td>GlobalTags</td><td>IDictionary&lt;string,string&gt;</td><td>Low‑cardinality tags applied to all metrics/traces; copied to an immutable view on <code>Freeze()</code>.</td></tr>
+              <tr><td>AllowedCustomGlobalTagKeys</td><td>IEnumerable&lt;string&gt;</td><td>Additional allowed global tag keys when <code>StrictGlobalTagKeys</code> is enabled.</td></tr>
+              <tr><td>AllowedCustomMetricTagKeys</td><td>IEnumerable&lt;string&gt;</td><td>Additional allowed keys for metric tags.</td></tr>
+              <tr><td>StrictGlobalTagKeys</td><td>bool</td><td>When true, <code>GlobalTags</code> keys must be in the base set or allow‑listed; otherwise validation fails.</td></tr>
+              <tr><td>StrictMetrics</td><td>bool</td><td>Drop unregistered/invalid metrics with accounting (recommended for production pipelines).</td></tr>
+              <tr><td>MaxTagsPerEvent</td><td>int</td><td>Per‑event tag count limit (includes global tags).</td></tr>
+              <tr><td>MaxTagValueLength</td><td>int</td><td>Max string length for any tag value. Longer values are truncated or rejected with accounting.</td></tr>
+              <tr><td>MaxTraceBuffer</td><td>int</td><td>Capacity of <code>BoundedInMemoryTraceSink</code>. Maps from deprecated <code>InMemoryCapacity</code> if still default.</td></tr>
+              <tr><td>TraceSampleRate</td><td>double?</td><td>Sampling fraction [0.0, 1.0]. <code>null</code> means 1.0. Deterministic by correlationId.</td></tr>
+              <tr><td>DispatcherQueueCapacity</td><td>int</td><td>Per‑sink bounded channel capacity inside <code>TraceDispatcher</code> and sinks.</td></tr>
+              <tr><td>DispatcherFullMode</td><td>BoundedChannelFullMode</td><td>Effective behavior on full queues. <code>Wait</code> is coerced/rejected; <code>DropWrite</code> recommended.</td></tr>
+              <tr><td>SinkShutdownDrainTimeoutMs</td><td>int</td><td>Hint for sink drain on shutdown via <code>ISinkShutdownDrainTimeoutConfig</code>; defaults to 750ms.</td></tr>
+              <tr><td>RequireTraceRedaction</td><td>bool</td><td>When true, dispatcher drops events not marked <i>sanitized</i>. Enforces redaction boundary.</td></tr>
+              <tr><td>RedactTraceMessage</td><td>bool</td><td>Redact <code>TraceEvent.Message</code> to <code>"***"</code>.</td></tr>
+              <tr><td>RedactExceptionMessage</td><td>bool</td><td>Redact exception message (may imply stack loss; accounted).</td></tr>
+              <tr><td>RedactExceptionStack</td><td>bool</td><td>Suppress exception stack content (accounted).</td></tr>
+              <tr><td>MaxExceptionStackFrames</td><td>int</td><td>Cap on preserved stack frames; truncation accounted.</td></tr>
+              <tr><td>MaxInnerExceptionDepth</td><td>int</td><td>How deep to clone inner exception chains in redaction.</td></tr>
+              <tr><td>MaxTraceMessageLength</td><td>int</td><td>Longer messages are truncated; truncation accounted.</td></tr>
+              <tr><td>ShutdownTimeoutMs</td><td>int</td><td>Dispatcher shutdown timeout; backlog accounted if exceeded.</td></tr>
+              <tr><td>ConsoleSinkDropPolicy / IncludeTags / IncludeException</td><td>enum / bool / bool</td><td>Console sink backpressure and formatting toggles. <code>ConsoleSinkJson</code> is ignored and accounted.</td></tr>
+            </tbody>
+          </table>
+          <details>
+            <summary>Examples (C# / PowerShell)</summary>
+            <div class="tab-nav">
+              <button class="tab-btn active" data-tab="opts-cs">C#</button>
+              <button class="tab-btn" data-tab="opts-ps">PowerShell</button>
+            </div>
+            <div class="tab-content" data-tab="opts-cs">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">var opts = new DiagnosticsOptions
+{
+    EnableTracing = true,
+    EnableMetrics = true,
+    EnableLogging = true,
+    MinimumLevel = "warn",
+    TraceSampleRate = 0.5,
+    DispatcherQueueCapacity = 2048,
+    RequireTraceRedaction = true,
+    RedactExceptionMessage = true,
+    MaxExceptionStackFrames = 50,
+    GlobalTags = new Dictionary&lt;string,string&gt;(StringComparer.OrdinalIgnoreCase)
+    {
+        { TagKeys.Component, "Checkout" },
+        { TagKeys.Region, "us-east-1" }
+    },
+    AllowedCustomGlobalTagKeys = new [] { "service", "version" },
+    AllowedCustomMetricTagKeys = new [] { "endpoint", "db" }
+}.Freeze();</code></pre>
+            </div>
+            <div class="tab-content" data-tab="opts-ps" style="display:none">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-powershell">$opts = [Silica.DiagnosticsCore.DiagnosticsOptions]::new()
+$opts.EnableTracing = $true
+$opts.EnableMetrics = $true
+$opts.EnableLogging = $true
+$opts.MinimumLevel = "warn"
+$opts.TraceSampleRate = 0.5
+$opts.DispatcherQueueCapacity = 2048
+$opts.RequireTraceRedaction = $true
+$opts.RedactExceptionMessage = $true
+$opts.MaxExceptionStackFrames = 50
+$tags = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$tags.Add([Silica.DiagnosticsCore.Metrics.TagKeys]::Component, "Checkout")
+$tags.Add([Silica.DiagnosticsCore.Metrics.TagKeys]::Region, "us-east-1")
+$opts.GlobalTags = $tags
+$opts = $opts.Freeze()</code></pre>
+            </div>
+          </details>
+        </details>
+
+        <!-- TraceManager -->
+        <details id="api-tracemanager">
+          <summary>TraceManager</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore.Tracing</span>
+            <span class="pill">Type: sealed class</span>
+          </div>
+          <p><b>Summary:</b> Single entry point for producing traces: build → validate → sample → redact → tag‑validate → dispatch.</p>
+          <p><b>Remarks (layman):</b> This is the microphone. You speak your event (what happened), it ensures it’s safe and useful, then it broadcasts to listeners.</p>
+          <p><b>Remarks (developer):</b> Rejects invalid status/operation/message with precise drop causes; deterministic sampling by correlationId; merges global and per‑event tags; ensures sanitized events (and marks them) before dispatch. Tag validation counts truncations and drops by cause.</p>
+          <table>
+            <thead><tr><th>Member</th><th>Signature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Emit</td><td>void Emit(string component, string operation, string status, IReadOnlyDictionary&lt;string,string&gt;? tags, string message, Exception? ex = null, Guid correlationId = default, Guid spanId = default)</td><td>Emit a trace; invalid inputs are dropped with accounting.</td></tr>
+              <tr><td>Emit</td><td>void Emit(string component, string operation, string status, string message, Exception? ex = null, Guid correlationId = default, Guid spanId = default)</td><td>Overload without tags.</td></tr>
+              <tr><td>EmitIfAllowed</td><td>bool EmitIfAllowed(...)</td><td>Returns false if below min level, sampled out, or disabled.</td></tr>
+              <tr><td>ExecuteWithTrace</td><td>void ExecuteWithTrace(string component, string operation, string status, string message, Action action)</td><td>Runs code; on exception emits “error” trace with exception tag and rethrows.</td></tr>
+              <tr><td>AddAllowedTraceTagKeys</td><td>void AddAllowedTraceTagKeys(IEnumerable&lt;string&gt;)</td><td>Dynamically extend allowed trace tag keys in the validator.</td></tr>
+            </tbody>
+          </table>
+          <details>
+            <summary>Examples (C# / PowerShell)</summary>
+            <div class="tab-nav">
+              <button class="tab-btn active" data-tab="tm-cs">C#</button>
+              <button class="tab-btn" data-tab="tm-ps">PowerShell</button>
+            </div>
+            <div class="tab-content" data-tab="tm-cs">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">var tags = new Dictionary&lt;string,string&gt; { { "route", "/pay" }, { "service", "frontend" } };
+DiagnosticsCoreBootstrap.Instance.Traces.Emit("Web","Checkout","info", tags, "checkout started");
+
+var ok = DiagnosticsCoreBootstrap.Instance.Traces.EmitIfAllowed(
+  "Web","Checkout","debug", null, "diagnostic detail");
+
+DiagnosticsCoreBootstrap.Instance.Traces.ExecuteWithTrace(
+  "Web","Confirm","info","confirming order", () => {
+      // work that might throw
+  });</code></pre>
+            </div>
+            <div class="tab-content" data-tab="tm-ps" style="display:none">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-powershell">$t = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$t.Add("route","/pay")
+[Silica.DiagnosticsCore.DiagnosticsCoreBootstrap]::Instance.Traces.Emit("Web","Checkout","info",$t,"checkout started")</code></pre>
+            </div>
+          </details>
+        </details>
+
+        <!-- TraceEvent -->
+        <details id="api-traceevent">
+          <summary>TraceEvent</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore.Tracing</span>
+            <span class="pill">Type: sealed class (immutable)</span>
+          </div>
+          <p><b>Summary:</b> Immutable data model for a trace event. Includes timestamp, component, operation, status, tags, message, exception, correlation and span IDs.</p>
+          <p><b>Remarks (layman):</b> A single postcard describing what happened. It has a category, a message, optional error info, and some labels.</p>
+          <p><b>Remarks (developer):</b> Built by <code>TraceManager</code>. <code>IsSanitized</code> is set once redaction/validation complete. IDs auto‑generated when empty. Tags are copied to preserve immutability. <code>WithTag</code> returns a new instance with an added/updated tag.</p>
+          <table>
+            <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Timestamp</td><td>DateTimeOffset</td><td>UTC creation time.</td></tr>
+              <tr><td>Component</td><td>string</td><td>Emitting subsystem (e.g., “Storage”, “Web”).</td></tr>
+              <tr><td>Operation</td><td>string</td><td>Logical operation (e.g., “Read”, “Checkout”).</td></tr>
+              <tr><td>Status</td><td>string</td><td>Severity level (trace, debug, info, warn, error, fatal).</td></tr>
+              <tr><td>Tags</td><td>IReadOnlyDictionary&lt;string,string&gt;</td><td>Contextual labels; case‑insensitive keys.</td></tr>
+              <tr><td>Message</td><td>string</td><td>Human‑readable description.</td></tr>
+              <tr><td>Exception</td><td>Exception?</td><td>Optional associated exception.</td></tr>
+              <tr><td>CorrelationId / SpanId</td><td>Guid</td><td>Correlation and span identifiers (auto when empty).</td></tr>
+            </tbody>
+          </table>
+        </details>
+
+        <!-- TraceDispatcher -->
+        <details id="api-tracedispatcher">
+          <summary>TraceDispatcher</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore.Tracing</span>
+            <span class="pill">Type: sealed class</span>
+          </div>
+          <p><b>Summary:</b> Broadcasts sanitized <code>TraceEvent</code>s to multiple sinks via per‑sink bounded queues and pumps.</p>
+          <p><b>Remarks (layman):</b> A traffic controller that sends postcards to all the right mailboxes without blocking the city.</p>
+          <p><b>Remarks (developer):</b> Per‑sink <code>Channel&lt;TraceEvent&gt;</code> with <code>DropWrite</code> policy for observable backpressure; <code>Wait</code> coerced/rejected. Health snapshot aggregates queue depths by sink type. Unregister supports optional draining; <code>Dispose</code> accounts shutdown backlog and cancels pumps.</p>
+          <table>
+            <thead><tr><th>Member</th><th>Signature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>RegisterSink</td><td>void RegisterSink(ITraceSink sink, BoundedChannelFullMode fullMode = DropWrite)</td><td>Idempotent per instance; coerces unsupported modes with accounting.</td></tr>
+              <tr><td>Dispatch</td><td>void Dispatch(TraceEvent evt)</td><td>Dispatches a sanitized event to all sinks; drops if enforcing and unsanitized.</td></tr>
+              <tr><td>UnregisterSink</td><td>bool UnregisterSink(ITraceSink sink, int drainTimeoutMs = 0)</td><td>Completes channel; optionally waits for pump drain; disposes sink safely.</td></tr>
+              <tr><td>GetHealthSnapshot</td><td>HealthSnapshot</td><td>Metrics‑friendly snapshot: sinks, pumps, depth by sink type.</td></tr>
+              <tr><td>Dispose</td><td>void</td><td>Graceful drain then cancellation; backlog recorded.</td></tr>
+            </tbody>
+          </table>
+        </details>
+
+        <!-- Sinks -->
+        <details id="api-sinks">
+          <summary>Sinks</summary>
+          <p><b>Summary:</b> Pluggable outputs for trace events with non‑blocking queues, clear backpressure, and self‑observability.</p>
+          <p><b>ConsoleTraceSink (internal):</b> Async writer to <code>TextWriter</code> (default: Console). Policies: <code>DropNewest</code> (default), <code>BlockWithTimeout</code> (bounded wait). <code>DropOldest</code> coerced to keep drops observable. Self‑metrics count waits, timeouts, write latency, errors, and drops.</p>
+          <p><b>FileTraceSink (internal):</b> Async writer to a file with optional rotation/retention and durable flush (env <code>FILETRACE_DURABLE_WRITES=1</code>). Similar backpressure and metrics as console.</p>
+          <p><b>BoundedInMemoryTraceSink:</b> Append‑only bounded queue for inspection/testing with utilization gauges and drop counters. Optional evict‑oldest mode.</p>
+          <p><b>InMemoryTraceSink:</b> Minimal in‑memory store for unit tests.</p>
+          <details>
+            <summary>Register sinks (C#)</summary>
+            <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">// Typically wired by DiagnosticsCoreBootstrap; custom wiring example:
+var dispatcher = new Silica.DiagnosticsCore.Tracing.TraceDispatcher();
+var mem = new Silica.DiagnosticsCore.Tracing.BoundedInMemoryTraceSink(1024);
+dispatcher.RegisterSink(mem);</code></pre>
+          </details>
+        </details>
+
+        <!-- MetricsFacade -->
+        <details id="api-metricsfacade">
+          <summary>MetricsFacade</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore.Metrics</span>
+            <span class="pill">Type: sealed class</span>
+          </div>
+          <p><b>Summary:</b> Schema‑enforcing, drop‑accounting wrapper around an <code>IMetricsManager</code> with global tag merge and <code>TagValidator</code> enforcement.</p>
+          <p><b>Remarks (layman):</b> A bouncer at the door for your numbers — no fake IDs, clean labels only.</p>
+          <p><b>Remarks (developer):</b> Verifies type (counter/histogram), rejects invalid values (negative counters, NaN/Infinity), accounts drops with <code>diagcore.metrics.dropped</code> and cause tags. In lenient mode, only <code>InMemoryMetricsManager</code> will auto‑register; otherwise it warns and drops to avoid schema drift.</p>
+          <table>
+            <thead><tr><th>Member</th><th>Signature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Register</td><td>void Register(MetricDefinition)</td><td>Ensure valid and stable schema; idempotent.</td></tr>
+              <tr><td>Increment</td><td>void Increment(string name, long value = 1, params KeyValuePair&lt;string,object&gt;[] tags)</td><td>Counter only; negative values rejected.</td></tr>
+              <tr><td>Record</td><td>void Record(string name, double value, params KeyValuePair&lt;string,object&gt;[] tags)</td><td>Histogram/gauge only; rejects NaN/Infinity.</td></tr>
+              <tr><td>AddAllowedTagKeys</td><td>void AddAllowedTagKeys(IEnumerable&lt;string&gt;)</td><td>Extend allowed metric tag keys at runtime.</td></tr>
+            </tbody>
+          </table>
+        </details>
+
+        <!-- IMetricsManager + MetricsManager -->
+        <details id="api-imetricsmanager">
+          <summary>IMetricsManager + MetricsManager</summary>
+          <div class="api-metadata">
+            <span class="pill">Namespace: Silica.DiagnosticsCore.Metrics</span>
+            <span class="pill">Type: interface + sealed class</span>
+          </div>
+          <p><b>Summary:</b> Core metrics abstraction plus the production implementation using <code>System.Diagnostics.Metrics</code>.</p>
+          <p><b>Remarks (layman):</b> The counters and thermometers that measure how your system behaves.</p>
+          <p><b>Remarks (developer):</b> <code>MetricsManager</code> registers instruments (counter/histogram/observable gauge), validates names, and delegates increments/records with optional <code>TagValidator</code>. Unknown metrics are dropped (with accounting) unless you integrate through <code>MetricsFacade</code> in lenient/dev modes.</p>
+          <details>
+            <summary>Examples (C# / PowerShell)</summary>
+            <div class="tab-nav">
+              <button class="tab-btn active" data-tab="mm-cs">C#</button>
+              <button class="tab-btn" data-tab="mm-ps">PowerShell</button>
+            </div>
+            <div class="tab-content" data-tab="mm-cs">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">var registry = new MetricRegistry();
+var manager = new MetricsManager(registry, "Silica.DiagnosticsCore");
+var def = new MetricDefinition("app.latency_ms", MetricType.Histogram, "Latency", "ms", Array.Empty&lt;KeyValuePair&lt;string,object&gt;&gt;());
+manager.Register(def);
+manager.Record("app.latency_ms", 12.3);</code></pre>
+            </div>
+            <div class="tab-content" data-tab="mm-ps" style="display:none">
+              <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-powershell">$reg = [Silica.DiagnosticsCore.Metrics.MetricRegistry]::new()
+$mgr = [Silica.DiagnosticsCore.Metrics.MetricsManager]::new($reg, "Silica.DiagnosticsCore")
+$def = [Silica.DiagnosticsCore.Metrics.MetricDefinition]::new("app.latency_ms",
+  [Silica.DiagnosticsCore.Metrics.MetricType]::Histogram, "Latency","ms",
+  [System.Array]::Empty([System.Collections.Generic.KeyValuePair[string,object]]))
+$mgr.Register($def)
+$mgr.Record("app.latency_ms", 12.3)</code></pre>
+            </div>
+          </details>
+        </details>
+
+        <!-- MetricDefinition + MetricRegistry -->
+        <details id="api-metricdefinition">
+          <summary>MetricDefinition + MetricRegistry</summary>
+          <p><b>Summary:</b> Immutable metric schema and a thread‑safe registry enforcing uniqueness and schema stability.</p>
+          <p><b>Remarks (layman):</b> A name tag and a rulebook for each metric so it never changes shape unexpectedly.</p>
+          <p><b>Remarks (developer):</b> <code>EnsureValid()</code> enforces name charset (<code>[a-z0-9._]</code>), type, unit, default tags, and callback constraints for observable gauges. <code>MetricRegistry</code> prevents schema drift across re‑registration.</p>
+        </details>
+
+        <!-- TagValidator + TagKeys + DropCauses -->
+        <details id="api-tagvalidator">
+          <summary>TagValidator + TagKeys + DropCauses</summary>
+          <p><b>Summary:</b> Governs tag keys, max tag count, string length, and value types; emits precise drop/truncation metrics.</p>
+          <p><b>Remarks (layman):</b> Keeps your labels tidy and short so dashboards remain fast and affordable.</p>
+          <p><b>Remarks (developer):</b> Allowed keys merged from base + configured allow‑lists; per‑cause callbacks map to <code>diagcore.traces.tags_dropped</code> with <code>Field</code> in <code>{ invalid_key, too_many, invalid_type, value_too_long }</code> and <code>diagcore.traces.tags_truncated</code> for length truncations. Other drop causes are enumerated in <code>DropCauses</code> and used throughout the pipeline.</p>
+        </details>
+
+        <!-- Redaction -->
+        <details id="api-redaction">
+          <summary>DefaultTraceRedactor + CompositeTraceRedactor</summary>
+          <p><b>Summary:</b> Mask sensitive tags, optionally redact message and exception data, and emit redaction metrics. Compose redactors to layer rules.</p>
+          <p><b>Remarks (layman):</b> Automatic black tape over anything sensitive before it leaves your app.</p>
+          <p><b>Remarks (developer):</b> Tag masking by key; message/exception redaction replaces content with <code>"***"</code>. Enforces stack frame caps and inner exception depth. Increments <code>diagcore.traces.redacted</code> with fields such as <code>tags</code>, <code>message</code>, <code>exception</code>, <code>message_truncated</code>, <code>exception_stack_truncated</code>, <code>exception_stack_dropped</code>.</p>
+        </details>
+
+        <!-- Instrumentation -->
+        <details id="api-instrumentation">
+          <summary>Instrumentation (TimingScope, LockScope)</summary>
+          <p><b>TimingScope:</b> Disposable scope that measures elapsed duration with idempotent <code>Complete()</code>. High‑res by default.</p>
+          <p><b>LockScope:</b> Records lock‑held duration and invokes completion callbacks safely; idempotent and thread‑aware.</p>
+          <details>
+            <summary>Examples (C#)</summary>
+            <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">using var scope = Silica.DiagnosticsCore.Instrumentation.Timing.Start("Storage","Flush", s =>
+{
+    DiagnosticsCoreBootstrap.Instance.Metrics.Record("storage.flush.latency_ms", s.Elapsed.TotalMilliseconds);
+});
+// do work...
+scope.Complete();</code></pre>
+          </details>
+        </details>
+
+        <!-- Extensions -->
+        <details id="api-extensions">
+          <summary>Extensions (EvictionMetrics, StorageMetrics)</summary>
+          <p><b>Summary:</b> Ready‑to‑use, low‑cardinality metric contracts for caches and storage devices.</p>
+          <p><b>Remarks (layman):</b> Drop‑in counters you can reuse across teams for hits, misses, evictions, I/O, and contention.</p>
+          <p><b>Remarks (developer):</b> Provides <code>RegisterAll</code> helpers to attach default tags and register gauges/counters safely. Emission helpers record counts/durations with schema stability.</p>
+        </details>
+      </section>
+
+      <!-- Operator signals -->
+      <section id="signals" class="docs-section">
+        <h2>Operator signals</h2>
+        <p>Watch these first to understand the pipeline’s health:</p>
+        <ul>
+          <li><code>diagcore.traces.emitted</code> — throughput of dispatched traces.</li>
+          <li><code>diagcore.traces.dropped</code> — all drops with <code>drop_cause</code> (e.g., <code>queue_full</code>, <code>below_minimum_level</code>, <code>sampled</code>, <code>redacted</code>, <code>dispatcher_disposed</code>, <code>shutdown_backlog</code>).</li>
+          <li><code>diagcore.traces.tags_dropped</code>, <code>diagcore.traces.tags_truncated</code> — schema governance for tags.</li>
+          <li><code>diagcore.traces.console_sink.*</code>, <code>diagcore.traces.file_sink.*</code> — per‑sink metrics: queue depth, drops, waits, timeouts, write latency, errors.</li>
+          <li><code>diagcore.metrics.dropped</code> — all metric drops with <code>drop_cause</code> (e.g., <code>unknown_metric_strict</code>, <code>type_mismatch</code>, <code>invalid_value</code>, <code>inner_error</code>).</li>
+          <li><code>diagcore.metrics.registered</code> — count of registered metric definitions.</li>
+          <li><code>diagcore.metrics.emitted</code> — throughput of metric emissions.</li>
+        </ul>
+        <p class="note"><b>Tip:</b> In production, graph <code>*.dropped</code> alongside <code>*.emitted</code> to spot regressions or misconfigurations quickly.</p>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="docs-section">
+        <h2>FAQ</h2>
+        <details>
+          <summary>How do I add a new metric?</summary>
+          <p><b>Layman:</b> Decide what you want to count or measure, give it a clear name, and register it before use.</p>
+          <p><b>Developer:</b> Create a <code>MetricDefinition</code> with a unique name, type, description, unit, and default tags. Call <code>Register()</code> on <code>MetricsFacade</code> or <code>IMetricsManager</code> before emitting values.</p>
+          <pre class="code-block-wrap"><button class="copy-btn">Copy</button><code class="language-csharp">var def = new MetricDefinition("app.cache_hits", MetricType.Counter, "Cache hits", "count", Array.Empty&lt;KeyValuePair&lt;string,object&gt;&gt;());
+DiagnosticsCoreBootstrap.Instance.Metrics.Register(def);
+DiagnosticsCoreBootstrap.Instance.Metrics.Increment("app.cache_hits");</code></pre>
+        </details>
+        <details>
+          <summary>How do I ensure sensitive data is never emitted?</summary>
+          <p><b>Layman:</b> Turn on the shredder before sending anything out.</p>
+          <p><b>Developer:</b> Set <code>RequireTraceRedaction = true</code> in <code>DiagnosticsOptions</code> and configure <code>DefaultTraceRedactor</code> with rules for sensitive tag keys, message redaction, and exception redaction. The dispatcher will drop any unsanitized events.</p>
+        </details>
+        <details>
+          <summary>What happens if a sink is slow or blocked?</summary>
+          <p><b>Layman:</b> The mailbox fills up; new letters get tossed if there’s no room.</p>
+          <p><b>Developer:</b> Each sink has a bounded channel. When full, the configured <code>BoundedChannelFullMode</code> applies (unsupported modes are coerced to <code>DropWrite</code> with accounting). Drops are counted in <code>diagcore.traces.dropped</code> with <code>drop_cause=queue_full</code>.</p>
+        </details>
+        <details>
+          <summary>Can I change configuration at runtime?</summary>
+          <p><b>Layman:</b> You can swap the flight plan, but only if it’s different.</p>
+          <p><b>Developer:</b> Call <code>DiagnosticsCoreBootstrap.Restart()</code> with a new frozen <code>DiagnosticsOptions</code>. The bootstrap compares fingerprints and restarts only if they differ.</p>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <!-- Minimal offline JS for tabs and copy buttons -->
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const tab = btn.dataset.tab;
+        btn.parentElement.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const container = btn.closest('details') || document;
+        container.querySelectorAll('.tab-content').forEach(tc=>{
+          tc.style.display = tc.dataset.tab === tab ? '' : 'none';
+        });
+      });
+    });
+    document.querySelectorAll('.copy-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const code = btn.nextElementSibling.innerText;
+        navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        setTimeout(()=>btn.textContent='Copy',1500);
+      });
+    });
+    document.getElementById('toggle-theme').addEventListener('click',()=>{
+      document.documentElement.dataset.theme =
+        document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    });
+  // Highlight the current TOC link based on URL
+  const current = window.location.hash || '#overview'; // default section
+  document.querySelectorAll('.toc a').forEach(link => {
+    if (link.getAttribute('href') === current) {
+      link.classList.add('active');
+    }
+  });
+// Highlight active link on click + auto-open parent group
+document.querySelectorAll('.toc a').forEach(link => {
+  link.addEventListener('click', function () {
+    // Remove active from all
+    document.querySelectorAll('.toc a.active').forEach(a => a.classList.remove('active'));
+    // Add to clicked
+    this.classList.add('active');
+
+    // Auto-open parent <details> in left nav if this is a sub-item
+    const parentDetails = this.closest('details');
+    if (parentDetails && !parentDetails.open) {
+      parentDetails.open = true;
+    }
+
+    // Also open matching right-hand <details> section if it exists
+    const href = this.getAttribute('href');
+    if (href && href.startsWith('#')) {
+      const targetEl = document.querySelector(href);
+      if (targetEl && targetEl.tagName === 'DETAILS' && !targetEl.open) {
+        targetEl.open = true;
+      }
+    }
+  });
+});
+
+  // Also set active on load based on current hash
+  //const current = window.location.hash || '#overview';
+  const match = document.querySelector(`.toc a[href="${current}"]`);
+  if (match) {
+    match.classList.add('active');
+  }
+
+  </script>
+
+<script>
+  const tocLinks = document.querySelectorAll('.toc a');
+  let suppressScrollHighlight = false;
+
+  // TOC: API group collapse/expand
+  const tocApiLi = document.getElementById('toc-api');
+  const tocApiAnchor = tocApiLi?.querySelector('a[href="#api"]');
+  const setApiOpen = (open) => {
+    if (!tocApiLi) return;
+    tocApiLi.classList.toggle('open', !!open);
+  };
+
+  // Normalize target elements
+  const sectionIds = Array.from(tocLinks).map(link => link.getAttribute('href'));
+  const headings = sectionIds.map(id => {
+    const el = document.querySelector(id);
+    if (el?.tagName === 'DETAILS') {
+      return el.querySelector('summary') || el;
+    }
+    return el;
+  }).filter(Boolean);
+
+  const activateLink = (id) => {
+    tocLinks.forEach(link => link.classList.remove('active'));
+    const match = document.querySelector(`.toc a[href="${id}"]`);
+    if (match) match.classList.add('active');
+    // Open/close API group based on active target
+    if (id.startsWith('#api-')) {
+      setApiOpen(true);
+    } else if (id !== '#api') {
+      setApiOpen(false);
+    }
+
+  };
+
+  // Click handler: scroll + suppress scroll-based highlight briefly
+  tocLinks.forEach(link => {
+    link.addEventListener('click', function () {
+      suppressScrollHighlight = true;
+      activateLink(this.getAttribute('href'));
+      setTimeout(() => suppressScrollHighlight = false, 1000); // resume after scroll settles
+    });
+  });
+
+  // Toggle API group on clicking its label (also scrolls to #api)
+  tocApiAnchor?.addEventListener('click', () => {
+    setApiOpen(!tocApiLi.classList.contains('open'));
+  });
+
+
+  // Scroll tracking
+  const observerOptions = {
+    root: null,
+    rootMargin: '0px 0px -70% 0px',
+    threshold: 0
+  };
+
+const observer = new IntersectionObserver((entries) => {
+  if (suppressScrollHighlight) return;
+
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+
+    const parentDetails = entry.target.closest('details');
+
+    // If this is the API Reference group, auto-open when a child is active
+    if (parentDetails?.id === 'api-reference' && !parentDetails.open) {
+      // Close any other open <details> in the TOC
+      document.querySelectorAll('.toc details[open]').forEach(d => {
+        if (d !== parentDetails) d.open = false;
+      });
+      parentDetails.open = true;
+    }
+
+    // Skip any other collapsed <details> groups
+    if (parentDetails && parentDetails.id !== 'api-reference' && !parentDetails.open) {
+      return;
+    }
+
+    const id = `#${entry.target.id || parentDetails?.id}`;
+    activateLink(id);
+  });
+}, observerOptions);
+
+
+  headings.forEach(h => observer.observe(h));
+
+  // Initial highlight on load
+  const current1 = window.location.hash || '#overview';
+  // Ensure correct initial API group state for deep links
+  if (current1 === '#api' || current1.startsWith('#api-')) {
+    setApiOpen(true);
+  } else {
+    setApiOpen(false);
+  }
+  activateLink(current1);
+</script>
+  
+</body>
+</html>

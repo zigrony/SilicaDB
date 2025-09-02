@@ -2,9 +2,11 @@
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using Silica.Observability.Tracing;
 using Silica.Storage.Exceptions;
 using Silica.Storage.Interfaces;
+using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
+using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
+using Silica.DiagnosticsCore.Extensions.Storage; // StorageMetrics
 
 namespace Silica.Storage.Devices
 {
@@ -17,6 +19,7 @@ namespace Silica.Storage.Devices
         // One entry per frameId
         private readonly ConcurrentDictionary<long, byte[]> _pages = new();
 
+
         // Define default geometry
         public override StorageGeometry Geometry { get; } = new StorageGeometry
         {
@@ -26,20 +29,16 @@ namespace Silica.Storage.Devices
             SupportsFua = false
         };
 
+        public InMemoryDevice() { /* Base registers metrics; no local registration needed. */ }
+
         protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device, "OnMountAsync", GetType().Name);
-
             _pages.Clear();
             await Task.CompletedTask;
         }
 
         protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device, "OnUnmountAsync", GetType().Name);
-
             _pages.Clear();
             await Task.CompletedTask;
         }
@@ -51,9 +50,15 @@ namespace Silica.Storage.Devices
         {
             if (_pages.TryGetValue(frameId, out var existing))
             {
-                existing.CopyTo(buffer);
+                // Explicit span-to-span copy to avoid ambiguous overloads and guarantee correctness
+                existing.AsSpan().CopyTo(buffer.Span);
+                // Cache hit for in-memory page
+                try { StorageMetrics.IncrementCacheHit(Metrics); } catch { }
                 return Task.CompletedTask;
             }
+
+            // Cache miss (absent page) — surface metric before throwing
+            try { StorageMetrics.IncrementCacheMiss(Metrics); } catch { }
 
             throw new DeviceReadOutOfRangeException(
                 offset: frameId * Geometry.LogicalBlockSize,
@@ -73,10 +78,8 @@ namespace Silica.Storage.Devices
             return Task.CompletedTask;
         }
 
-        public override ValueTask FlushAsync(CancellationToken cancellationToken)
-        {
-            // Nothing to flush for in-memory device
-            return ValueTask.CompletedTask;
-        }
+        protected override Task FlushAsyncInternal(CancellationToken cancellationToken)
+            => Task.CompletedTask; // Nothing to flush for in-memory device
+
     }
 }

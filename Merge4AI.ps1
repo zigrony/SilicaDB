@@ -1,83 +1,141 @@
 param(
     [string]$srcPath = "C:\GitHubRepos\SilicaDB\src\",
     [string]$dstPath = "C:\temp\",
-    #[string]$folder = "Silica.DiagnosticsCore",
-    #[string]$folder = "Silica.Logging",
-    [string]$folder = "Silica.Storage",
+    [ValidateSet(
+        "All",
+        "Silica.BufferPool",
+        "Silica.Common",
+        "Silica.Concurrency",
+        "Silica.DiagnosticsCore",
+        "Silica.Durability",
+        "Silica.Evictions",
+        "Silica.Instrumentation",
+        "Silica.Logging",
+        "Silica.Observability",
+        "Silica.Storage",
+        "SilicaDB"
+    )]
+    [string[]]$Projects = @("All"),
     [int]$fileSize = 80000
 )
-
 
 function Split-LargeFile {
     param (
         [string]$FilePath,
         [int]$MaxSize,
-		[string]$prefix = "file_"
+        [string]$prefix = "file_"
     )
-#wait-debugger
-    # Ensure the input file exists
+
     if (-Not (Test-Path -Path $FilePath)) {
-        Write-Error "The specified file does not exist."
+        Write-Error "The specified file does not exist: $FilePath"
         return
     }
 
-    # Initialize variables
     $FolderPath = Split-Path -Path $FilePath
-    $BaseFileName = "$($prefix)_File_"
-    $CurrentSize = 0
     $FileIndex = 0
-    $OutputFile = Join-Path -Path $FolderPath -ChildPath "${BaseFileName}${FileIndex}.txt"
+    $CurrentSize = 0
+    $OutputFile = Join-Path $FolderPath ("{0}_{1}.txt" -f $prefix, $FileIndex)
+    $Writer = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
 
-    # Open the input file for reading
-    $InputFile = Get-Content -Path $FilePath
-
-    # Create a StreamWriter to output the first file
-    $Writer = [System.IO.StreamWriter]::new($OutputFile)
-
-    # Process lines in the input file
-    foreach ($Line in $InputFile) {
-        $LineSize = ($Line.Length + [Environment]::NewLine.Length)
-        if (($CurrentSize + $LineSize) -gt $MaxSize) {
-            # Close the current file and start a new one
-            $Writer.Close()
-            $FileIndex++
-            $OutputFile = Join-Path -Path $FolderPath -ChildPath "${BaseFileName}${FileIndex}.txt"
-            $Writer = [System.IO.StreamWriter]::new($OutputFile)
-            $CurrentSize = 0
+    try {
+        foreach ($Line in Get-Content -Path $FilePath) {
+            $LineSize = [System.Text.Encoding]::UTF8.GetByteCount($Line + [Environment]::NewLine)
+            if (($CurrentSize + $LineSize) -gt $MaxSize) {
+                $Writer.Close()
+                $FileIndex++
+                $OutputFile = Join-Path $FolderPath ("{0}_{1}.txt" -f $prefix, $FileIndex)
+                $Writer = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
+                $CurrentSize = 0
+            }
+            $Writer.WriteLine($Line)
+            $CurrentSize += $LineSize
         }
-
-        # Write the line to the current file
-        $Writer.WriteLine($Line)
-        $CurrentSize += $LineSize
+    }
+    finally {
+        $Writer.Close()
     }
 
-    # Close the final file
-    $Writer.Close()
-
-    Write-Host "Splitting complete. Files have been saved in $FolderPath"
+    Write-Host "Splitting complete. Files saved in $FolderPath"
 }
 
+# Master project list
+$AllProjectsList = @(
+    "Silica.BufferPool",
+    "Silica.Common",
+    "Silica.Concurrency",
+    "Silica.DiagnosticsCore",
+    "Silica.Durability",
+    "Silica.Evictions",
+    "Silica.Instrumentation",
+    "Silica.Logging",
+    "Silica.Observability",
+    "Silica.Storage",
+    "SilicaDB"
+)
 
-$fileType = "*.cs"
-$allAllContent = ""
-$allAllContentDst = "$($dstPath)AllContent.txt"
-$fileIndex = 0
-$outfile = "$($dstPath)File$($fileIndex).txt"
-# Concatenate file contents and save to temp file
-$allContent = ""
-$fullSrc = [System.IO.Path]::Combine($srcPath,$folder)
-$fullDst = [System.IO.Path]::Combine($dstPath,"$($folder)_AllContent.txt")
-write-host "Full Source $($fullSrc)"
-write-host "  Full Dest $($fullDst)"
-$files = Get-ChildItem -Recurse -file -Path $fullSrc -Filter $fileType
-Foreach($file in $files) { 
-		write-host "`tFileName[$($file.FullName)]"
-		$content = Get-Content $file.FullName 
-		if($content.Length -gt 0){
-			$relPath = $file.FullName.substring($fullSrc.length)
-			$allContent += "`r`n// Filename: $($relPath)`r`n`r`n" + ($content -join "`r`n")
-			}
-		}
-$allContent | Set-Content $fullDst 
-Split-LargeFile $fullDst $fileSize "$($folder)_"
+# Resolve project list
+if ($Projects -contains "All") {
+    $ProjectList = $AllProjectsList
+} else {
+    $ProjectList = $Projects
+}
 
+# --- Per-project processing ---
+foreach ($project in $ProjectList) {
+    Write-Host "Processing project: $project"
+
+    $fullSrc = Join-Path $srcPath $project
+    if (-Not (Test-Path $fullSrc)) {
+        Write-Warning "Source path does not exist: $fullSrc"
+        continue
+    }
+
+    $fullDst = Join-Path $dstPath "$($project)_AllContent.txt"
+    $writer = [System.IO.StreamWriter]::new($fullDst, $false, [System.Text.Encoding]::UTF8)
+
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Sort-Object FullName
+    foreach ($file in $files) {
+        Write-Host "`tFileName[$($file.FullName)]"
+        $relPath = $file.FullName.Substring($fullSrc.TrimEnd('\').Length).TrimStart('\')
+        $writer.WriteLine("// Filename: $relPath")
+        $writer.WriteLine()
+        foreach ($line in Get-Content $file.FullName) {
+            $writer.WriteLine($line)
+        }
+        $writer.WriteLine()
+    }
+    $writer.Close()
+
+    Split-LargeFile -FilePath $fullDst -MaxSize $fileSize -prefix $project
+}
+
+# --- Combined AllProjects processing (always runs, but only for selected subset) ---
+Write-Host "Creating combined AllProjects.txt"
+
+$allDst = Join-Path $dstPath "AllProjects.txt"
+$writer = [System.IO.StreamWriter]::new($allDst, $false, [System.Text.Encoding]::UTF8)
+
+foreach ($project in $ProjectList) {
+    $fullSrc = Join-Path $srcPath $project
+    if (-Not (Test-Path $fullSrc)) {
+        Write-Warning "Source path does not exist: $fullSrc"
+        continue
+    }
+
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Sort-Object FullName
+    foreach ($file in $files) {
+        Write-Host "`t[AllProjects] FileName[$($file.FullName)]"
+        $relPath = Join-Path $project ($file.FullName.Substring($fullSrc.TrimEnd('\').Length).TrimStart('\'))
+        $writer.WriteLine("// Filename: $relPath")
+        $writer.WriteLine()
+        foreach ($line in Get-Content $file.FullName) {
+            $writer.WriteLine($line)
+        }
+        $writer.WriteLine()
+    }
+}
+$writer.Close()
+
+Split-LargeFile -FilePath $allDst -MaxSize $fileSize -prefix "AllProjects"
+
+Write-Host "All processing complete."

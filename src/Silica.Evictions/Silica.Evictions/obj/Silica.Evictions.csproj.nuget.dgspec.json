@@ -4,14 +4,14 @@
     "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj": {}
   },
   "projects": {
-    "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj": {
+    "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj",
-        "projectName": "Silica.Evictions",
-        "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj",
+        "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj",
+        "projectName": "Silica.DiagnosticsCore",
+        "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj",
         "packagesPath": "C:\\Users\\aboyd\\.nuget\\packages\\",
-        "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\obj\\",
+        "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\aboyd\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -27,11 +27,7 @@
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
-            "projectReferences": {
-              "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj": {
-                "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj"
-              }
-            }
+            "projectReferences": {}
           }
         },
         "warningProperties": {
@@ -68,14 +64,14 @@
         }
       }
     },
-    "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj": {
+    "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj",
-        "projectName": "Silica.Observability",
-        "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj",
+        "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj",
+        "projectName": "Silica.Evictions",
+        "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\Silica.Evictions.csproj",
         "packagesPath": "C:\\Users\\aboyd\\.nuget\\packages\\",
-        "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\obj\\",
+        "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Evictions\\Silica.Evictions\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\aboyd\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -91,7 +87,11 @@
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
+                "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj"
+              }
+            }
           }
         },
         "warningProperties": {

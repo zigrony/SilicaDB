@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -30,6 +34,10 @@ namespace Silica.Evictions
         private int _count;
 
         private bool _disposed;
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
 
         public EvictionMruCache(
             int capacity,
@@ -42,6 +50,22 @@ namespace Silica.Evictions
             _capacity = capacity;
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _onEvicted = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow */ }
         }
 
         /// <summary>
@@ -63,18 +87,26 @@ namespace Silica.Evictions
                     _mruList.Remove(node);
                     _mruList.AddFirst(node);
                 }
+                try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                 return existing;
             }
 
             // Miss → build value outside lock
+            var swFactory = Stopwatch.StartNew();
             var newValue = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
             (TKey Key, TValue Value)? evicted = null;
 
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 // Re-check in case another thread inserted
                 if (_values.ContainsKey(key))
+                {
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return _values[key];
+                }
 
                 // If full, evict the most-recent (head of list)
                 if (Volatile.Read(ref _count) >= _capacity)
@@ -89,6 +121,7 @@ namespace Silica.Evictions
 
                     Interlocked.Decrement(ref _count);
                     evicted = (mruKey, mruVal);
+                    try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Mru); } catch { }
                 }
 
                 // Insert new at head

@@ -3,6 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -24,6 +28,10 @@ namespace Silica.Evictions
         /// </summary>
         private int _count;
         public int Count => Volatile.Read(ref _count);
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
 
         private sealed class CacheEntry
         {
@@ -49,6 +57,22 @@ namespace Silica.Evictions
 
             _map = new Dictionary<TKey, LinkedListNode<CacheEntry>>(capacity);
             _lruList = new LinkedList<CacheEntry>();
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow */ }
         }
 
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
@@ -63,19 +87,27 @@ namespace Silica.Evictions
                 {
                     _lruList.Remove(node);
                     _lruList.AddFirst(node);
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return node.Value.Value;
                 }
             }
 
             // Phase 2: build value
+            var swFactory = Stopwatch.StartNew();
             var createdValue = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
 
             // Phase 3: insert & maybe evict
             List<CacheEntry>? toEvict = null;
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 if (_map.TryGetValue(key, out var existingNode2))
+                {
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return existingNode2.Value.Value;
+                }
 
                 var entry = new CacheEntry(key, createdValue);
                 var node1 = new LinkedListNode<CacheEntry>(entry);
@@ -91,6 +123,7 @@ namespace Silica.Evictions
                     _map.Remove(tail.Value.Key);
                     Interlocked.Decrement(ref _count);
                     toEvict.Add(tail.Value);
+                    try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.SizeOnly); } catch { }
                 }
             }
 

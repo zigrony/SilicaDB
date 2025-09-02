@@ -5,8 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;   // For SafeFileHandle
 using Silica.Storage;
 using Silica.Storage.Exceptions;
-using Silica.Observability.Tracing;
 using Silica.Storage.Interfaces;
+using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
+using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
+using Silica.DiagnosticsCore.Extensions.Storage; // StorageMetrics
+
 
 namespace Silica.Storage.Devices
 {
@@ -14,55 +17,61 @@ namespace Silica.Storage.Devices
     {
         private readonly Stream _stream;
         private readonly bool _hasPositional;
+        private readonly bool _ownsStream;
         private readonly SafeFileHandle? _fileHandle;
         private readonly SemaphoreSlim _globalLock = new(1, 1);
         private readonly StorageGeometry _geometry;
+        private int _lockDisposed; // 0 = not disposed, 1 = disposed
+
+        // DiagnosticsCore handled by AsyncMiniDriver base
 
         // Preferred: caller specifies geometry
-        public StreamDevice(Stream stream, StorageGeometry geometry)
+        public StreamDevice(Stream stream, StorageGeometry geometry, bool ownsStream = false)
         {
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
             _geometry = geometry;
+            _ownsStream = ownsStream;
 
             if (stream is FileStream fs && !fs.IsAsync)
                 throw new ArgumentException("FileStream must be opened with FileOptions.Asynchronous", nameof(stream));
+
+            // Require basic capabilities up-front to fail fast (enterprise contract)
+            if (!_stream.CanRead) throw new NotSupportedException("Stream must be readable.");
+            if (!_stream.CanWrite) throw new NotSupportedException("Stream must be writable.");
 
             if (stream is FileStream fileStream)
             {
                 _hasPositional = true;
                 _fileHandle = fileStream.SafeFileHandle;
             }
+            else
+            {
+                // Non-positional mode requires seekability for strict offset I/O
+                if (!_stream.CanSeek)
+                    throw new NotSupportedException("Non-file streams must be seekable for strict offset I/O.");
+            }
         }
 
         // Convenience: default geometry (4096B)
-        public StreamDevice(Stream stream)
+        public StreamDevice(Stream stream, bool ownsStream = false)
             : this(stream, new StorageGeometry
             {
                 LogicalBlockSize = 4096,
                 MaxIoBytes = 1 << 20,
                 RequiresAlignedIo = false,
                 SupportsFua = false
-            })
+            }, ownsStream)
         { }
 
         public override StorageGeometry Geometry => _geometry;
 
         protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device,
-                "OnMountAsync",
-                GetType().Name);
-
             await Task.CompletedTask;
         }
 
         protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device,
-                "OnUnmountAsync",
-                GetType().Name);
 
             await Task.CompletedTask;
         }
@@ -72,13 +81,9 @@ namespace Silica.Storage.Devices
             Memory<byte> buffer,
             CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device,
-                "ReadFrameInternalAsync",
-                $"{GetType().Name}:{frameId}");
-
             var offset = checked(frameId * (long)Geometry.LogicalBlockSize);
             var endExclusive = checked(offset + Geometry.LogicalBlockSize);
+
 
             if (_hasPositional && _fileHandle is not null)
             {
@@ -99,7 +104,10 @@ namespace Silica.Storage.Devices
                         cancellationToken).ConfigureAwait(false);
 
                     if (n == 0)
-                        throw new IOException($"Short read at offset {offset + total}, expected {buffer.Length - total} more bytes.");
+                        throw new DeviceReadOutOfRangeException(
+                            offset: offset + total,
+                            requestedLength: buffer.Length - total,
+                            deviceLength: lengthSnapshot);
 
                     total += n;
                 }
@@ -109,13 +117,13 @@ namespace Silica.Storage.Devices
                 if (!_stream.CanSeek)
                     throw new NotSupportedException("Strict reads require a seekable stream.");
 
-                long lengthSnapshot = _stream.Length;
-                if (endExclusive > lengthSnapshot)
-                    throw new DeviceReadOutOfRangeException(offset, Geometry.LogicalBlockSize, lengthSnapshot);
-
                 await _globalLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
+                    long lengthSnapshot = _stream.Length;
+                    if (endExclusive > lengthSnapshot)
+                        throw new DeviceReadOutOfRangeException(offset, Geometry.LogicalBlockSize, lengthSnapshot);
+
                     _stream.Position = offset;
 
                     int total = 0;
@@ -142,10 +150,6 @@ namespace Silica.Storage.Devices
             ReadOnlyMemory<byte> data,
             CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(
-                TraceCategory.Device,
-                "WriteFrameInternalAsync",
-                $"{GetType().Name}:{frameId}");
 
             var offset = checked(frameId * (long)Geometry.LogicalBlockSize);
 
@@ -161,7 +165,7 @@ namespace Silica.Storage.Devices
                 {
                     _stream.Position = offset;
                     await _stream.WriteAsync(data, cancellationToken).ConfigureAwait(false);
-                    await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    // Do not flush per write; durability is provided by FlushAsync/Unmount
                 }
                 finally
                 {
@@ -172,14 +176,53 @@ namespace Silica.Storage.Devices
 
         public void Dispose()
         {
-            _globalLock.Dispose();
-            // do not Dispose(_stream) here; caller owns it
+            // Bridge to async dispose to ensure lifecycle-consistent teardown.
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
-        public override ValueTask FlushAsync(CancellationToken cancellationToken)
+        protected override Task FlushAsyncInternal(CancellationToken cancellationToken)
         {
-            // No EnsureMounted* in base; just flush the underlying stream.
-            return _stream.FlushAsync(cancellationToken).AsValueTask();
+            return _stream.FlushAsync(cancellationToken);
         }
+
+        // Ensure semaphore gets disposed when the device is disposed via IAsyncDisposable.
+        // We do NOT dispose in OnUnmountAsync so the device can be mounted again if desired.
+        public override async ValueTask DisposeAsync()
+        {
+            // Drain, unmount, and base teardown
+            await base.DisposeAsync().ConfigureAwait(false);
+            // Now it's safe to dispose the lock (no I/O remains in-flight)
+            TryDisposeLockOnce();
+
+            // Optionally dispose the underlying stream if we own it
+            if (_ownsStream)
+            {
+                try
+                {
+                    // Prefer async dispose when available without reflection
+                    if (_stream is IAsyncDisposable asyncDisposable)
+                    {
+                        await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _stream.Dispose();
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+        }
+
+        private void TryDisposeLockOnce()
+        {
+            if (Interlocked.Exchange(ref _lockDisposed, 1) == 0)
+            {
+                try { _globalLock.Dispose(); } catch { /* swallow */ }
+            }
+        }
+
     }
 }

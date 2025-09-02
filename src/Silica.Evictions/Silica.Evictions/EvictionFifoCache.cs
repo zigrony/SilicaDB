@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -18,6 +22,11 @@ namespace Silica.Evictions
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvicted;
         private bool _disposed;
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
+
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
@@ -34,6 +43,23 @@ namespace Silica.Evictions
             _capacity = capacity;
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _onEvicted = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow */ }
+
         }
 
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
@@ -42,16 +68,26 @@ namespace Silica.Evictions
 
             // fast hit
             if (_map.TryGetValue(key, out var val))
+            {
+                try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                 return val;
+            }
 
             // miss → create
+            var swFactory = Stopwatch.StartNew();
             var newVal = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
 
             List<(TKey, TValue)> evicted = null;
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 if (_map.TryGetValue(key, out val))
+                {
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return val;
+                }
 
                 // add to queue + map
                 _queue.Enqueue(key);
@@ -66,6 +102,7 @@ namespace Silica.Evictions
                     {
                         Interlocked.Decrement(ref _count);
                         evicted = new List<(TKey, TValue)> { (oldest, removedVal) };
+                        try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.SizeOnly); } catch { }
                     }
                 }
             }

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Silica.DiagnosticsCore – Developer API Guide</title>
+<style>
+:root {
+  --bg: #fafafa; --fg: #222;
+  --accent: #004578; --code-bg: #f4f4f4;
+}
+[data-theme="dark"] {
+  --bg: #1e1e1e; --fg: #ddd; --accent: #4fc3f7; --code-bg: #2d2d2d;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg); color: var(--fg);
+}
+nav.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 230px; padding: 1em; overflow-y: auto;
+  background: var(--accent); color: #fff;
+}
+nav.sidebar h2 { margin-top: 0; font-size: 1.2em; }
+nav.sidebar a {
+  display: block; color: #fff; text-decoration: none;
+  margin: .4em 0; font-size: .95em;
+}
+nav.sidebar a:hover { text-decoration: underline; }
+main.content {
+  margin-left: 240px; padding: 2em;
+  max-width: 900px; height: 100%; overflow-y: auto;
+}
+header.page-header {
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; margin-bottom: 1.5em;
+}
+header.page-header h1 { margin: 0; flex: 1 1 300px; }
+.search-box {
+  flex: 1 1 200px; max-width: 300px;
+  padding: .5em; border: 1px solid #ccc; border-radius: 4px;
+  margin: .5em 0;
+}
+.btn-toggle {
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 4px;
+  padding: .3em .6em; cursor: pointer;
+}
+nav#toc ul { list-style: none; padding-left: 0; margin-bottom: 1em; }
+nav#toc a { color: var(--accent); text-decoration: none; }
+section { margin-bottom: 2em; }
+h2 {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: .2em;
+}
+pre, code {
+  background: var(--code-bg);
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  border-radius: 4px;
+}
+code { padding: 2px 4px; }
+pre {
+  position: relative; padding: 1em;
+  overflow-x: auto; margin: 1em 0;
+}
+pre .btn-copy {
+  position: absolute; top: .3em; right: .3em;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 4px;
+  padding: .2em .4em; cursor: pointer;
+  font-size: .8em;
+}
+.collapsible summary {
+  cursor: pointer; font-weight: bold; margin-bottom: .5em;
+}
+@media (max-width: 768px) {
+  nav.sidebar { position: relative; width: 100%; height: auto; }
+  main.content { margin: 0; }
+}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <h2>Silica.DiagnosticsCore</h2>
+  <a href="#top" id="homeLink">Home</a>
+  <a href="#public-interface">Public Interface</a>
+  <a href="#configuration">Configuration</a>
+  <a href="#coreMetrics">Core Metrics</a>
+  <a href="#evictionMetrics">Eviction Metrics</a>
+  <a href="#storageMetrics">Storage Metrics</a>
+  <a href="#tracingAPI">Tracing API</a>
+  <a href="#timingScope">TimingScope</a>
+  <a href="#lockScope">LockScope</a>
+  <a href="#bootstrap">Bootstrap Flow</a>
+  <a href="#dispatch">Dispatch Flow</a>
+  <a href="#extensions">Extensions</a>
+  <hr>
+  <button id="themeToggle" class="btn-toggle">🌙 Dark Mode</button>
+</nav>
+<main class="content">
+  <a id="top"></a>
+  <header class="page-header">
+    <h1>Silica.DiagnosticsCore – Offline Docs</h1>
+    <input id="searchBox" class="search-box" placeholder="Search…">
+  </header>
+  <nav id="toc"></nav>
+  <div id="docContent"></div>
+</main>
+<script>
+(function(){
+  // --- Markdown utilities ---
+  function escapeHtml(s){
+    return String(s).replace(/&/g,"&amp;")
+                    .replace(/</g,"&lt;")
+                    .replace(/>/g,"&gt;");
+  }
+  function replaceLinks(text){
+    let out="", i=0;
+    while(i<text.length){
+      let start=text.indexOf("[",i);
+      if(start<0){ out+=text.substring(i); break; }
+      let closeText=text.indexOf("]",start+1);
+      if(closeText<0){ out+=text.substring(i); break; }
+      if(text[closeText+1] !== "("){
+        out+=text.substring(i,closeText+1);
+        i=closeText+1;
+        continue;
+      }
+      let closeUrl=text.indexOf(")",closeText+2);
+      if(closeUrl<0){ out+=text.substring(i); break; }
+      let label=text.substring(start+1,closeText);
+      let url=text.substring(closeText+2,closeUrl);
+      if(url.includes("\n")){ out+=text.substring(i,closeText+1); i=closeText+1; continue; }
+      out+=text.substring(i,start)+`<a href="${url}">${label}</a>`;
+      i=closeUrl+1;
+    }
+    return out;
+  }
+  function inlineMarkdown(text){
+    text=replaceLinks(text);
+    text=text.replace(/`([^`]+)`/g,"<code>$1</code>");
+    text=text.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
+    text=text.replace(/\*([^*]+)\*/g,"<em>$1</em>");
+    return text;
+  }
+  function parseTable(lines,start){
+    let header=lines[start], sep=lines[start+1];
+    if(!header||!sep||!header.includes("|")||!sep.includes("---")) return {html:null,next:start};
+    let i=start+2, rows=[];
+    while(i<lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(lines[i++]);
+    function splitRow(r){
+      let p=r.split("|");
+      if(!p[0].trim()) p.shift();
+      if(!p[p.length-1].trim()) p.pop();
+      return p.map(cell=>cell.trim());
+    }
+    let th=splitRow(header), html=["<table><thead><tr>"];
+    th.forEach(h=>html.push("<th>"+inlineMarkdown(escapeHtml(h))+"</th>"));
+    html.push("</tr></thead><tbody>");
+    rows.forEach(r=>{
+      html.push("<tr>");
+      splitRow(r).forEach(c=>html.push("<td>"+inlineMarkdown(escapeHtml(c))+"</td>"));
+      html.push("</tr>");
+    });
+    html.push("</tbody></table>");
+    return {html:html.join(""), next:i-1};
+  }
+  function renderMarkdown(md){
+    let text=String(md||"").replace(/\r\n/g,"\n");
+    let lines=text.split("\n"), html=[], inCode=false, codeLang="", codeBuf=[],
+        inUl=false, inOl=false;
+    function closeLists(){
+      if(inUl){ html.push("</ul>"); inUl=false; }
+      if(inOl){ html.push("</ol>"); inOl=false; }
+    }
+    for(let i=0;i<lines.length;i++){
+      let line=lines[i], trimmed=line.trim();
+      if(!inCode && trimmed.startsWith("```")){
+        closeLists(); inCode=true; codeLang=trimmed.slice(3).trim(); codeBuf=[]; continue;
+      }
+      if(inCode){
+        if(trimmed==="```"){
+          let code=escapeHtml(codeBuf.join("\n"));
+          let cls=codeLang?` class="lang-${codeLang}"`:"";
+          html.push(`<pre><code${cls}>${code}</code></pre>`);
+          inCode = false;
+          codeLang = "";
+          codeBuf = [];
+        } else {
+          codeBuf.push(line);
+        }
+        continue;
+      }
+      if (!trimmed) {
+        closeLists();
+        html.push("");
+        continue;
+      }
+      if (line.includes("|") && i + 1 < lines.length && lines[i + 1].includes("|")) {
+        let t = parseTable(lines, i);
+        if (t.html) {
+          closeLists();
+          html.push(t.html);
+          i = t.next;
+          continue;
+        }
+      }
+      let hMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (hMatch) {
+        closeLists();
+        html.push(`<h${hMatch[1].length}>${inlineMarkdown(escapeHtml(hMatch[2]))}</h${hMatch[1].length}>`);
+        continue;
+      }
+      let ulMatch = line.match(/^\s*[-*]\s+(.*)$/);
+      if (ulMatch) {
+        if (!inUl) { closeLists(); html.push("<ul>"); inUl = true; }
+        html.push("<li>" + inlineMarkdown(escapeHtml(ulMatch[1])) + "</li>");
+        continue;
+      }
+      let olMatch = line.match(/^\s*\d+\.\s+(.*)$/);
+      if (olMatch) {
+        if (!inOl) { closeLists(); html.push("<ol>"); inOl = true; }
+        html.push("<li>" + inlineMarkdown(escapeHtml(olMatch[1])) + "</li>");
+        continue;
+      }
+      closeLists();
+      html.push("<p>" + inlineMarkdown(escapeHtml(line)) + "</p>");
+    }
+    closeLists();
+    return html.join("\n");
+  }
+
+  // --- Documentation Sections ---
+  window.DOC_SECTIONS = [
+    {
+      id: "remarks",
+      title: "Remarks",
+      md: `
+**Silica.DiagnosticsCore** is a general‑purpose observability layer for .NET applications.
+
+It provides a unified, contract‑first approach to metrics, tracing, and operational telemetry so you can:
+- Monitor performance and reliability in production.
+- Debug complex, distributed workflows.
+- Give operators actionable, real‑time insights.
+
+Use it in any .NET app or service. The included extensions (e.g., StorageMetrics, EvictionMetrics) are optional examples of contract‑first metric sets you can copy or adapt.
+      `
+    },
+    {
+      id: "public-interface",
+      title: "Public Interface",
+      md: `
+The main entry points you'll use are:
+
+| Type | Purpose |
+|------|---------|
+| \`DiagnosticsCoreBootstrap\` | Start/stop the diagnostics pipeline |
+| \`DiagnosticsOptions\` | Configure metrics, tracing, sinks, and policies |
+| \`MetricsFacade\` | Emit metrics in a thread‑safe way |
+| \`TraceManager\` | Emit traces in a thread‑safe way |
+
+Example:
+\`\`\`csharp
+var opts = new DiagnosticsOptions { EnableMetrics = true, EnableTracing = true };
+var inst = DiagnosticsCoreBootstrap.Start(opts);
+
+inst.Metrics.Increment(StorageMetrics.ReadCount.Name, 1);
+inst.Traces.Emit("Storage","Read","info","Read complete");
+
+DiagnosticsCoreBootstrap.Stop();
+\`\`\`
+      `
+    },
+    {
+      id: "structure",
+      title: "Code Structure",
+      md: `
+\`\`\`text
+Silica.DiagnosticsCore/
+├── Config/           # DiagnosticsOptions.cs
+├── Metrics/          # IMetricsManager, MetricsFacade, MetricDefinition
+├── Tracing/          # TraceEvent, TraceDispatcher, TraceManager, Sinks
+├── Instrumentation/  # ITimingScope, TimingScope, LockScope
+└── Extensions/       # EvictionMetrics, StorageMetrics
+\`\`\`
+      `
+    },
+    {
+      id: "quickstart",
+      title: "Quick Start",
+      md: `
+1. Install via NuGet:
+   \`dotnet add package Silica.DiagnosticsCore\`
+
+2. Configure before startup:
+   \`\`\`csharp
+   var opts = new DiagnosticsOptions {
+     EnableMetrics = true,
+     EnableTracing = true,
+     DispatcherQueueCapacity = 2048
+   };
+   \`\`\`
+
+3. Bootstrap:
+   \`\`\`csharp
+   var inst = DiagnosticsCoreBootstrap.Start(opts);
+   \`\`\`
+
+4. Emit & shutdown:
+   \`\`\`csharp
+   inst.Metrics.Increment("storage.read.count",1);
+   inst.Traces.Emit("Storage","Read","info","Complete");
+   DiagnosticsCoreBootstrap.Stop();
+   \`\`\`
+      `
+    },
+    {
+      id: "keyTypes",
+      title: "Key Public Types",
+      md: `
+| Type                            | Role                               | Access                     |
+|---------------------------------|------------------------------------|----------------------------|
+| \`DiagnosticsOptions\`          | Configuration model                | new before \`Start()\`     |
+| \`DiagnosticsCoreBootstrap\`    | Lifecycle start/stop               | \`Start()\` / \`Stop()\`   |
+| \`MetricsFacade\`               | Thread-safe metrics emitter        | \`inst.Metrics\`           |
+| \`TraceManager\`                | Thread-safe trace emitter          | \`inst.Traces\`            |
+| \`TraceDispatcher\`             | Dispatches events to sinks         | \`inst.Dispatcher\`        |
+| \`BoundedInMemoryTraceSink\`    | In-memory trace buffer             | \`inst.BoundedSink\`       |
+| \`MetricDefinition\`            | Describes a metric contract        | in subsystem classes       |
+| \`TagKeys\`                     | Common tag key constants           | use for controlled tags    |
+      `
+    },
+    {
+      id: "configuration",
+      title: "Configuration",
+      md: `
+\`\`\`csharp
+var opts = new DiagnosticsOptions {
+  EnableMetrics = true,
+  StrictMetrics = false,
+  MaxTagsPerEvent = 8,
+  AllowedCustomMetricTagKeys = new[]{ "feature" }
+};
+\`\`\`
+
+<details class="collapsible"><summary>All Properties</summary>
+
+| Property                       | Type                   | Default  | Description                                 |
+|--------------------------------|------------------------|----------|---------------------------------------------|
+| EnableMetrics                  | bool                   | true     | Toggle metrics emission                     |
+| EnableTracing                  | bool                   | true     | Toggle trace emission                       |
+| DispatcherQueueCapacity        | int                    | 1024     | Sink channel capacity                       |
+| StrictMetrics                  | bool                   | true     | Reject unregistered metrics                 |
+| AllowedCustomMetricTagKeys     | IEnumerable<string>    | []       | Extra metric tag allowlist                  |
+| MaxTagsPerEvent                | int                    | 10       | Max tags per event (incl. global tags)      |
+| TraceSampleRate                | double?                | null→1.0 | Sampling fraction [0.0,1.0]                  |
+| RedactTraceMessage             | bool                   | false    | Mask trace messages                         |
+| RedactExceptionMessage         | bool                   | false    | Mask exception messages                     |
+| RedactExceptionStack           | bool                   | false    | Mask exception stack frames                 |
+| SinkShutdownDrainTimeoutMs     | int                    | 750      | ms to wait for sink drain on shutdown       |
+
+</details>
+      `
+    },
+    {
+      id: "doDont",
+      title: "Do / Don't",
+      md: `
+| Do                                 | Don't                                       |
+|------------------------------------|----------------------------------------------|
+| Use predefined \`TagKeys\`          | Emit high-cardinality tags (GUID, timestamps)|
+| Register metrics at startup        | Emit metrics without registering             |
+| Use \`EmitIfAllowed\` for traces    | Call \`Emit\` unchecked in hot paths         |
+| Redact sensitive data              | Log raw PII or secrets                       |
+| Use strongly-typed metric contracts| Hardcode metric names as strings             |
+| Stop DiagnosticsCore cleanly       | Leave sinks unflushed on exit                |
+      `
+    },
+    {
+      id: "coreMetrics",
+      title: "Core <code>DiagCoreMetrics</code>",
+      md: `
+| Name                                        | Type       | Description                                 |
+|---------------------------------------------|------------|---------------------------------------------|
+| diagcore.metrics.dropped                    | Counter    | Metrics dropped by policy                   |
+| diagcore.traces.dropped                     | Counter    | Trace events dropped                        |
+| diagcore.traces.emitted                     | Counter    | Traces dispatched                           |
+| diagcore.traces.redacted                    | Counter    | Traces with redaction                       |
+| diagcore.bootstrap.options_conflict         | Counter    | Divergent options on restart                |
+| diagcore.bootstrap.ignored_config_field_set | Counter    | Obsolete config fields set                  |
+| diagcore.traces.sink_emit_duration_ms       | Histogram  | Duration of sink.Emit calls (ms)            |
+| diagcore.traces.sink_emit_long              | Counter    | sink.Emit > 1s                              |
+| diagcore.traces.dispatcher.shutdown_queue_depth | Histogram | Queue depth at shutdown timeout            |
+      `
+    },
+    {
+      id: "evictionMetrics",
+      title: "EvictionMetrics",
+      md: `
+| Name                                  | Type            | Description                                |
+|---------------------------------------|-----------------|--------------------------------------------|
+| evictions.cache.hit.count             | Counter         | Cache hits                                 |
+| evictions.cache.miss.count            | Counter         | Cache misses                               |
+| evictions.cache.eviction.count        | Counter         | Eviction events                            |
+| evictions.cache.eviction.duration_ms  | Histogram       | Eviction duration (ms)                     |
+| evictions.cache.entries               | ObservableGauge | Current entry count                        |
+| evictions.cache.capacity              | ObservableGauge | Configured maximum capacity                |
+
+Field tag values: \`capacity, idle, lru, mru, lfu, clock, size_only, time\`.
+      `
+    },
+    {
+      id: "storageMetrics",
+      title: "StorageMetrics",
+      md: `
+| Name                              | Type            | Description                              |
+|-----------------------------------|-----------------|------------------------------------------|
+| storage.mount.count               | Counter         | Successful mounts                        |
+| storage.mount.duration_ms         | Histogram       | Mount latency (ms)                       |
+| storage.read.count                | Counter         | Completed read operations                |
+| storage.read.latency_ms           | Histogram       | Read latency (ms)                        |
+| storage.read.bytes                | Histogram       | Bytes read                               |
+| storage.cache.hit.count           | Counter         | Cache hits                               |
+| storage.capacity.free_bytes       | ObservableGauge | Free space available (bytes)             |
+| storage.queue.depth               | ObservableGauge | Pending operations in internal queues    |
+      `
+    },
+    {
+      id: "tracingAPI",
+      title: "Tracing API",
+      md: `
+Emit a trace:
+
+\`\`\`csharp
+instance.Traces.Emit(
+  component: "Storage",
+  operation: "Read",
+  status: "info",
+  tags: new Dictionary<string,string>{{"Key","Value"}},
+  message: "Read complete",
+  exception: null,
+  correlationId: Guid.NewGuid(),
+  spanId: Guid.NewGuid());
+\`\`\`
+
+Conditional emit:
+
+\`\`\`csharp
+if (instance.Traces.EmitIfAllowed("Storage","Read","info","Read complete"))
+{
+  // dispatched
+}
+\`\`\`
+
+Add allowed trace tags:
+
+\`\`\`csharp
+instance.Traces.AddAllowedTraceTagKeys(new[]{ "CustomTag" });
+\`\`\`
+      `
+    },
+    {
+      id: "timingScope",
+      title: "TimingScope Usage",
+      md: `
+Measure operation duration:
+
+\`\`\`csharp
+using(var scope = Timing.Start("BufferPool","Evict", t =>
+{
+  instance.Metrics.Record(
+    EvictionMetrics.EvictionDurationMs.Name,
+    t.Elapsed.TotalMilliseconds,
+    new KeyValuePair<string,object>(TagKeys.Component,"BufferPool"));
+}))
+{
+  // eviction logic
+}
+\`\`\`
+      `
+    },
+    {
+      id: "lockScope",
+      title: "LockScope Usage",
+      md: `
+Instrument lock hold time:
+
+\`\`\`csharp
+var ls = new LockScope("Storage","FrameLock", s =>
+{
+  instance.Metrics.Record(
+    StorageMetrics.LockWaitTimeMs.Name,
+    s.Elapsed.TotalMilliseconds,
+    new KeyValuePair<string,object>(TagKeys.Component,"Storage"));
+});
+lock(myLock) {
+  // work
+}
+ls.Dispose();
+\`\`\`
+      `
+    },
+    {
+      id: "bootstrap",
+      title: "Bootstrap & Shutdown",
+      md: `
+\`\`\`text
+DiagnosticsCoreBootstrap.Start(options):
+
+1. options.Freeze(): normalize, validate, lock.
+2. Create MetricRegistry + MetricsFacade.
+3. Build TraceDispatcher + DefaultTraceRedactor.
+4. Register sinks (Console, File, InMemory).
+5. Emit startup trace/fingerprint.
+
+DiagnosticsCoreBootstrap.Stop():
+
+1. Emit shutdown trace.
+2. Dispose dispatcher (drain pumps).
+3. Dispose sinks.
+4. Dispose metrics (final accounting).
+\`\`\`
+      `
+    },
+    {
+      id: "dispatch",
+      title: "Dispatch Flow",
+      md: `
+\`\`\`text
+TraceManager.Emit(...):
+
+1. Validate: status, sampling, min level.
+2. Build TraceEvent.
+3. Redact via ITraceRedactor.
+4. Validate tags via TagValidator.
+5. Dispatcher.Dispatch(evt):
+   • Enqueue per-sink channel.
+   • Drop/account if full or closed.
+6. PumpAsync per sink:
+   • sink.Emit(evt)
+   • Record latency, errors, circuit-breaker.
+\`\`\`
+      `
+    },
+    {
+      id: "extensions",
+      title: "Extensions Overview",
+      md: `
+- **EvictionMetrics**: \`EvictionMetrics.RegisterAll(metrics,"Cache", getCount, getCapacity)\`
+- **StorageMetrics**: \`StorageMetrics.RegisterAll(metrics,"Device", frameCache, freeSpace, queueDepth, inFlight)\`
+
+Helpers: \`IncrementHit\`, \`IncrementMiss\`, \`RecordFactoryLatency\`, \`OnCompactionCompleted\`, etc.
+      `
+    }
+  ];
+
+  // Build page
+  document.addEventListener("DOMContentLoaded", () => {
+    const toc = document.getElementById("toc");
+    const container = document.getElementById("docContent");
+    toc.innerHTML = "<ul>";
+    container.innerHTML = "";
+    for (const sec of window.DOC_SECTIONS) {
+      toc.innerHTML += `<li><a href="#${sec.id}">${sec.title}</a></li>`;
+      const el = document.createElement("section");
+      el.id = sec.id;
+      el.innerHTML = `<h2>${sec.title}</h2>` + renderMarkdown(sec.md);
+      container.appendChild(el);
+    }
+    toc.innerHTML += "</ul>";
+    initSearch();
+    initCopy();
+    initThemeToggle();
+    // Smooth scroll Home
+    document.getElementById("homeLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector("#top").scrollIntoView({ behavior: "smooth" });
+    });
+    // Smooth scroll for in-page TOC links too
+    toc.addEventListener("click", (e) => {
+      const t = e.target.closest("a[href^='#']");
+      if (!t) return;
+      e.preventDefault();
+      const id = t.getAttribute("href");
+      const target = document.querySelector(id);
+      if (target) target.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+
+  function initSearch(){
+    document.getElementById("searchBox").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll("section").forEach(sec => {
+        sec.style.display = sec.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  }
+  function initCopy(){
+    document.querySelectorAll("pre").forEach(pre => {
+      const btn = document.createElement("button");
+      btn.textContent = "Copy";
+      btn.className = "btn-copy";
+      btn.onclick = () => navigator.clipboard.writeText(pre.innerText).then(() => {
+        btn.textContent = "✔";
+        setTimeout(() => btn.textContent = "Copy", 800);
+      });
+      pre.appendChild(btn);
+    });
+  }
+  function initThemeToggle(){
+    const btn = document.getElementById("themeToggle");
+    btn.onclick = () => {
+      const dark = document.documentElement.toggleAttribute("data-theme");
+      btn.textContent = dark ? "☀️ Light Mode" : "🌙 Dark Mode";
+    };
+  }
+})();
+</script>
+</body>
+</html>

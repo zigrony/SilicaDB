@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
@@ -48,9 +47,12 @@ namespace Silica.Evictions
 
             lock (_sync)
             {
-                // avoid double-registration
-                if (_caches.Any(w => ReferenceEquals(w.InnerCache, cache)))
-                    return;
+                // avoid double-registration without LINQ
+                for (int i = 0; i < _caches.Count; i++)
+                {
+                    if (ReferenceEquals(_caches[i].InnerCache, cache))
+                        return;
+                }
 
                 _caches.Add(new Wrapper<TKey, TValue>(cache));
             }
@@ -65,10 +67,15 @@ namespace Silica.Evictions
 
             lock (_sync)
             {
-                var found = _caches
-                    .FirstOrDefault(w => ReferenceEquals(w.InnerCache, cache));
-                if (found != null)
-                    _caches.Remove(found);
+                // remove first match without LINQ
+                for (int i = 0; i < _caches.Count; i++)
+                {
+                    if (ReferenceEquals(_caches[i].InnerCache, cache))
+                    {
+                        _caches.RemoveAt(i);
+                        break;
+                    }
+                }
             }
         }
 

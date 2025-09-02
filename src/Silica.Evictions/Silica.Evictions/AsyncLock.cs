@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Silica.Observability.Tracing;
 
 namespace Silica.Evictions
 {
@@ -45,9 +44,6 @@ namespace Silica.Evictions
                 // contention: assign a ticket
                 var ticket = Interlocked.Increment(ref _nextTicket);
 
-                // emit a trace event so we know the enqueue order
-                Trace.Info(TraceCategory.Locks,src: "AsyncLock.WaitQueued",res: ticket.ToString());
-
                 // enqueue and return the waiter Task
                 var tcs = new TaskCompletionSource<IDisposable>(
                               TaskCreationOptions.RunContinuationsAsynchronously);
@@ -72,9 +68,6 @@ namespace Silica.Evictions
 
             if (next != null)
             {
-                // emit a trace event so we know which ticket was granted
-                Trace.Info(TraceCategory.Locks,src: "AsyncLock.Grant",res: next.Ticket.ToString());
-
                 // complete the waiter, giving them the lock
                 next.Tcs.TrySetResult(_releaser);
             }
@@ -97,7 +90,6 @@ namespace Silica.Evictions
             public void Dispose()
             {
                 // trace the unlock itself
-                Trace.Info(TraceCategory.Cache, src: "AsyncLock.Release");
                 _owner.Release();
             }
         }

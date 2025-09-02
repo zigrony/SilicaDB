@@ -3,6 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -21,6 +25,10 @@ namespace Silica.Evictions
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvictedAsync;
         private bool _disposed;
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
@@ -55,6 +63,22 @@ namespace Silica.Evictions
 
             _map = new Dictionary<TKey, LinkedListNode<CacheEntry>>(capacity);
             _lruList = new LinkedList<CacheEntry>();
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow exporter/registration issues */ }
         }
 
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
@@ -70,12 +94,17 @@ namespace Silica.Evictions
                     existingNode.Value.LastUse = DateTime.UtcNow;
                     _lruList.Remove(existingNode);
                     _lruList.AddFirst(existingNode);
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return existingNode.Value.Value;
                 }
             }
 
             // Phase 2: create value outside lock
+            var swFactory = Stopwatch.StartNew();
             var createdValue = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
 
             // Phase 3: re-acquire lock to insert + collect eviction
             List<CacheEntry>? toEvict = null;
@@ -83,7 +112,10 @@ namespace Silica.Evictions
             {
                 // In the meantime another thread may have added it
                 if (_map.TryGetValue(key, out var existingNode2))
+                {
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return existingNode2.Value.Value;
+                }
 
                 var entry = new CacheEntry(key, createdValue);
                 var node = new LinkedListNode<CacheEntry>(entry);
@@ -99,6 +131,7 @@ namespace Silica.Evictions
                     _map.Remove(tail.Value.Key);
                     Interlocked.Decrement(ref _count);
                     toEvict.Add(tail.Value);
+                    try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Lru); } catch { }
                 }
             }
 
@@ -114,6 +147,7 @@ namespace Silica.Evictions
         {
             List<CacheEntry>? toEvict = null;
             var threshold = DateTime.UtcNow - _idleTimeout;
+            var swCleanup = Stopwatch.StartNew();
 
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
@@ -125,11 +159,14 @@ namespace Silica.Evictions
                     _map.Remove(entry.Key);
                     Interlocked.Decrement(ref _count);
                     toEvict.Add(entry);
+                    try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Time); } catch { }
                 }
             }
 
             foreach (var e in toEvict!)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
+            swCleanup.Stop();
+            try { EvictionMetrics.OnCleanupCompleted(_metrics, swCleanup.Elapsed.TotalMilliseconds); } catch { }
         }
 
         public async ValueTask DisposeAsync()

@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using System.Diagnostics;
+using Silica.DiagnosticsCore;
+using Silica.DiagnosticsCore.Metrics;
+using Silica.DiagnosticsCore.Extensions.Evictions;
 
 namespace Silica.Evictions
 {
@@ -18,6 +22,10 @@ namespace Silica.Evictions
         private readonly int _capacity;
         private readonly Func<TKey, ValueTask<TValue>> _factory;
         private readonly Func<TKey, TValue, ValueTask> _onEvicted;
+        // DiagnosticsCore
+        private IMetricsManager _metrics;
+        private readonly string _componentName;
+        private bool _metricsRegistered;
 
         private struct Entry
         {
@@ -51,6 +59,22 @@ namespace Silica.Evictions
             _entries = new Entry[capacity];
             _map = new Dictionary<TKey, int>(capacity);
             _hand = 0;
+            // Metrics init + registration
+            _componentName = GetType().Name;
+            _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
+            try
+            {
+                if (!_metricsRegistered)
+                {
+                    EvictionMetrics.RegisterAll(
+                        _metrics,
+                        cacheComponentName: _componentName,
+                        entriesProvider: () => Count,
+                        capacityProvider: () => _capacity);
+                    _metricsRegistered = DiagnosticsCoreBootstrap.IsStarted;
+                }
+            }
+            catch { /* swallow exporter/registration issues */ }
         }
 
 
@@ -59,7 +83,7 @@ namespace Silica.Evictions
             if (_disposed)
                 throw new ObjectDisposedException(nameof(EvictionClockCache<TKey, TValue>));
 
-            // Fast‐path hit: mark reference bit
+            // Fast-path hit: mark reference bit
             if (_map.TryGetValue(key, out var idx))
             {
                 using (await _lock.LockAsync().ConfigureAwait(false))
@@ -67,12 +91,19 @@ namespace Silica.Evictions
                     var e = _entries[idx];
                     e.ReferenceBit = true;
                     _entries[idx] = e;
+                    // hit
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
                     return e.Value;
                 }
             }
 
-            // Miss: build value outside lock
+            // Miss: build value outside lock (measure latency)
+            var swFactory = Stopwatch.StartNew();
             var newValue = await _factory(key).ConfigureAwait(false);
+            swFactory.Stop();
+            try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
+            bool recordedMiss = false;
+            try { EvictionMetrics.IncrementMiss(_metrics); recordedMiss = true; } catch { }
             (TKey evKey, TValue evValue)? toEvict = null;
 
             using (await _lock.LockAsync().ConfigureAwait(false))
@@ -83,6 +114,13 @@ namespace Silica.Evictions
                     var e = _entries[idx];
                     e.ReferenceBit = true;
                     _entries[idx] = e;
+                    // Another thread satisfied the miss; treat as hit
+                    if (recordedMiss)
+                    {
+                        // Optional: leave as-is to avoid double-account; simple approach: do nothing.
+                    }
+                    try { EvictionMetrics.IncrementHit(_metrics); } catch { }
+
                     return e.Value;
                 }
 
@@ -107,6 +145,7 @@ namespace Silica.Evictions
                 else
                 {
                     // Clock algorithm: scan for eviction
+                    long cleared = 0;
                     while (true)
                     {
                         var candidate = _entries[_hand];
@@ -131,6 +170,9 @@ namespace Silica.Evictions
                             idx = _hand;
                             _hand = (idx + 1) % _capacity;
                             Interlocked.Increment(ref _count);
+                            // eviction due to CLOCK
+                            try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Clock); } catch { }
+                            if (cleared > 0) { try { EvictionMetrics.IncrementClockSecondChanceClears(_metrics, cleared); } catch { } }
                             break;
                         }
                         else
@@ -139,6 +181,7 @@ namespace Silica.Evictions
                             candidate.ReferenceBit = false;
                             _entries[_hand] = candidate;
                             _hand = (_hand + 1) % _capacity;
+                            cleared++;
                         }
                     }
                 }

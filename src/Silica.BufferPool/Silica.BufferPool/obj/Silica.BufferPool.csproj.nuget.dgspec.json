@@ -31,6 +31,9 @@
               "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Common\\Silica.Common\\Silica.Common.csproj": {
                 "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Common\\Silica.Common\\Silica.Common.csproj"
               },
+              "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
+                "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj"
+              },
               "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj": {
                 "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj"
               },
@@ -288,8 +291,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj": {
-                "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Observability\\Silica.Observability\\Silica.Observability.csproj"
+              "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
+                "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj"
               }
             }
           }

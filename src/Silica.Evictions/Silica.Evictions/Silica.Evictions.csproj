@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Silica.Observability\Silica.Observability\Silica.Observability.csproj" />
+    <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
   </ItemGroup>
 
 </Project>

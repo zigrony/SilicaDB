@@ -26,23 +26,13 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
-          "Silica.Observability": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0"
         },
         "compile": {
           "bin/placeholder/Silica.Evictions.dll": {}
         },
         "runtime": {
           "bin/placeholder/Silica.Evictions.dll": {}
-        }
-      },
-      "Silica.Observability/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v8.0",
-        "compile": {
-          "bin/placeholder/Silica.Observability.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/Silica.Observability.dll": {}
         }
       }
     }
@@ -62,11 +52,6 @@
       "type": "project",
       "path": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj",
       "msbuildProject": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj"
-    },
-    "Silica.Observability/1.0.0": {
-      "type": "project",
-      "path": "../../Silica.Observability/Silica.Observability/Silica.Observability.csproj",
-      "msbuildProject": "../../Silica.Observability/Silica.Observability/Silica.Observability.csproj"
     }
   },
   "projectFileDependencyGroups": {

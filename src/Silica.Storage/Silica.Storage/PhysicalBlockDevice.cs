@@ -4,7 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Silica.Storage.Exceptions;
 using Silica.Storage.Interfaces;
-using Silica.Observability.Tracing;
+using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
+using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
+using Silica.DiagnosticsCore.Extensions.Storage; // StorageMetrics
 
 namespace Silica.Storage.Devices
 {
@@ -18,6 +20,8 @@ namespace Silica.Storage.Devices
         private readonly string _path;
         private FileStream? _fs;
 
+        // DiagnosticsCore handled by AsyncMiniDriver base
+
         // You can parameterize this if needed
         public override StorageGeometry Geometry { get; } = new StorageGeometry
         {
@@ -26,7 +30,6 @@ namespace Silica.Storage.Devices
             RequiresAlignedIo = false,
             SupportsFua = false
         };
-
         public PhysicalBlockDevice(string path)
         {
             _path = path ?? throw new ArgumentNullException(nameof(path));
@@ -34,23 +37,19 @@ namespace Silica.Storage.Devices
 
         protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(TraceCategory.Device, "OnMountAsync", GetType().Name);
-
             _fs = new FileStream(
                 _path,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
                 FileShare.ReadWrite,
                 bufferSize: Geometry.LogicalBlockSize,
-                options: FileOptions.Asynchronous);
+                options: FileOptions.Asynchronous | FileOptions.RandomAccess);
 
             await Task.CompletedTask;
         }
 
         protected override async Task OnUnmountAsync(CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(TraceCategory.Device, "OnUnmountAsync", GetType().Name);
-
             _fs?.Dispose();
             _fs = null;
             await Task.CompletedTask;
@@ -61,8 +60,6 @@ namespace Silica.Storage.Devices
             Memory<byte> buffer,
             CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(TraceCategory.Device, "ReadFrameInternalAsync", $"{GetType().Name}:{frameId}");
-
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
 
@@ -83,10 +80,14 @@ namespace Silica.Storage.Devices
                     cancellationToken).ConfigureAwait(false);
 
                 if (n == 0)
-                    throw new IOException($"Short read at offset {offset + total}, expected {buffer.Length - total} more bytes.");
+                    throw new DeviceReadOutOfRangeException(
+                        offset: offset + total,
+                        requestedLength: buffer.Length - total,
+                        deviceLength: lengthSnapshot);
 
                 total += n;
             }
+
         }
 
         protected override async Task WriteFrameInternalAsync(
@@ -94,8 +95,6 @@ namespace Silica.Storage.Devices
             ReadOnlyMemory<byte> data,
             CancellationToken cancellationToken)
         {
-            await using var _scope = Trace.AsyncScope(TraceCategory.Device, "WriteFrameInternalAsync", $"{GetType().Name}:{frameId}");
-
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
 
@@ -107,15 +106,14 @@ namespace Silica.Storage.Devices
                     offset,
                     cancellationToken)
                 .ConfigureAwait(false);
-        }
+            // Base will record operation metrics around this call.
+            }
 
-        public override ValueTask FlushAsync(CancellationToken cancellationToken)
+        protected override Task FlushAsyncInternal(CancellationToken cancellationToken)
         {
             if (_fs is null)
                 throw new InvalidOperationException("Device is not mounted");
-
-            // Wrap Task in ValueTask per AsyncMiniDriver contract
-            return _fs.FlushAsync(cancellationToken).AsValueTask();
+            return _fs.FlushAsync(cancellationToken);
         }
     }
 }
