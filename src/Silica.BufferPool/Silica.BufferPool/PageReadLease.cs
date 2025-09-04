@@ -10,30 +10,27 @@ using System.Threading.Tasks;
 using Silica.Durability;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.DiagnosticsCore.Extensions.BufferPool;
+using static Silica.BufferPool.BufferPoolManager;
 
 namespace Silica.BufferPool
 {
-        // ─────────────────────────────────────────────────────────────
-        // Leases
-        // ─────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────
+    // Leases
+    // ─────────────────────────────────────────────────────────────
 
-        public readonly struct PageReadLease : IAsyncDisposable
+    public readonly struct PageReadLease : IAsyncDisposable
+    {
+        private readonly LeaseCore? _core;
+        public readonly ReadOnlyMemory<byte> Page;
+
+        internal PageReadLease(LeaseCore core, ReadOnlyMemory<byte> page)
         {
-            private readonly Frame _frame;
-            private readonly AsyncRangeLatch.Releaser _release;
-            public readonly ReadOnlyMemory<byte> Page;
-
-            internal PageReadLease(Frame f, AsyncRangeLatch.Releaser r, Memory<byte> p)
-            {
-                _frame = f;
-                _release = r;
-                Page = p;
-            }
-
-            public async ValueTask DisposeAsync()
-            {
-                await _release.DisposeAsync().ConfigureAwait(false);
-                _frame.Unpin();
-            }
+            _core = core;
+            Page = page;
         }
+
+        public ValueTask DisposeAsync() => _core?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
+
+}
+

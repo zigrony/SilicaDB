@@ -1,6 +1,0 @@
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.csproj.AssemblyReference.cache
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.sourcelink.json

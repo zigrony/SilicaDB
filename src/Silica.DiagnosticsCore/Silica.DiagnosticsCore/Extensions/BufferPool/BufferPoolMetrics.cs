@@ -55,6 +55,14 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             Unit: "entries",
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
+        // Blocked eviction attempts due to pinned or busy pages
+        public static readonly MetricDefinition EvictionBlocked = new(
+            Name: "bufferpool.eviction.blocked.count",
+            Type: MetricType.Counter,
+            Description: "Blocked eviction attempts due to pinned or busy pages",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
         public static readonly MetricDefinition Flushes = new(
             Name: "bufferpool.flush.count",
             Type: MetricType.Counter,
@@ -149,6 +157,32 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
         // --------------------------
+        // BUFFER LIFECYCLE
+        // --------------------------
+        public static readonly MetricDefinition BuffersReturned = new(
+            Name: "bufferpool.buffer.returned.count",
+            Type: MetricType.Counter,
+            Description: "Buffers returned to the shared pool",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // Finalizer path: object was GC-finalized without DisposeAsync being called
+        public static readonly MetricDefinition FinalizedWithoutDispose = new(
+            Name: "bufferpool.finalized_without_dispose.count",
+            Type: MetricType.Counter,
+            Description: "BufferPoolManager instances finalized without DisposeAsync being called",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // Finalizer path: number of frames reclaimed when finalized without DisposeAsync
+        public static readonly MetricDefinition FinalizerReclaimedFrames = new(
+            Name: "bufferpool.finalizer.reclaimed_frames.count",
+            Type: MetricType.Counter,
+            Description: "Number of page frames reclaimed in finalizer cleanup",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // --------------------------
         // GAUGES (OBSERVABLE)
         // --------------------------
         public static readonly MetricDefinition ResidentPages = new(
@@ -236,6 +270,7 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             Reg(Misses);
             Reg(PageFaults);
             Reg(Evictions);
+            Reg(EvictionBlocked);
             Reg(Flushes);
             Reg(FlushLatencyMs);
             Reg(ReadLatencyMs);
@@ -248,6 +283,9 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             Reg(WalAppendLatencyMs);
             Reg(WalAppendBytes);
             Reg(WalAppendCount);
+            Reg(BuffersReturned);
+            Reg(FinalizedWithoutDispose);
+            Reg(FinalizerReclaimedFrames);
 
             // Gauges, conditionally wired
             if (residentPagesProvider is not null)
@@ -368,6 +406,39 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             catch { }
         }
 
+        /// <summary>
+        /// Record an eviction attempt that was blocked (e.g. page still pinned).
+        /// </summary>
+        public static void RecordEvictionBlocked(IMetricsManager metrics)
+        {
+            if (metrics is null) return;
+            TryRegister(metrics, EvictionBlocked);
+            try { metrics.Increment(EvictionBlocked.Name, 1); }
+            catch { }
+        }
+        /// <summary>
+        /// Record an eviction error (e.g. exception in background eviction/flush).
+        /// Emits an Evictions counter using the 'error' reason tag.
+        /// </summary>
+        public static void RecordEvictionError(IMetricsManager metrics, Exception _)
+        {
+            if (metrics is null) return;
+            // Ensure the Evictions metric is registered
+            TryRegister(metrics, Evictions);
+            try
+            {
+                // Increment with Field=error
+                metrics.Increment(
+                    Evictions.Name,
+                    1,
+                    new KeyValuePair<string, object>(TagKeys.Field, Fields.Error));
+            }
+            catch
+            {
+                // Swallow to never impact hot paths
+            }
+        }
+
         public static void OnFlushCompleted(IMetricsManager metrics, double latencyMs)
         {
             if (metrics is null) return;
@@ -454,6 +525,42 @@ namespace Silica.DiagnosticsCore.Extensions.BufferPool
             }
         }
 
+        public static void RecordBufferReturned(IMetricsManager metrics)
+        {
+            if (metrics is null) return;
+            TryRegister(metrics, BuffersReturned);
+            try { metrics.Increment(BuffersReturned.Name, 1); } catch { }
+        }
+
+        /// <summary>
+        /// Record that a BufferPoolManager was finalized without DisposeAsync being called.
+        /// </summary>
+        public static void RecordFinalizedWithoutDispose(IMetricsManager metrics, string componentName)
+        {
+            if (metrics is null) return;
+            var def = FinalizedWithoutDispose with
+            {
+                DefaultTags = new[] { new KeyValuePair<string, object>(TagKeys.Component, componentName) }
+            };
+            TryRegister(metrics, def);
+            try { metrics.Increment(FinalizedWithoutDispose.Name, 1); }
+            catch { /* swallow to avoid impacting finalizer thread */ }
+        }
+
+        /// <summary>
+        /// Record that N frames were reclaimed in finalizer cleanup.
+        /// </summary>
+        public static void RecordFinalizerReclaimedFrames(IMetricsManager metrics, int count, string componentName)
+        {
+            if (metrics is null) return;
+            var def = FinalizerReclaimedFrames with
+            {
+                DefaultTags = new[] { new KeyValuePair<string, object>(TagKeys.Component, componentName) }
+            };
+            TryRegister(metrics, def);
+            try { metrics.Increment(FinalizerReclaimedFrames.Name, count); }
+            catch { /* swallow to avoid impacting finalizer thread */ }
+        }
         // =====================================================================
         // INTERNAL SAFE REGISTRATION
         // =====================================================================

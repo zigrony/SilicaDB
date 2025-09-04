@@ -15,13 +15,6 @@ namespace Silica.BufferPool
 {
     // ---------- AsyncRangeLatch ----------
 
-    /// <summary>
-    /// Coordinated per-page latch:
-    /// - multiple readers if no writer
-    /// - writers block readers and other overlapping writers
-    /// - FIFO queues, writer preference
-    /// </summary>
-    /// <summary>
     /// Coordinated per-page latch:
     /// - multiple readers if no writer
     /// - writers block readers and other overlapping writers
@@ -32,14 +25,16 @@ namespace Silica.BufferPool
         private readonly SemaphoreSlim _mutex = new(1, 1);
         private int _activeReaders;
         private readonly List<RangeSeg> _activeWrites = new();
-        private readonly Queue<TaskCompletionSource<Releaser>> _readerQ = new();
+        private readonly Queue<ReaderWait> _readerQ = new();
         private readonly Queue<WriterWait> _writerQ = new();
         private bool _disposed;
+        public bool IsDisposed => _disposed;
 
         public async Task<Releaser> AcquireReadAsync(CancellationToken ct = default)
         {
             ThrowIfDisposed();
             TaskCompletionSource<Releaser> tcs;
+            ReaderWait waiter;
 
             await _mutex.WaitAsync(ct).ConfigureAwait(false);
             try
@@ -47,10 +42,15 @@ namespace Silica.BufferPool
                 if (_activeWrites.Count == 0 && _writerQ.Count == 0)
                 {
                     _activeReaders++;
+                    // Metric: reader granted immediately
+                    // BufferPoolMetrics.RecordLatchGranted(isWriter:false);
                     return new Releaser(this, isWriter: false, seg: default);
                 }
                 tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                _readerQ.Enqueue(tcs);
+                waiter = new ReaderWait(tcs);
+                _readerQ.Enqueue(waiter);
+                // Metric: reader queued
+                // BufferPoolMetrics.RecordLatchQueued(isWriter:false);
             }
             finally
             {
@@ -58,7 +58,7 @@ namespace Silica.BufferPool
             }
 
             using var reg = ct.CanBeCanceled
-                ? ct.Register(static s => ((TaskCompletionSource<Releaser>)s!).TrySetCanceled(), tcs)
+                ? ct.Register(static s => ((ReaderWait)s!).TryCancel(), waiter)
                 : default;
 
             return await tcs.Task.ConfigureAwait(false);
@@ -81,12 +81,15 @@ namespace Silica.BufferPool
                 if (_activeReaders == 0 && !OverlapsAny(_activeWrites, seg))
                 {
                     _activeWrites.Add(seg);
+                    // Metric: writer granted immediately
+                    // BufferPoolMetrics.RecordLatchGranted(isWriter:true);
                     return new Releaser(this, isWriter: true, seg);
                 }
                 tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
                 waiter = new WriterWait(seg, tcs);
                 _writerQ.Enqueue(waiter);
-                //_writerQ.Enqueue(new WriterWait(seg, tcs));
+                // Metric: writer queued
+                // BufferPoolMetrics.RecordLatchQueued(isWriter:true);
             }
             finally
             {
@@ -112,7 +115,7 @@ namespace Silica.BufferPool
 
         public async ValueTask ReleaseAsync(bool isWriter, RangeSeg seg)
         {
-            ThrowIfDisposed();
+            // Allow release even if disposed to prevent deadlocks during shutdown.
             await _mutex.WaitAsync().ConfigureAwait(false);
             try
             {
@@ -172,10 +175,16 @@ namespace Silica.BufferPool
             // Then readers if no writers waiting or active
             if (_activeWrites.Count == 0 && _writerQ.Count == 0 && _readerQ.Count > 0)
             {
-                int n = _readerQ.Count;
-                _activeReaders += n;
-                while (n-- > 0)
-                    _readerQ.Dequeue().TrySetResult(new Releaser(this, isWriter: false, default));
+                int granted = 0;
+                // Wake all queued readers; only count those actually granted (not canceled)
+                while (_readerQ.Count > 0)
+                {
+                    var r = _readerQ.Dequeue();
+                    if (r.TryGrant(this))
+                        granted++;
+                }
+                if (granted > 0)
+                    _activeReaders += granted;
             }
         }
 
@@ -192,7 +201,31 @@ namespace Silica.BufferPool
         {
             if (_disposed) return;
             _disposed = true;
-            _mutex.Dispose();
+            // Deterministically drain queues and cancel waiters; keep semaphore alive to allow in-flight releases.
+            try
+            {
+                _mutex.Wait();
+                try
+                {
+                    // Cancel queued writers
+                    while (_writerQ.Count > 0)
+                    {
+                        var w = _writerQ.Dequeue();
+                        w.TryCancel();
+                    }
+                    // Fail queued readers
+                    while (_readerQ.Count > 0)
+                    {
+                        var r = _readerQ.Dequeue();
+                        r.TryCancel();
+                    }
+                }
+                finally
+                {
+                    _mutex.Release();
+                }
+            }
+            catch { /* best-effort during shutdown, waiters already prevented from being queued/granted */ }
         }
 
         public async ValueTask DisposeAsync()
@@ -204,6 +237,31 @@ namespace Silica.BufferPool
         // ------------------------------------------------------------------
         // Nested helper types
         // ------------------------------------------------------------------
+
+        private sealed class ReaderWait
+        {
+            public TaskCompletionSource<Releaser> Tcs { get; }
+            private int _canceled;   // 0 = live, 1 = canceled
+
+            public bool IsCanceled => _canceled == 1;
+
+            public ReaderWait(TaskCompletionSource<Releaser> tcs)
+            {
+                Tcs = tcs;
+            }
+
+            public void TryCancel()
+            {
+                if (Interlocked.CompareExchange(ref _canceled, 1, 0) == 0)
+                    Tcs.TrySetCanceled();
+            }
+
+            public bool TryGrant(AsyncRangeLatch owner)
+            {
+                // Grant succeeds only if not already canceled/completed.
+                return Tcs.TrySetResult(new Releaser(owner, isWriter: false, seg: default));
+            }
+        }
 
         private sealed class WriterWait
         {

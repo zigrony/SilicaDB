@@ -23,6 +23,7 @@ namespace Silica.BufferPool
         private int _pinCount;
         private volatile bool _dirty;
         private int _loadState; // 0=none,1=loading-or-loaded,2=loaded
+        private int _size;      // logical page size exposed via Buffer
 
         public readonly SemaphoreSlim LoadGate = new(1, 1);
         private byte[]? _bytes;
@@ -31,7 +32,7 @@ namespace Silica.BufferPool
 
         public Memory<byte> Buffer =>
             (_bytes ?? throw new InvalidOperationException("Buffer uninitialized"))
-            .AsMemory();
+            .AsMemory(0, _size);
 
         public bool Loaded => Volatile.Read(ref _loadState) == 2;
 
@@ -46,8 +47,22 @@ namespace Silica.BufferPool
 
         public void InitializeBuffer(int size)
         {
-            if (_bytes is null)
-                _bytes = ArrayPool<byte>.Shared.Rent(size);
+            // Idempotent and size-correct: if a buffer exists with wrong size, return and rent correct size.
+            var current = _bytes;
+            if (current is null)
+            {
+                var rented = ArrayPool<byte>.Shared.Rent(size);
+                Volatile.Write(ref _bytes, rented);
+                _size = size;
+                return;
+            }
+            if (_size != size)
+            {
+                ArrayPool<byte>.Shared.Return(current, clearArray: true);
+                var rented = ArrayPool<byte>.Shared.Rent(size);
+                Volatile.Write(ref _bytes, rented);
+                _size = size;
+            }
         }
 
         internal void ReturnBuffer()
@@ -56,6 +71,10 @@ namespace Silica.BufferPool
             {
                 ArrayPool<byte>.Shared.Return(_bytes, clearArray: true);
                 _bytes = null;
+                _size = 0;
+                // Reset state for safety if the frame instance lingers after eviction.
+                Volatile.Write(ref _loadState, 0);
+                Volatile.Write(ref _dirty, false);
             }
         }
 
@@ -63,16 +82,19 @@ namespace Silica.BufferPool
 
         public int PinCount => Volatile.Read(ref _pinCount);
 
-        public Task PinAsync(CancellationToken _)
+        public ValueTask PinAsync(CancellationToken _)
         {
             Interlocked.Increment(ref _pinCount);
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
         public void Unpin()
         {
-            if (Interlocked.Decrement(ref _pinCount) < 0)
+            var newCount = Interlocked.Decrement(ref _pinCount);
+            if (newCount < 0)
                 throw new InvalidOperationException("Unbalanced pin/unpin.");
+            // Optional: metric hook for pin/unpin tracking
+            // BufferPoolMetrics.RecordUnpinned(_metrics);
         }
 
         public bool IsDirty => Volatile.Read(ref _dirty);

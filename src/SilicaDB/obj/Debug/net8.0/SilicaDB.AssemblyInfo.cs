@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SilicaDB")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+025b79074c14a270430e931589058803d5bafba7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6a219df04c606f3d7ba899066abdebacea801ca")]
 [assembly: System.Reflection.AssemblyProductAttribute("SilicaDB")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SilicaDB")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

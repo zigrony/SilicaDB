@@ -20,21 +20,16 @@ namespace Silica.BufferPool
 
     public readonly struct PageWriteLease : IAsyncDisposable
     {
-        private readonly Frame _frame;
-        private readonly AsyncRangeLatch.Releaser _release;
+        private readonly LeaseCore? _core;
         public readonly Memory<byte> Slice;
 
-        internal PageWriteLease(Frame f, AsyncRangeLatch.Releaser r, Memory<byte> s)
+        internal PageWriteLease(LeaseCore core, Memory<byte> slice)
         {
-            _frame = f;
-            _release = r;
-            Slice = s;
+            _core = core;
+            Slice = slice;
         }
 
-        public async ValueTask DisposeAsync()
-        {
-            await _release.DisposeAsync().ConfigureAwait(false);
-            _frame.Unpin();
-        }
+        public ValueTask DisposeAsync() => _core?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
+
 }

@@ -1,6 +1,0 @@
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.csproj.AssemblyReference.cache
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.sourcelink.json
