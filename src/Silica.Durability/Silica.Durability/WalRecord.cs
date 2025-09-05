@@ -6,6 +6,8 @@ namespace Silica.Durability
     {
         /// <summary>
         /// Monotonically increasing sequence number; used for ordering during recovery.
+        /// Note: When appending via IWalManager, the writer assigns the actual persisted LSN.
+        /// The value provided here by producers is not used by the writer and may differ.
         /// </summary>
         public long SequenceNumber { get; }
 

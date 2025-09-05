@@ -7,8 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Silica.Common\Silica.Common\Silica.Common.csproj" />
+    <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
     <ProjectReference Include="..\..\Silica.Evictions\Silica.Evictions\Silica.Evictions.csproj" />
-    <ProjectReference Include="..\..\Silica.Observability\Silica.Observability\Silica.Observability.csproj" />
   </ItemGroup>
 
 </Project>

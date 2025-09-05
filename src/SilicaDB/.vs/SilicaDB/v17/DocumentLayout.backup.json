@@ -3,16 +3,13 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\extensions\\bufferpool\\bufferpoolmetrics.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\walmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\pagewritelease.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\recovermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\pagereadlease.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\bufferpoolmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\checkpointmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -31,53 +28,40 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "BufferPoolMetrics.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Extensions\\BufferPool\\BufferPoolMetrics.cs",
-              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Extensions\\BufferPool\\BufferPoolMetrics.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Extensions\\BufferPool\\BufferPoolMetrics.cs",
-              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Extensions\\BufferPool\\BufferPoolMetrics.cs",
-              "ViewState": "AgIAAA8CAAAAAAAAAAAzwDgCAAAAAAAAAAAAAA==",
+              "Title": "WalManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\WalManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\WalManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\WalManager.cs*",
+              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\WalManager.cs*",
+              "ViewState": "AgIAAIMBAAAAAAAAAADgv6IBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-03T12:36:37.787Z",
+              "WhenOpened": "2025-09-05T17:35:16.931Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "PageWriteLease.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
-              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
-              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\PageWriteLease.cs",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAACEAAAAAAAAAAAAAAA==",
+              "Title": "RecoverManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs*",
+              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs*",
+              "ViewState": "AgIAAIsAAAAAAAAAAADgv68AAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-03T12:18:43.388Z",
+              "WhenOpened": "2025-09-05T17:33:46.057Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "PageReadLease.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
-              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
-              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\PageReadLease.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAACEAAAAAAAAAAAAAAA==",
+              "Title": "CheckpointManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs*",
+              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs*",
+              "ViewState": "AgIAANkBAAAAAAAAAADwvxECAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-03T12:17:05.746Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "BufferPoolManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "ViewState": "AgIAADcAAAAAAAAAAAAiwDgAAABZAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-03T12:16:30.635Z",
+              "WhenOpened": "2025-09-05T17:29:41.549Z",
               "EditorCaption": ""
             }
           ]
