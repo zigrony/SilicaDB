@@ -15,7 +15,7 @@ using Silica.Storage.Interfaces;
 using Silica.Storage.Exceptions;
 using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
-using Silica.DiagnosticsCore.Extensions.Storage; // StorageMetrics
+using Silica.Storage.Metrics; // StorageMetrics
 
 namespace Silica.Storage
 {

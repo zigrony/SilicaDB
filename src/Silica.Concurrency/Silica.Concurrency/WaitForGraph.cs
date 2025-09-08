@@ -1,7 +1,6 @@
 ﻿// WaitForGraph.cs
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Silica.Concurrency
 {
@@ -14,6 +13,8 @@ namespace Silica.Concurrency
         {
             lock (_graphLock)
             {
+                // Defensive: do not record self-edges
+                if (fromTx == toTx) return;
                 if (!_graph.TryGetValue(fromTx, out var set))
                 {
                     set = new HashSet<long>();
@@ -40,9 +41,34 @@ namespace Silica.Concurrency
         {
             lock (_graphLock)
             {
+                // Remove the node itself.
                 _graph.Remove(txId);
-                foreach (var set in _graph.Values)
-                    set.Remove(txId);
+
+                // Snapshot keys to safely mutate dictionary entries.
+                long[] keys;
+                {
+                    var count = _graph.Keys.Count;
+                    keys = new long[count];
+                    int i = 0;
+                    foreach (var k in _graph.Keys)
+                    {
+                        if (i < keys.Length) { keys[i] = k; i++; } else { break; }
+                    }
+                }
+
+                // Remove inbound edges and prune empty adjacency sets.
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var from = keys[i];
+                    if (_graph.TryGetValue(from, out var set))
+                    {
+                        set.Remove(txId);
+                        if (set.Count == 0)
+                        {
+                            _graph.Remove(from);
+                        }
+                    }
+                }
             }
         }
 
@@ -51,38 +77,152 @@ namespace Silica.Concurrency
             lock (_graphLock)
             {
                 var visited = new HashSet<long>();
-                var stack = new HashSet<long>();
+                var onStack = new HashSet<long>();
 
-                foreach (var node in _graph.Keys.ToList())
+                // Snapshot keys without LINQ
+                long[] keys;
                 {
-                    if (DetectCycleUtil(node, visited, stack))
-                        return true;
+                    var count = _graph.Keys.Count;
+                    keys = new long[count];
+                    int i = 0;
+                    foreach (var k in _graph.Keys)
+                    {
+                        if (i < keys.Length) { keys[i] = k; i++; } else { break; }
+                    }
+                }
+
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var start = keys[i];
+                    if (visited.Contains(start)) continue;
+
+                    // Iterative DFS with explicit stack frames
+                    var frameNodeStack = new Stack<long>();
+                    var frameIterStack = new Stack<IEnumerator<long>>();
+
+                    frameNodeStack.Push(start);
+                    onStack.Add(start);
+                    visited.Add(start);
+
+                    // Create enumerator for start's neighbors if any
+                    if (_graph.TryGetValue(start, out var startNeighbors))
+                    {
+                        var it = startNeighbors.GetEnumerator();
+                        frameIterStack.Push(it);
+                    }
+                    else
+                    {
+                        // No neighbors; pop immediately
+                        onStack.Remove(start);
+                        frameNodeStack.Pop();
+                        continue;
+                    }
+
+                    while (frameNodeStack.Count > 0)
+                    {
+                        var iter = frameIterStack.Peek();
+                        if (iter.MoveNext())
+                        {
+                            var n = iter.Current;
+                            if (!visited.Contains(n))
+                            {
+                                visited.Add(n);
+                                frameNodeStack.Push(n);
+                                onStack.Add(n);
+                                if (_graph.TryGetValue(n, out var nNeighbors))
+                                {
+                                    var nIt = nNeighbors.GetEnumerator();
+                                    frameIterStack.Push(nIt);
+                                }
+                                else
+                                {
+                                    // leaf; unwind once on next iteration
+                                }
+                            }
+                            else if (onStack.Contains(n))
+                            {
+                                // back-edge -> cycle
+                                // Dispose enumerators before returning
+                                while (frameIterStack.Count > 0)
+                                {
+                                    var e = frameIterStack.Pop();
+                                    try { e.Dispose(); } catch { }
+                                }
+                                return true;
+                            }
+                        }
+                        else
+                        {
+                            // Finished neighbors of the node on top
+                            try { iter.Dispose(); } catch { }
+                            frameIterStack.Pop();
+                            var node = frameNodeStack.Pop();
+                            onStack.Remove(node);
+                        }
+                    }
                 }
                 return false;
             }
         }
-
-        private bool DetectCycleUtil(long current, HashSet<long> visited, HashSet<long> stack)
+        public int CountNodes()
         {
-            if (!visited.Contains(current))
+            lock (_graphLock)
             {
-                visited.Add(current);
-                stack.Add(current);
-
-                if (_graph.TryGetValue(current, out var neighbors))
+                // Count distinct vertices = keys (outgoing) ∪ all targets (incoming-only)
+                // No LINQ. Bound allocations to worst-case counts.
+                // 1) Snapshot keys
+                int keyCount = _graph.Keys.Count;
+                long[] keys = keyCount > 0 ? new long[keyCount] : Array.Empty<long>();
+                if (keyCount > 0)
                 {
-                    foreach (var n in neighbors)
+                    int i = 0;
+                    foreach (var k in _graph.Keys)
                     {
-                        if (!visited.Contains(n) && DetectCycleUtil(n, visited, stack))
-                            return true;
-                        if (stack.Contains(n))
-                            return true;
+                        if (i < keys.Length) { keys[i] = k; i++; }
+                        else { break; }
+                    }
+                    keyCount = i;
+                }
+
+                // 2) Mark seen nodes in a HashSet<long>
+                var seen = new HashSet<long>();
+                for (int i = 0; i < keyCount; i++)
+                {
+                    seen.Add(keys[i]);
+                }
+
+                // 3) Walk adjacency sets and add targets
+                // Snapshot values by iterating the dictionary (still under lock)
+                foreach (var kv in _graph)
+                {
+                    var set = kv.Value;
+                    if (set == null || set.Count == 0) continue;
+                    var it = set.GetEnumerator();
+                    try
+                    {
+                        while (it.MoveNext())
+                        {
+                            var tgt = it.Current;
+                            seen.Add(tgt);
+                        }
+                    }
+                    finally
+                    {
+                        try { it.Dispose(); } catch { }
                     }
                 }
-            }
 
-            stack.Remove(current);
-            return false;
+                // 4) Result is count of distinct nodes
+                return seen.Count;
+            }
         }
+        public void Clear()
+        {
+            lock (_graphLock)
+            {
+                _graph.Clear();
+            }
+        }
+
     }
 }

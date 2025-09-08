@@ -1,8 +1,10 @@
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Durability.deps.json
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Durability.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Durability.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Common.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.DiagnosticsCore.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Evictions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Common.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Evictions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.csproj.AssemblyReference.cache
@@ -16,5 +18,3 @@ C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\refint\Silica.Durability.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\ref\Silica.Durability.dll
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Common.dll
-C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Common.pdb

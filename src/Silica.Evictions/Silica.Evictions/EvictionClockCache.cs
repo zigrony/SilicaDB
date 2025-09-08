@@ -5,7 +5,7 @@ using Silica.Evictions.Interfaces;
 using System.Diagnostics;
 using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
-using Silica.DiagnosticsCore.Extensions.Evictions;
+using Silica.Evictions.Metrics;
 
 namespace Silica.Evictions
 {

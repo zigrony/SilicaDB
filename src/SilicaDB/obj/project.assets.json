@@ -16,8 +16,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
-          "Silica.Instrumentation": "1.0.0",
-          "Silica.Observability": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0"
         },
         "compile": {
           "bin/placeholder/Silica.Concurrency.dll": {}

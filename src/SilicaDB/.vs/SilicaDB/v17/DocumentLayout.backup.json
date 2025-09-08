@@ -3,13 +3,10 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\walmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\recovermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6FFE13F7-3ED3-42B2-80FC-53C467039C1D}|..\\Silica.Durability\\Silica.Durability\\Silica.Durability.csproj|c:\\githubrepos\\silicadb\\src\\silica.durability\\silica.durability\\checkpointmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8FECD843-10AB-407E-85BD-FF8F6A056606}|..\\Silica.Concurrency\\Silica.Concurrency\\Silica.Concurrency.csproj|c:\\githubrepos\\silicadb\\src\\silica.concurrency\\silica.concurrency\\lockmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -28,40 +25,27 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "WalManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\WalManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\WalManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\WalManager.cs*",
-              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\WalManager.cs*",
-              "ViewState": "AgIAAIMBAAAAAAAAAADgv6IBAAAAAAAAAAAAAA==",
+              "Title": "RecoverManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
+              "ViewState": "AgIAAKQAAAAAAAAAAAAwwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-05T17:35:16.931Z",
+              "WhenOpened": "2025-09-08T11:04:33.155Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "RecoverManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\RecoverManager.cs*",
-              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\RecoverManager.cs*",
-              "ViewState": "AgIAAIsAAAAAAAAAAADgv68AAAAeAAAAAAAAAA==",
+              "Title": "Lockmanager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Concurrency\\Silica.Concurrency\\Lockmanager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Concurrency\\Silica.Concurrency\\Lockmanager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Concurrency\\Silica.Concurrency\\Lockmanager.cs",
+              "RelativeToolTip": "..\\Silica.Concurrency\\Silica.Concurrency\\Lockmanager.cs",
+              "ViewState": "AgIAAEMBAAAAAAAAAADgv3IBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-05T17:33:46.057Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "CheckpointManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs*",
-              "RelativeToolTip": "..\\Silica.Durability\\Silica.Durability\\CheckpointManager.cs*",
-              "ViewState": "AgIAANkBAAAAAAAAAADwvxECAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-05T17:29:41.549Z",
+              "WhenOpened": "2025-09-08T10:49:18.524Z",
               "EditorCaption": ""
             }
           ]

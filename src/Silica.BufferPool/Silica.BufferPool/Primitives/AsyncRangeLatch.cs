@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Silica.Durability;
 using Silica.DiagnosticsCore.Metrics;
-using Silica.DiagnosticsCore.Extensions.BufferPool;
 
 namespace Silica.BufferPool
 {

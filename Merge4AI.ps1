@@ -9,11 +9,12 @@ param(
         "Silica.DiagnosticsCore",
         "Silica.Durability",
         "Silica.Evictions",
-        "Silica.Instrumentation",
-        "Silica.Logging",
-        "Silica.Observability",
+        #"Silica.Instrumentation",
+        #"Silica.Logging",
+        #"Silica.Observability",
         "Silica.Storage",
-        "SilicaDB"
+        "Silica.PageAccess"
+        #"SilicaDB"
     )]
     [string[]]$Projects = @("All"),
     [int]$fileSize = 80000
@@ -60,17 +61,18 @@ function Split-LargeFile {
 
 # Master project list
 $AllProjectsList = @(
-    "Silica.BufferPool",
-    "Silica.Common",
-    "Silica.Concurrency",
-    "Silica.DiagnosticsCore",
-    "Silica.Durability",
-    "Silica.Evictions",
-    "Silica.Instrumentation",
-    "Silica.Logging",
-    "Silica.Observability",
-    "Silica.Storage",
-    "SilicaDB"
+        "Silica.BufferPool",
+        "Silica.Common",
+        "Silica.Concurrency",
+        "Silica.DiagnosticsCore",
+        "Silica.Durability",
+        "Silica.Evictions",
+        #"Silica.Instrumentation",
+        #"Silica.Logging",
+        #"Silica.Observability",
+        "Silica.Storage",
+        "Silica.PageAccess"
+        #"SilicaDB"
 )
 
 # Resolve project list

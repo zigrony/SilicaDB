@@ -7,7 +7,7 @@ namespace Silica.Concurrency
     /// <summary>
     /// In-process stub for ILockRpcClient that delegates back to the same LockManager.
     /// </summary>
-    internal class LocalLockRpcClient : ILockRpcClient
+    internal sealed class LocalLockRpcClient : ILockRpcClient
     {
         private readonly LockManager _mgr;
         public LocalLockRpcClient(LockManager mgr) => _mgr = mgr;
@@ -36,8 +36,12 @@ namespace Silica.Concurrency
             string nodeId,
             long txId,
             string resource,
-            long fencingToken)
+            long fencingToken,
+            CancellationToken ct)
         {
+            // Release is non-cancellable (ignore ct) to avoid leaks.
+            // Important: do NOT swallow exceptions here. In strict mode, invalid/stale
+            // tokens must surface to the caller to preserve contract correctness.
             _mgr.ReleaseLocal(txId, resource, fencingToken);
             return Task.CompletedTask;
         }

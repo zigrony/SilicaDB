@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using Silica.Storage.Interfaces;
 using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
-using Silica.DiagnosticsCore.Extensions.Storage; // StorageMetrics
+using Silica.Storage.Metrics; // StorageMetrics
 
 namespace Silica.Storage
 {

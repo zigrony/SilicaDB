@@ -23,7 +23,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.DiagnosticsCore", ".
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiagnosticsCoreTestApp", "..\DiagnosticsCoreTestApp\DiagnosticsCoreTestApp\DiagnosticsCoreTestApp.csproj", "{67C1AD42-B205-43A2-9D21-82921E3D3C5F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.App", "..\test.app\Test.App\Test.App.csproj", "{260D0B21-B6A4-429F-8E11-95CF779542FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.App", "..\test.app\Test.App\Test.App.csproj", "{260D0B21-B6A4-429F-8E11-95CF779542FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.PageAccess", "..\Silica.PageAccess\Silica.PageAccess\Silica.PageAccess.csproj", "{CD00CCCA-BBA0-4EAA-8FB9-DADD3F3FE478}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,6 +77,10 @@ Global
 		{260D0B21-B6A4-429F-8E11-95CF779542FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{260D0B21-B6A4-429F-8E11-95CF779542FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{260D0B21-B6A4-429F-8E11-95CF779542FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD00CCCA-BBA0-4EAA-8FB9-DADD3F3FE478}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD00CCCA-BBA0-4EAA-8FB9-DADD3F3FE478}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD00CCCA-BBA0-4EAA-8FB9-DADD3F3FE478}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD00CCCA-BBA0-4EAA-8FB9-DADD3F3FE478}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

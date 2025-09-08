@@ -10,8 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Silica.Durability;
 using Silica.DiagnosticsCore.Metrics;
-using Silica.DiagnosticsCore.Extensions.BufferPool;
-using static Silica.DiagnosticsCore.Extensions.Storage.StorageMetrics;
+using Silica.BufferPool.Metrics;
+using Silica.Storage.Metrics;
 
 namespace Silica.BufferPool
 {
@@ -39,8 +39,11 @@ namespace Silica.BufferPool
     /// Manages an in-memory buffer of pages, with per-page concurrency control,
     /// WAL writes, and eviction support. Emits metrics via IMetricsManager.
     /// </summary>
-    public sealed class BufferPoolManager : IAsyncDisposable
+    public sealed class BufferPoolManager : IAsyncDisposable, IBufferPoolManager
     {
+        // Current eviction selection policy: FIFO via _loadOrder queue.
+        // Tag into metrics for cross-subsystem policy heatmaps.
+        private const string EvictionPolicyTag = "fifo";
 
         ~BufferPoolManager()
         {
@@ -449,7 +452,8 @@ namespace Silica.BufferPool
                     frame.LoadGate.Dispose();
                     BufferPoolMetrics.IncrementEviction(
                         _metrics,
-                        reason);
+                        reason,
+                        EvictionPolicyTag);
                     BufferPoolMetrics.RecordBufferReturned(_metrics);
                     frame.ReturnBuffer();
                 }
@@ -717,7 +721,7 @@ namespace Silica.BufferPool
             return c;
         }
 
-        private sealed class InFlightProvider : Silica.DiagnosticsCore.Extensions.BufferPool.IInFlightProvider
+        private sealed class InFlightProvider : Silica.BufferPool.Metrics.IInFlightProvider
         {
             private readonly Func<long> _read;
             public InFlightProvider(Func<long> read) => _read = read;
