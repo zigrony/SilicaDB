@@ -14,3 +14,5 @@ C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Debug\net8.0\S
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Debug\net8.0\refint\Silica.Evictions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Debug\net8.0\Silica.Evictions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Debug\net8.0\ref\Silica.Evictions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Debug\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Debug\net8.0\Silica.Exceptions.pdb

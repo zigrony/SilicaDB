@@ -15,6 +15,9 @@
       "Silica.DiagnosticsCore/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Exceptions": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/Silica.DiagnosticsCore.dll": {}
         },
@@ -34,6 +37,16 @@
         "runtime": {
           "bin/placeholder/Silica.Evictions.dll": {}
         }
+      },
+      "Silica.Exceptions/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Silica.Exceptions.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Exceptions.dll": {}
+        }
       }
     }
   },
@@ -52,6 +65,11 @@
       "type": "project",
       "path": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj",
       "msbuildProject": "../../Silica.Evictions/Silica.Evictions/Silica.Evictions.csproj"
+    },
+    "Silica.Exceptions/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Exceptions/Silica.Exceptions/Silica.Exceptions.csproj",
+      "msbuildProject": "../../Silica.Exceptions/Silica.Exceptions/Silica.Exceptions.csproj"
     }
   },
   "projectFileDependencyGroups": {

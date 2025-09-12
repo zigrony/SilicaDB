@@ -14,3 +14,5 @@ C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\refint\Silica.Concurrency.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\Silica.Concurrency.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\ref\Silica.Concurrency.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.pdb

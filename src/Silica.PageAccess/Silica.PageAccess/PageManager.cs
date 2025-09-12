@@ -27,6 +27,7 @@ namespace Silica.PageAccess
         private readonly PageAccessorOptions _options;
         private readonly IMetricsManager _metrics;
         private readonly KeyValuePair<string, object> _componentTag;
+        private readonly IPageWalHook? _walHook;
         private int _disposed;
         [ThreadStatic]
         private static int _traceReentrancy;
@@ -35,7 +36,9 @@ namespace Silica.PageAccess
             IBufferPoolManager pool,
             PageAccessorOptions options,
             IMetricsManager metrics,
-            string componentName = "PageAccess")
+            string componentName = "PageAccess",
+            IPageWalHook? walHook = null)
+
         {
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
             _options = options;
@@ -43,7 +46,7 @@ namespace Silica.PageAccess
 
             var comp = string.IsNullOrWhiteSpace(componentName) ? "PageAccess" : componentName;
             _componentTag = new KeyValuePair<string, object>(TagKeys.Component, comp);
-
+            _walHook = walHook;
             // Register PageAccess metrics once (DiagnosticsCore is tolerant of duplicates).
             PageAccessMetrics.RegisterAll(_metrics, comp);
         }
@@ -61,6 +64,137 @@ namespace Silica.PageAccess
 
 
         private static bool IsTracing => DiagnosticsCoreBootstrap.IsStarted;
+
+        /// <summary>
+        /// ARIES-compliant write: mutate a range under exclusive latch, append WAL via the hook,
+        /// obtain LSN, and stamp the page header LSN before returning. Enforces WAL-before-write
+        /// by delegating to the hook. The mutate callback can modify the provided writable slice.
+        /// </summary>
+        public async ValueTask<PageHeader> WriteAndStampAsync(
+            PageId id,
+            int offset,
+            int length,
+            PageVersion expectedVersion,
+            PageType expectedType,
+            Func<Memory<byte>, PageHeader, PageHeader> mutate,
+            CancellationToken ct = default)
+        {
+            if (mutate is null) throw new ArgumentNullException(nameof(mutate));
+            ThrowIfDisposed();
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (length <= 0) throw new ArgumentOutOfRangeException(nameof(length));
+            if (offset > int.MaxValue - length) throw new ArgumentOutOfRangeException(nameof(length));
+
+            // 1) Short read to validate header & invariants
+            var readLease = await _pool.AcquireReadAsync(id, ct).ConfigureAwait(false);
+            PageHeader current;
+            try
+            {
+                if (!TryReadHeader(readLease.Page, out current))
+                {
+                    RecordError("invalid_header");
+                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "invalid_page_header", "invalid_header", id);
+                    throw new PageHeaderInvalidException("Invalid page header during write.");
+                }
+                ValidateHeader(id, current, expectedType, expectedVersion);
+                ValidateHeaderPhysical(id, current, readLease.Page.Length);
+            }
+            finally
+            {
+                await readLease.DisposeAsync().ConfigureAwait(false);
+            }
+
+            // 2) Exclusive latch on target range
+            var w = await _pool.AcquireWriteAsync(id, offset, length, ct).ConfigureAwait(false);
+            try
+            {
+                if (w.Slice.Length != length)
+                    throw new ArgumentOutOfRangeException(nameof(length), "Write lease size mismatch.");
+
+                // 2a) Re-parse header under exclusive lease if header is included
+                PageHeader headerUnderWrite = current;
+                bool headerLocked = (offset == 0 && length >= PageHeader.HeaderSize);
+                if (headerLocked)
+                {
+                    if (!TryReadHeader(w.Slice, out headerUnderWrite))
+                    {
+                        RecordError("invalid_header");
+                        if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "invalid_page_header_under_write", "invalid_header", id);
+                        throw new PageHeaderInvalidException("Invalid page header during exclusive write.");
+                    }
+                    ValidateHeader(id, headerUnderWrite, expectedType, expectedVersion);
+                }
+                else if (_options.RequireHeaderRevalidationOnWrite)
+                {
+                    RecordError("header_not_revalidated");
+                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "header_not_revalidated_requires_header_lock", "header_not_revalidated", id);
+                    throw new PageHeaderInvalidException("Header revalidation required; include header region in the write lease.");
+                }
+                else
+                {
+                    RecordWarn("header_not_revalidated");
+                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "warn", "header_not_revalidated", "header_not_revalidated", id);
+                }
+
+                // 3) Mutate in-place under the exclusive latch
+                var mutatedHeader = mutate(w.Slice, headerUnderWrite);
+
+                // 4) Capture after-image of the range (copy once, bounded by 'length')
+                var afterImage = new byte[length];
+                w.Slice.Span.CopyTo(afterImage.AsSpan());
+
+                // 5) Append WAL / get LSN via hook (enforce WAL-before-write)
+                ulong lsn = 0;
+                if (_walHook != null)
+                {
+                    lsn = await _walHook.OnBeforePageWriteAsync(id, offset, length, afterImage, ct).ConfigureAwait(false);
+                }
+                else
+                {
+                    // No hook installed: still proceed, but signal via warn metric/trace.
+                    RecordWarn("wal_hook_missing");
+                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "warn", "wal_hook_missing", "wal_hook_missing", id);
+                }
+
+                // 6) Stamp header LSN and re-write header under the same exclusive latch if headerLocked
+                //    If header wasn't part of the range, acquire a short exclusive header lease to stamp LSN.
+                if (lsn != 0)
+                {
+                    mutatedHeader = mutatedHeader.With(lsn: lsn);
+                }
+
+                if (headerLocked)
+                {
+                    WriteHeaderToMemory(w.Slice, _options.UpdateChecksumOnWrite ? mutatedHeader.With(checksum: 0) : mutatedHeader);
+                }
+                else
+                {
+                    // Acquire a short exclusive lease on [0..HeaderSize) to stamp LSN safely.
+                    var hdrLease = await _pool.AcquireWriteAsync(id, 0, PageHeader.HeaderSize, ct).ConfigureAwait(false);
+                    try
+                    {
+                        if (!TryReadHeader(hdrLease.Slice, out var hdrNow))
+                            throw new PageHeaderInvalidException("Invalid header during LSN stamp.");
+                        ValidateHeader(id, hdrNow, expectedType, expectedVersion);
+                        var hdrStamped = mutatedHeader;
+                        if (lsn != 0) hdrStamped = hdrStamped.With(lsn: lsn);
+                        WriteHeaderToMemory(hdrLease.Slice, _options.UpdateChecksumOnWrite ? hdrStamped.With(checksum: 0) : hdrStamped);
+                    }
+                    finally
+                    {
+                        await hdrLease.DisposeAsync().ConfigureAwait(false);
+                    }
+                }
+
+                // The write lease remains held until PageWriteHandle is disposed by the caller.
+                RecordWrite(mutatedHeader.Type, Stopwatch.GetTimestamp());
+                return mutatedHeader;
+            }
+            finally
+            {
+                await w.DisposeAsync().ConfigureAwait(false);
+            }
+        }
 
         /// <summary>
         /// Read path:
@@ -201,6 +335,14 @@ namespace Silica.PageAccess
                         {
                             RecordWarn("header_not_revalidated");
                             if (IsTracing) TryEmitTrace("WriteAsync", "warn", $"header_not_revalidated: {id.FileId}/{id.PageIndex}", "header_not_revalidated", id);
+                            // Optional: highlight that no LSN will be stamped unless caller uses WriteAndStampAsync.
+                            if (_walHook != null)
+                            {
+                                RecordWarn("wal_stamp_unavailable_in_plain_write");
+                                if (IsTracing) TryEmitTrace("WriteAsync", "info",
+                                    $"use WriteAndStampAsync for ARIES-compliant LSN stamping: {id.FileId}/{id.PageIndex}",
+                                    "advise_use_write_and_stamp", id);
+                            }
                         }
                     }
                     // Reaching here means the write lease is valid and will be returned to the caller.
@@ -255,10 +397,21 @@ namespace Silica.PageAccess
                 ValidateHeaderPhysicalLowerBoundOnly(id, hdr);
 
                 var updated = mutate(hdr);
-                if (updated.Lsn == hdr.Lsn)
+                // WAL-before-write: append header after-image (HeaderSize) and stamp LSN
+                ulong lsn = 0;
+                if (_walHook != null)
                 {
-                    RecordWarn("lsn_not_updated");
-                    if (IsTracing) TryEmitTrace("WriteHeaderAsync", "warn", $"lsn_not_updated: {id.FileId}/{id.PageIndex}", "lsn_static", id);
+                    var afterHdr = new byte[PageHeader.HeaderSize];
+                    // Write the would-be header (checksum policy applied later) into a temp buffer to log as after-image
+                    var tmp = new Memory<byte>(afterHdr, 0, PageHeader.HeaderSize);
+                    PageHeader.Write(tmp.Span, _options.UpdateChecksumOnWrite ? updated.With(checksum: 0) : updated);
+                    lsn = await _walHook.OnBeforePageWriteAsync(id, 0, PageHeader.HeaderSize, afterHdr, ct).ConfigureAwait(false);
+                    updated = updated.With(lsn: lsn);
+                }
+                else
+                {
+                    RecordWarn("wal_hook_missing");
+                    if (IsTracing) TryEmitTrace("WriteHeaderAsync", "warn", $"wal_hook_missing: {id.FileId}/{id.PageIndex}", "wal_hook_missing", id);
                 }
 
                 // Ensure the mutated header still respects physical invariants.

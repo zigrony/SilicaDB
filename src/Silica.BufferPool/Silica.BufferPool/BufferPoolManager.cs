@@ -104,6 +104,7 @@ namespace Silica.BufferPool
         private readonly IMetricsManager _metrics;
         private readonly ConcurrentDictionary<PageId, Frame> _frames;
         private readonly IWalManager? _wal;
+        private readonly ILogFlushCoordinator? _logFlush;
         private readonly string _poolName;
         private long _inFlightOps;
         // Lifecycle: 0=Running, 1=ShuttingDown, 2=Disposed
@@ -132,6 +133,7 @@ namespace Silica.BufferPool
             IPageDevice device,
             IMetricsManager metrics,
             IWalManager? wal = null,
+            ILogFlushCoordinator? logFlush = null,
             string poolName = "DefaultPool",
             int capacityPages = 0)
         {
@@ -143,6 +145,7 @@ namespace Silica.BufferPool
                 throw new ArgumentOutOfRangeException(nameof(capacityPages));
             _capacityPages = capacityPages;
             _wal = wal;
+            _logFlush = logFlush;
             _frames = new ConcurrentDictionary<PageId, Frame>();
 
             _poolName = string.IsNullOrWhiteSpace(poolName) ? "DefaultPool" : poolName;
@@ -198,6 +201,11 @@ namespace Silica.BufferPool
                 _owner = owner;
                 _frame = frame;
                 _releaser = releaser;
+            }
+            public void MarkDirty(long pageLsn)
+            {
+                // Caller must hold the lease; we avoid extra latching here.
+                _frame.MarkDirty(pageLsn);
             }
 
             public async ValueTask DisposeAsync()
@@ -355,7 +363,8 @@ namespace Silica.BufferPool
                     throw;
                 }
 
-                frame.MarkDirty();
+                // Note: dirtying is now explicit and should include the pageLSN.
+                // Call lease.MarkDirty(lsn) after appending the corresponding WAL record(s).
                 OnLeaseAcquired();
                 var core = new LeaseCore(this, frame, releaser);
                 return new PageWriteLease(core, frame.Buffer);
@@ -646,6 +655,22 @@ namespace Silica.BufferPool
         {
             if (!frame.IsDirty) return;
 
+            // If a pageLSN is known and a coordinator is provided, ensure WAL is durable up to pageLSN
+            var pageLsn = frame.PageLsn;
+            if (_logFlush != null && pageLsn > 0)
+            {
+                IncrementInFlight();
+                try
+                {
+                    await _logFlush.EnsureFlushedAsync(pageLsn, ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    DecrementInFlight();
+                }
+            }
+
+            // Optional full-page WAL record (legacy path); can coexist with LSN-based ordering
             if (_wal != null)
             {
                 var payload = EncodeFullPageRecord(
@@ -753,6 +778,41 @@ namespace Silica.BufferPool
                 _leasesDrained.Set();
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // Dirty page table surfaces
+        // ─────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Immutable snapshot of dirty pages for DPT maintenance.
+        /// Note: best-effort; the set can change immediately after snapshot.
+        /// </summary>
+        public IReadOnlyList<DirtyPageInfo> SnapshotDirtyPages()
+        {
+            var list = new List<DirtyPageInfo>();
+            foreach (var kvp in _frames)
+            {
+                var f = kvp.Value;
+                if (f.IsDirty)
+                {
+                    list.Add(new DirtyPageInfo(kvp.Key, f.PageLsn));
+                }
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Try read the current pageLSN for a resident page.
+        /// Returns false if the page is not resident.
+        /// </summary>
+        public bool TryGetPageLsn(PageId pid, out long pageLsn)
+        {
+            if (_frames.TryGetValue(pid, out var f))
+            {
+                pageLsn = f.PageLsn;
+                return true;
+            }
+            pageLsn = 0;
+            return false;
+        }
     }
 }

@@ -54,5 +54,16 @@ namespace Silica.BufferPool
         /// flush dirty pages, evict all pages, and drain I/O.
         /// </summary>
         Task StopAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Snapshot the current dirty page set for DPT maintenance, including pageLSN.
+        /// Best-effort: the set can change immediately after snapshot.
+        /// </summary>
+        IReadOnlyList<DirtyPageInfo> SnapshotDirtyPages();
+
+        /// <summary>
+        /// Try to get the current pageLSN for a resident page.
+        /// </summary>
+        bool TryGetPageLsn(PageId pageId, out long pageLsn);
     }
 }

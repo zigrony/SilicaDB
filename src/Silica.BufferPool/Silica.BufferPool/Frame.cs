@@ -21,6 +21,7 @@ namespace Silica.BufferPool
     {
         private int _pinCount;
         private volatile bool _dirty;
+        private long _pageLsn; // 0 = unknown/not-set
         private int _loadState; // 0=none,1=loading-or-loaded,2=loaded
         private int _size;      // logical page size exposed via Buffer
 
@@ -97,8 +98,38 @@ namespace Silica.BufferPool
         }
 
         public bool IsDirty => Volatile.Read(ref _dirty);
-        public void MarkDirty() => Volatile.Write(ref _dirty, true);
+        /// <summary>
+        /// Mark the page dirty with an optional page LSN.
+        /// The stored LSN is the max of existing and provided values (idempotent, monotonic).
+        /// </summary>
+        public void MarkDirty(long pageLsn = 0)
+        {
+            if (pageLsn > 0)
+            {
+                long orig, updated;
+                do
+                {
+                    orig = Interlocked.Read(ref _pageLsn);
+                    updated = pageLsn > orig ? pageLsn : orig;
+                    if (updated == orig) break;
+                } while (Interlocked.CompareExchange(ref _pageLsn, updated, orig) != orig);
+            }
+            Volatile.Write(ref _dirty, true);
+        }
         public void ClearDirty() => Volatile.Write(ref _dirty, false);
+
+        public long PageLsn => Interlocked.Read(ref _pageLsn);
+        public void SetPageLsn(long pageLsn)
+        {
+            if (pageLsn <= 0) return;
+            long orig, updated;
+            do
+            {
+                orig = Interlocked.Read(ref _pageLsn);
+                updated = pageLsn > orig ? pageLsn : orig;
+                if (updated == orig) break;
+            } while (Interlocked.CompareExchange(ref _pageLsn, updated, orig) != orig);
+        }
     }
 
 }

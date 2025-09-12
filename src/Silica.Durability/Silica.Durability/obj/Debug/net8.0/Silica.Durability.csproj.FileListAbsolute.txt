@@ -18,3 +18,5 @@ C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\refint\Silica.Durability.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\Silica.Durability.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\obj\Debug\net8.0\ref\Silica.Durability.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Durability\Silica.Durability\bin\Debug\net8.0\Silica.Exceptions.pdb

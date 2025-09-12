@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
+using Silica.Evictions.Exceptions;
 
 namespace Silica.Evictions
 {
@@ -50,10 +51,10 @@ namespace Silica.Evictions
             Func<TKey, ValueTask<TValue>> factory,
             Func<TKey, TValue, ValueTask> onEvictedAsync)
         {
-            if (capacity < 1) throw new ArgumentOutOfRangeException(nameof(capacity));
+            if (capacity < 1) throw new EvictionInvalidCapacityException(capacity);
             _capacity = capacity;
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _onEvictedAsync = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            _factory = factory ?? throw new EvictionNullValueFactoryException();
+            _onEvictedAsync = onEvictedAsync ?? throw new EvictionNullOnEvictedException();
 
             _map = new Dictionary<TKey, LinkedListNode<CacheEntry>>(capacity);
             _lruList = new LinkedList<CacheEntry>();
@@ -78,7 +79,7 @@ namespace Silica.Evictions
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(EvictionSizeCache<TKey, TValue>));
+                throw new EvictionDisposedException();
 
             // Phase 1: hit check
             using (await _lock.LockAsync().ConfigureAwait(false))

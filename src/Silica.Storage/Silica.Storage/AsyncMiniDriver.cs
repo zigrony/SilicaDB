@@ -16,6 +16,7 @@ using Silica.Storage.Exceptions;
 using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
 using Silica.Storage.Metrics; // StorageMetrics
+using Silica.DiagnosticsCore.Tracing; // TraceManager
 
 namespace Silica.Storage
 {
@@ -142,12 +143,20 @@ namespace Silica.Storage
                 if (IsClosed)
                 {
                     MarkWaitComplete();
-                    throw new ObjectDisposedException(nameof(FrameLock));
+                    throw new FrameLockDisposedException();
                 }
 
                 try
                 {
-                    await Sem.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        await Sem.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Normalize disposal to a canonical storage exception for consistent retry semantics.
+                        throw new FrameLockDisposedException();
+                    }
                 }
                 catch
                 {
@@ -183,7 +192,11 @@ namespace Silica.Storage
         private readonly bool _ownsEvictionManager;
         private bool _metricsRegistered;
 
-
+        // Minimal, jittered sleep to reduce hot-loop pressure on repeated eviction/retries.
+        // Kept very small to avoid impacting normal latency.
+        private static readonly TimeSpan s_minRetryBackoff = TimeSpan.FromMilliseconds(0), s_maxRetryBackoff = TimeSpan.FromMilliseconds(2);
+        protected virtual TimeSpan MinRetryBackoff => s_minRetryBackoff;
+        protected virtual TimeSpan MaxRetryBackoff => s_maxRetryBackoff;
 
         private readonly object _stateLock = new();
         private bool _mounted;
@@ -202,9 +215,16 @@ namespace Silica.Storage
         // If false, UnmountAsync blocks new operations but allows in-flight I/O to complete.
         protected virtual bool AbortInFlightOnUnmount => true;
 
+        /// <summary>
+        /// Best-effort mounted state for operators/tests. Not a synchronization primitive.
+        /// </summary>
+        public bool IsMounted
+        {
+            get { lock (_stateLock) { return _mounted; } }
+        }
 
 
-        // Helper to reduce per-op CTS allocations
+        // Helper to reduce per-op CTS allocations; resilient to concurrent lifecycle CTS disposal/replacement.
         private CancellationToken GetEffectiveToken(CancellationToken operationToken, out CancellationTokenSource? linkedCts)
         {
             // If we are not linking lifecycle into operations, just return the caller token.
@@ -214,27 +234,39 @@ namespace Silica.Storage
                 return operationToken;
             }
 
-            // Default: prefer lifecycle token (always created), only link if both are meaningful
-
             linkedCts = null;
-            var life = _lifecycleCts; // local snapshot
-            var lifeToken = life.Token;
 
-            // If lifecycle is already canceled, we can just return it
-            if (life.IsCancellationRequested)
-                return lifeToken;
+            // Retry loop only if lifecycle CTS was disposed between snapshot and Token access.
+            while (true)
+            {
+                var life = Volatile.Read(ref _lifecycleCts);
+                CancellationToken lifeToken;
+                try
+                {
+                    lifeToken = life.Token;
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Lifecycle CTS raced with dispose/replacement; retry with a fresh snapshot.
+                    continue;
+                }
 
-            // If the caller token cannot cancel, just use lifecycle
-            if (!operationToken.CanBeCanceled)
-                return lifeToken;
+                // If lifecycle is already canceled, prefer it (avoids allocating linked CTS).
+                if (life.IsCancellationRequested)
+                    return lifeToken;
 
-            // If for any reason lifecycle token cannot cancel (should not happen), the caller token suffices
-            if (!lifeToken.CanBeCanceled)
-                return operationToken;
+                // If the caller token cannot cancel, prefer lifecycle token.
+                if (!operationToken.CanBeCanceled)
+                    return lifeToken;
 
-            // Both can cancel and lifecycle isn't canceled yet: link once
-            linkedCts = CancellationTokenSource.CreateLinkedTokenSource(operationToken, lifeToken);
-            return linkedCts.Token;
+                // If lifecycle token cannot cancel (should not happen post-construction), fall back to caller.
+                if (!lifeToken.CanBeCanceled)
+                    return operationToken;
+
+                // Both can cancel and lifecycle isn't canceled yet: link once.
+                linkedCts = CancellationTokenSource.CreateLinkedTokenSource(operationToken, lifeToken);
+                return linkedCts.Token;
+            }
         }
 
         /// <summary>
@@ -319,7 +351,7 @@ namespace Silica.Storage
         private void EnsureNotDisposed()
         {
             if (Volatile.Read(ref _disposedFlag) == 1)
-                throw new ObjectDisposedException(_componentName);
+                throw new DeviceDisposedException();
         }
 
 
@@ -338,7 +370,7 @@ namespace Silica.Storage
             CancellationTokenSource? oldCts = null;
             lock (_stateLock)
             {
-                if (_mounted) throw new InvalidOperationException("Already mounted");
+                if (_mounted) throw new DeviceAlreadyMountedException();
                 oldCts = _lifecycleCts;
                 _lifecycleCts = new CancellationTokenSource();
             }
@@ -452,6 +484,21 @@ namespace Silica.Storage
 
                 // Unmount underlying resources
                 await OnUnmountAsync(cancellationToken).ConfigureAwait(false);
+
+                // Now that we've drained and torn down resources, we can safely dispose the lifecycle CTS
+                // to avoid keeping a canceled CTS around while unmounted. Prepare a fresh CTS for future mounts.
+                try
+                {
+                    _lifecycleCts.Dispose();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    // Maintain a valid CTS object (fresh and not canceled) for subsequent effective token linking logic.
+                    _lifecycleCts = new CancellationTokenSource();
+                }
             }
             finally
             {
@@ -476,9 +523,10 @@ namespace Silica.Storage
                 using var cts = new CancellationTokenSource(s_defaultDisposeTimeout);
                 await UnmountAsync(cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                unmountEx = new StorageDisposeTimeoutException(_componentName, s_defaultDisposeTimeout);
+                // Preserve the original cancel cause to aid postmortem diagnostics
+                throw new StorageDisposeTimeoutException(s_defaultDisposeTimeout, ex);
             }
             catch (Exception ex)
             {
@@ -517,7 +565,7 @@ namespace Silica.Storage
             lock (_stateLock)
             {
                 if (!_mounted)
-                    throw new InvalidOperationException("Device is not mounted");
+                    throw new DeviceNotMountedException();
                 _inFlightCount++;
             }
             try
@@ -556,12 +604,10 @@ namespace Silica.Storage
             CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
 
             if (buffer.Length != Geometry.LogicalBlockSize)
-                throw new ArgumentException(
-                    $"Frame I/O requires exactly {Geometry.LogicalBlockSize} bytes",
-                    nameof(buffer));
+                throw new InvalidLengthException(buffer.Length);
 
             int attempt = 0;
             int maxAttempts = MaxLockAcquireAttempts;
@@ -573,6 +619,9 @@ namespace Silica.Storage
             {
                 while (true)
                 {
+                    // Be responsive to cancellation between retries.
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     // 1) Grab or create the per-frame lock
                     var fl = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
 
@@ -593,54 +642,88 @@ namespace Silica.Storage
                         {
                             await fl.WaitAsyncSafely(effectiveToken).ConfigureAwait(false);
                         }
-                        catch (ObjectDisposedException)
+                        catch (FrameLockDisposedException)
                         {
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
+                            TryEmitTrace("lock_acquire", "warn", "retry_on_framelock_disposed", "exid_2012");
                             // Lock was closed before we could acquire; retry with a fresh cache fetch
                             if (++attempt >= maxAttempts)
-                                throw new ObjectDisposedException(nameof(FrameLock), "Evicted during acquisition.");
+                                throw new FrameLockDisposedException("Evicted during acquisition.");
                             continue;
                         }
                         acquired = true;
+                        // We now definitively hold the lock. Ensure balanced MarkReleased in finally unless we
+                        // explicitly neutralize it in a branch that performs its own balanced release.
+                        markedAcquired = true;
 
                         // If the lock was evicted/closed after we fetched it, retry deterministically
                         if (fl.IsClosed)
                         {
                             // We hold the semaphore and have been marked as holder; undo both.
-                            fl.Sem.Release();
-                            fl.MarkReleased();
+                            try
+                            {
+                                fl.Sem.Release();
+                            }
+                            finally
+                            {
+                                fl.MarkReleased();
+                            }
                             acquired = false;
                             markedAcquired = false;
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
+                            TryEmitTrace("lock_acquire", "warn", "retry_on_framelock_closed", "exid_2012");
 
                             if (++attempt >= maxAttempts)
-                                throw new ObjectDisposedException(nameof(FrameLock), "Evicted during acquisition.");
+                                throw new FrameLockDisposedException("Evicted during acquisition.");
                             continue; // retry with a fresh cache fetch
                         }
+                        else
+                        {
+                            // Small jittered backoff to avoid hot-loop pressure when eviction churns.
+                            // Only applied on an actual retry path; skip for normal success.
+                            if (attempt > 0)
+                            {
+                                // Honor per-device overrides for retry backoff; use effectiveToken (includes lifecycle).
+                                double spanMs = (MaxRetryBackoff - MinRetryBackoff).TotalMilliseconds;
+                                int backoffMs = (int)(MinRetryBackoff.TotalMilliseconds + (spanMs > 0 ? Random.Shared.NextDouble() * spanMs : 0.0));
+                                if (backoffMs > 0) await Task.Delay(backoffMs, effectiveToken).ConfigureAwait(false);
+                            }
+                        }
 
-                    lockSw.Stop();
-                    try { StorageMetrics.RecordLockWaitMs(_metrics, lockSw.Elapsed.TotalMilliseconds); } catch { }
+                        lockSw.Stop();
+                        try
+                        {
+                            var waitedMs = lockSw.Elapsed.TotalMilliseconds;
+                            StorageMetrics.RecordLockWaitMs(_metrics, waitedMs);
+                            if (waitedMs > 0.0)
+                                StorageMetrics.IncrementContention(_metrics);
+                        }
+                        catch { }
 
-                    // 4) Already marked acquired by WaitAsyncSafely; record for balanced release
-                    markedAcquired = true;
+                        // 4) Already marked acquired; continue to I/O
 
-                    // 5) Do the real I/O
-                    var ioSw = Stopwatch.StartNew();
-                    await ReadFrameInternalAsync(frameId, buffer, effectiveToken).ConfigureAwait(false);
-                    ioSw.Stop();
-                    try { StorageMetrics.OnReadCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, buffer.Length); } catch { }
-                    return buffer.Length;
+                        // 5) Do the real I/O
+                        var ioSw = Stopwatch.StartNew();
+                        await ReadFrameInternalAsync(frameId, buffer, effectiveToken).ConfigureAwait(false);
+                        ioSw.Stop();
+                        try { StorageMetrics.OnReadCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, buffer.Length); } catch { }
+                        return buffer.Length;
                     }
                     finally
                     {
                         linkedCts?.Dispose();
                         if (acquired)
                         {
-                            fl.Sem.Release();
-                            if (markedAcquired)
-                                fl.MarkReleased();
+                            try
+                            {
+                                fl.Sem.Release();
+                            }
+                            finally
+                            {
+                                if (markedAcquired)
+                                    fl.MarkReleased();
+                            }
                         }
-
                     }
                 }
             }
@@ -656,11 +739,9 @@ namespace Silica.Storage
             CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
             if (data.Length != Geometry.LogicalBlockSize)
-                throw new ArgumentException(
-                    $"Frame I/O requires exactly {Geometry.LogicalBlockSize} bytes",
-                    nameof(data));
+                throw new InvalidLengthException(data.Length);
 
             int attempt = 0;
             int maxAttempts = MaxLockAcquireAttempts;
@@ -670,8 +751,10 @@ namespace Silica.Storage
             try
             {
                 while (true)
-                    {
-                        var fl = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
+                {
+                    // Be responsive to cancellation between retries.
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var fl = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
                     CancellationTokenSource? linkedCts = null;
                     var effectiveToken = GetEffectiveToken(cancellationToken, out linkedCts);
                     // Fail fast on cancellation before any lock work
@@ -687,37 +770,62 @@ namespace Silica.Storage
                         {
                             await fl.WaitAsyncSafely(effectiveToken).ConfigureAwait(false);
                         }
-                        catch (ObjectDisposedException)
+                        catch (FrameLockDisposedException)
                         {
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
+                            TryEmitTrace("lock_acquire", "warn", "retry_on_framelock_disposed", "exid_2012");
 
                             if (++attempt >= maxAttempts)
-                                throw new ObjectDisposedException(nameof(FrameLock), "Evicted during acquisition.");
+                                throw new FrameLockDisposedException("Evicted during acquisition.");
                             continue;
                         }
                         acquired = true;
+                        // Ensure holder balance unless neutralized by a branch with explicit balanced release.
+                        markedAcquired = true;
 
                         if (fl.IsClosed)
                         {
                             // We hold the semaphore and have been marked as holder; undo both.
-                            fl.Sem.Release();
-                            fl.MarkReleased();
+                            try
+                            {
+                                fl.Sem.Release();
+                            }
+                            finally
+                            {
+                                fl.MarkReleased();
+                            }
                             acquired = false;
                             markedAcquired = false;
 
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
-
+                            TryEmitTrace("lock_acquire", "warn", "retry_on_framelock_closed", "exid_2012");
                             if (++attempt >= maxAttempts)
-                                throw new ObjectDisposedException(nameof(FrameLock), "Evicted during acquisition.");
+                                throw new FrameLockDisposedException("Evicted during acquisition.");
                             continue;
+                        }
+                        else
+                        {
+                            if (attempt > 0)
+                            {
+                                // Use per-device overrides and effectiveToken for consistency and lifecycle responsiveness.
+                                double spanMs = (MaxRetryBackoff - MinRetryBackoff).TotalMilliseconds;
+                                int backoffMs = (int)(MinRetryBackoff.TotalMilliseconds + (spanMs > 0 ? Random.Shared.NextDouble() * spanMs : 0.0));
+                                if (backoffMs > 0) await Task.Delay(backoffMs, effectiveToken).ConfigureAwait(false);
+                            }
                         }
 
 
                         lockSw.Stop();
-                        try { StorageMetrics.RecordLockWaitMs(_metrics, lockSw.Elapsed.TotalMilliseconds); } catch { }
+                        try
+                        {
+                            var waitedMs = lockSw.Elapsed.TotalMilliseconds;
+                            StorageMetrics.RecordLockWaitMs(_metrics, waitedMs);
+                            if (waitedMs > 0.0)
+                                StorageMetrics.IncrementContention(_metrics);
+                        }
+                        catch { }
 
-                        // Already marked acquired by WaitAsyncSafely; record for balanced release
-                        markedAcquired = true;
+                        // Already marked acquired; continue to I/O
 
                         var ioSw = Stopwatch.StartNew();
                         await WriteFrameInternalAsync(frameId, data, effectiveToken).ConfigureAwait(false);
@@ -729,11 +837,16 @@ namespace Silica.Storage
                         linkedCts?.Dispose();
                         if (acquired)
                         {
-                            fl.Sem.Release();
-                            if (markedAcquired)
-                                fl.MarkReleased();
+                            try
+                            {
+                                fl.Sem.Release();
+                            }
+                            finally
+                            {
+                                if (markedAcquired)
+                                    fl.MarkReleased();
+                            }
                         }
-
                     }
                     break;
                 }
@@ -752,15 +865,13 @@ namespace Silica.Storage
             CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (buffer.Length == 0) return 0;
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (buffer.Length % b) != 0)
-                    throw new ArgumentException(
-                        "Aligned I/O required: offset and length must be multiples of LogicalBlockSize.",
-                        nameof(offset));
+                    throw new AlignmentRequiredException(offset, buffer.Length, b);
             }
 
             CancellationTokenSource? linkedCts = null;
@@ -814,15 +925,13 @@ namespace Silica.Storage
             CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (data.Length == 0) return;
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (data.Length % b) != 0)
-                    throw new ArgumentException(
-                        "Aligned I/O required: offset and length must be multiples of LogicalBlockSize.",
-                        nameof(offset));
+                    throw new AlignmentRequiredException(offset, data.Length, b);
             }
 
             CancellationTokenSource? linkedCts = null;
@@ -869,20 +978,23 @@ namespace Silica.Storage
         }
 
         /// <summary>
-        /// Exposes FlushAsync to the interface; delegates to FlushAsyncInternal.
+        /// Exposes FlushAsync to the interface; delegates to FlushAsyncInternal and records latency.
         /// </summary>
-        public ValueTask FlushAsync(CancellationToken cancellationToken = default)
+        public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
             EnsureMounted();
             CancellationTokenSource? linkedCts = null;
             var effectiveToken = GetEffectiveToken(cancellationToken, out linkedCts);
+            var sw = Stopwatch.StartNew();
             try
             {
-                return FlushAsyncInternal(effectiveToken).AsValueTask();
+                await FlushAsyncInternal(effectiveToken).ConfigureAwait(false);
             }
             finally
             {
+                sw.Stop();
+                try { StorageMetrics.RecordFlushLatency(_metrics, sw.Elapsed.TotalMilliseconds); } catch { }
                 linkedCts?.Dispose();
             }
         }
@@ -915,6 +1027,7 @@ namespace Silica.Storage
             {
                 while (remaining > 0)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var frameId = current / frameSize;
                     var fo = (int)(current % frameSize);
                     var take = Math.Min(frameSize - fo, remaining);
@@ -935,7 +1048,8 @@ namespace Silica.Storage
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(temp, clearArray: false);
+                // Clear pooled buffers before returning to reduce data remanence risk.
+                ArrayPool<byte>.Shared.Return(temp, clearArray: true);
             }
 
         }
@@ -966,6 +1080,7 @@ namespace Silica.Storage
             {
                 while (remaining > 0)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var frameId = current / frameSize;
                     var fo = (int)(current % frameSize);
                     var put = Math.Min(frameSize - fo, remaining);
@@ -1002,7 +1117,8 @@ namespace Silica.Storage
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(temp, clearArray: false);
+                // Clear pooled buffers before returning to reduce data remanence risk.
+                ArrayPool<byte>.Shared.Return(temp, clearArray: true);
             }
         }
 
@@ -1039,10 +1155,12 @@ namespace Silica.Storage
         }
 
         private async ValueTask<List<FrameLock>> AcquireFrameLocksAsync(
-            IEnumerable<long> frameIds,
+            List<long> frameIds,
             CancellationToken cancellationToken)
         {
-            var locks = new List<FrameLock>();
+            // Pre-size to incoming count to minimize reallocations on large ranges.
+            // Note: final unique count may be smaller after in-place deduplication.
+            var locks = new List<FrameLock>(frameIds is null ? 0 : frameIds.Count);
             FrameLock? lastWaited = null;
 
             int attempts = 0;
@@ -1050,21 +1168,22 @@ namespace Silica.Storage
             if (maxAttempts < 1) maxAttempts = 1;
             while (true)
             {
+                // Respect cancellation across retries of the entire range.
+                cancellationToken.ThrowIfCancellationRequested();
                 locks.Clear();
                 bool success = false;
                 bool closedDetected = false;
                 // Aggregate total wait across this attempt only
                 double aggregatedWaitMs = 0.0;
+                bool anyWaitOccurred = false;
                 try
                 {
-                    // Copy and sort ascending without LINQ
-                    var ordered = new List<long>();
-                    foreach (var id in frameIds) ordered.Add(id);
-                    if (ordered.Count > 1) ordered.Sort();
+                    // Sort and deduplicate in place (callers pass a fresh list per batch)
+                    if (frameIds.Count > 1) frameIds.Sort();
                     long prev = long.MinValue;
-                    for (int i = 0; i < ordered.Count; i++)
+                    for (int i = 0; i < frameIds.Count; i++)
                     {
-                        var currentId = ordered[i];
+                        var currentId = frameIds[i];
                         // Skip duplicate frameIds to avoid self-deadlock on the same semaphore
                         if (i > 0 && currentId == prev) continue;
                         prev = currentId;
@@ -1079,13 +1198,16 @@ namespace Silica.Storage
                             waitSw.Stop();
                             try
                             {
-                                aggregatedWaitMs += waitSw.Elapsed.TotalMilliseconds;
+                                var waited = waitSw.Elapsed.TotalMilliseconds;
+                                aggregatedWaitMs += waited;
+                                if (waited > 0.0) anyWaitOccurred = true;
                             }
                             catch { }
                         }
-                        catch (ObjectDisposedException)
+                        catch (FrameLockDisposedException)
                         {
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
+                            TryEmitTrace("range_lock_acquire", "warn", "retry_on_framelock_disposed", "exid_2012");
                             // Closed before acquisition; retry whole range deterministically
                             closedDetected = true;
                             lastWaited = null;
@@ -1095,16 +1217,20 @@ namespace Silica.Storage
                         {
                             try { StorageMetrics.IncrementRetry(_metrics); } catch { }
                             closedDetected = true;
+                            TryEmitTrace("range_lock_acquire", "warn", "retry_on_framelock_closed", "exid_2012");
                             // We waited and acquired the semaphore for a closed lock;
                             // release it and drop holder before retrying to avoid deadlock.
                             try
                             {
                                 fl.Sem.Release();
-                                fl.MarkReleased();
                             }
                             catch
                             {
                                 // swallow; best-effort release
+                            }
+                            finally
+                            {
+                                fl.MarkReleased();
                             }
                             lastWaited = null;
 
@@ -1120,6 +1246,8 @@ namespace Silica.Storage
                         try
                         {
                             StorageMetrics.RecordLockWaitMs(_metrics, aggregatedWaitMs);
+                            if (anyWaitOccurred)
+                                StorageMetrics.IncrementContention(_metrics);
                         }
                         catch { }
                         success = true;
@@ -1133,8 +1261,14 @@ namespace Silica.Storage
                         for (int i = 0; i < locks.Count; i++)
                         {
                             var fl = locks[i];
-                            fl.Sem.Release();
-                            fl.MarkReleased();
+                            try
+                            {
+                                fl.Sem.Release();
+                            }
+                            finally
+                            {
+                                fl.MarkReleased();
+                            }
                         }
                         locks.Clear();
                         // If we broke out on a closed lock after waiting, ensure it's not left held.
@@ -1143,10 +1277,13 @@ namespace Silica.Storage
                             try
                             {
                                 lastWaited.Sem.Release();
-                                lastWaited.MarkReleased();
                             }
                             catch
                             {
+                            }
+                            finally
+                            {
+                                lastWaited.MarkReleased();
                             }
                             lastWaited = null;
                         }
@@ -1155,7 +1292,20 @@ namespace Silica.Storage
                 }
                 attempts++;
                 if (attempts >= maxAttempts)
-                    throw new ObjectDisposedException(nameof(FrameLock), "Evicted during range acquisition.");
+                {
+                    throw new FrameLockDisposedException("Evicted during range acquisition.");
+                }
+                else
+                {
+                    // Small jittered backoff between range retries to reduce contention
+                    // during eviction churn. Kept tiny to avoid visible latency.
+                    var spanMs = (MaxRetryBackoff - MinRetryBackoff).TotalMilliseconds;
+                    int backoffMs = (int)(MinRetryBackoff.TotalMilliseconds + (spanMs > 0 ? Random.Shared.NextDouble() * spanMs : 0.0));
+                    if (backoffMs > 0)
+                    {
+                        await Task.Delay(backoffMs, cancellationToken).ConfigureAwait(false);
+                    }
+                }
                 // retry
             }
         }
@@ -1193,12 +1343,12 @@ namespace Silica.Storage
         {
             // Prefer disposed signal over "not mounted" to avoid misdiagnosis
             if (Volatile.Read(ref _disposedFlag) == 1)
-                throw new ObjectDisposedException(_componentName);
+                throw new DeviceDisposedException();
 
             lock (_stateLock)
             {
                 if (!_mounted)
-                    throw new InvalidOperationException("Device is not mounted");
+                    throw new DeviceNotMountedException();
             }
         }
 
@@ -1207,7 +1357,18 @@ namespace Silica.Storage
             int framesPerBatch = MaxFramesPerBatch;
             if (framesPerBatch < 1) framesPerBatch = 1;
 
-            int limit = Geometry.MaxIoBytes > 0 ? Geometry.MaxIoBytes : frameSize * framesPerBatch;
+            // Avoid int overflow when multiplying frameSize * framesPerBatch
+            int limit;
+            if (Geometry.MaxIoBytes > 0)
+            {
+                limit = Geometry.MaxIoBytes;
+            }
+            else
+            {
+                long candidate = (long)frameSize * (long)framesPerBatch;
+                limit = candidate > int.MaxValue ? int.MaxValue : (int)candidate;
+            }
+
             if (limit < frameSize) limit = frameSize;
             // enforce block alignment
             int rem = limit % frameSize;
@@ -1222,15 +1383,15 @@ namespace Silica.Storage
             var g = Geometry;
             // Logical block size must be positive.
             if (g.LogicalBlockSize <= 0)
-                throw new InvalidOperationException("Geometry.LogicalBlockSize must be > 0.");
+                throw new InvalidGeometryException("Geometry.LogicalBlockSize must be > 0.");
 
             // Max I/O bytes cannot be negative.
             if (g.MaxIoBytes < 0)
-                throw new InvalidOperationException("Geometry.MaxIoBytes must be >= 0.");
+                throw new InvalidGeometryException("Geometry.MaxIoBytes must be >= 0.");
 
             // When bounded, max I/O must align to block size to guarantee batching correctness.
             if (g.MaxIoBytes > 0 && (g.MaxIoBytes % g.LogicalBlockSize) != 0)
-                throw new InvalidOperationException("Geometry.MaxIoBytes must be a multiple of Geometry.LogicalBlockSize when > 0.");
+                throw new InvalidGeometryException("Geometry.MaxIoBytes must be a multiple of Geometry.LogicalBlockSize when > 0.");
 
             // When aligned I/O is required, enforce that any batching limit (if present) remains aligned.
             // (MaxIoBytes alignment already enforced above; this documents the invariant explicitly.)
@@ -1239,6 +1400,30 @@ namespace Silica.Storage
                 // No-op here beyond the MaxIoBytes check; offset/length callers are checked per request.
                 // This branch is intentionally left without additional throws to keep the contract crisp.
                 _ = g.LogicalBlockSize; // clarity
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryEmitTrace(string operation, string status, string message, string fieldValue)
+        {
+            if (!DiagnosticsCoreBootstrap.IsStarted) return;
+            try
+            {
+                // Use only allowed tag keys (Field) to avoid schema drift
+                var tags = new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase)
+                {
+                    { TagKeys.Field, fieldValue }
+                };
+                DiagnosticsCoreBootstrap.Instance.Traces.Emit(
+                    component: _componentName,
+                    operation: operation,
+                    status: status,
+                    tags: tags,
+                    message: message);
+            }
+            catch
+            {
+                // swallow
             }
         }
 
@@ -1251,4 +1436,5 @@ namespace Silica.Storage
                 ? ValueTask.CompletedTask
                 : new ValueTask(t);
     }
+
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
+using Silica.Evictions.Exceptions;
 
 namespace Silica.Evictions
 {
@@ -43,7 +44,7 @@ namespace Silica.Evictions
         /// </summary>
         public void RegisterCache<TKey, TValue>(IAsyncEvictionCache<TKey, TValue> cache)
         {
-            if (cache is null) throw new ArgumentNullException(nameof(cache));
+            if (cache is null) throw new EvictionNullCacheRegistrationException();
 
             lock (_sync)
             {
@@ -51,7 +52,7 @@ namespace Silica.Evictions
                 for (int i = 0; i < _caches.Count; i++)
                 {
                     if (ReferenceEquals(_caches[i].InnerCache, cache))
-                        return;
+                        throw new EvictionDuplicateCacheRegistrationException();
                 }
 
                 _caches.Add(new Wrapper<TKey, TValue>(cache));
@@ -63,7 +64,7 @@ namespace Silica.Evictions
         /// </summary>
         public void UnregisterCache<TKey, TValue>(IAsyncEvictionCache<TKey, TValue> cache)
         {
-            if (cache is null) throw new ArgumentNullException(nameof(cache));
+            if (cache is null) throw new EvictionNullCacheRegistrationException();
 
             lock (_sync)
             {

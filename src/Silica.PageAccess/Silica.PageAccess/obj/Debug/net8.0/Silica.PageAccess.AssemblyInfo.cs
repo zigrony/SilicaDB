@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.PageAccess")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8cbcdf5466d80a7eb93d428b056c44973466aae8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bab3b3676fbafceebdf15fffc1d264c6a54af09c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.PageAccess")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.PageAccess")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -10,3 +10,7 @@ C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\De
 C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\refint\Silica.DiagnosticsCore.dll
 C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\ref\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\bin\Debug\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\bin\Debug\net8.0\Silica.Exceptions.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.DiagnosticsCore.csproj.AssemblyReference.cache
+C:\GitHubRepos\SilicaDB\src\Silica.DiagnosticsCore\Silica.DiagnosticsCore\obj\Debug\net8.0\Silica.D.CBFAA41A.Up2Date

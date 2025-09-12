@@ -9,6 +9,7 @@ using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager, TagKeys
 using Silica.Storage.Metrics; // StorageMetrics
 using Silica.DiagnosticsCore.Tracing; // TraceManager
+using Silica.Storage.Exceptions;
 
 namespace Silica.Storage
 {
@@ -24,7 +25,7 @@ namespace Silica.Storage
         private bool _metricsRegistered;
         private readonly object _stateLock = new();
         private bool _mounted;
-
+        private int _disposedFlag; // 0 = not disposed, 1 = disposed
 
         public FaultInjectionDevice(IStorageDevice inner, double faultRate = 0.05)
         {
@@ -52,6 +53,13 @@ namespace Silica.Storage
                 }
                 catch { /* swallow registration/exporter issues */ }
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureNotDisposed()
+        {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
         }
 
         private void EnsureMetricsRegistered()
@@ -82,13 +90,16 @@ namespace Silica.Storage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureMounted()
         {
+            // Prefer disposed signal to avoid misdiagnosis
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
+
             lock (_stateLock)
             {
                 if (!_mounted)
-                    throw new InvalidOperationException("Device is not mounted");
+                    throw new DeviceNotMountedException();
             }
         }
-
 
         private void MaybeThrow(string operationLabel)
         {
@@ -98,12 +109,13 @@ namespace Silica.Storage
                 try { StorageMetrics.IncrementRetry(_metrics); } catch { }
                 // Trace for operator visibility (allowed tag keys only)
                 TryEmitTrace(operationLabel, "warn", "fault_injected_throw", "fault_throw");
-                throw new IOException("Injected fault for testing.");
+                throw new FaultInjectedException("fault_throw");
             }
         }
 
         public async ValueTask<int> ReadAsync(long offset, Memory<byte> destination, CancellationToken ct = default)
         {
+            EnsureNotDisposed();
             EnsureMounted();
             EnsureMetricsRegistered();
             MaybeThrow("read");
@@ -124,6 +136,7 @@ namespace Silica.Storage
 
         public async ValueTask<int> ReadFrameAsync(long frameId, Memory<byte> destination, CancellationToken ct = default)
         {
+            EnsureNotDisposed();
             EnsureMounted();
             EnsureMetricsRegistered();
             MaybeThrow("read_frame");
@@ -141,6 +154,7 @@ namespace Silica.Storage
 
         public async ValueTask WriteAsync(long offset, ReadOnlyMemory<byte> source, CancellationToken ct = default)
         {
+            EnsureNotDisposed();
             EnsureMounted();
             EnsureMetricsRegistered();
             MaybeThrow("write");
@@ -149,6 +163,7 @@ namespace Silica.Storage
 
         public async ValueTask WriteFrameAsync(long frameId, ReadOnlyMemory<byte> source, CancellationToken ct = default)
         {
+            EnsureNotDisposed();
             EnsureMounted();
             EnsureMetricsRegistered();
             MaybeThrow("write_frame");
@@ -157,16 +172,32 @@ namespace Silica.Storage
 
         public ValueTask FlushAsync(CancellationToken ct = default)
         {
+            EnsureNotDisposed();
             EnsureMounted();
             EnsureMetricsRegistered();
             return _inner.FlushAsync(ct);
         }
 
-        public ValueTask DisposeAsync() => _inner.DisposeAsync();
+        public async ValueTask DisposeAsync()
+        {
+            // Best-effort local lifecycle hygiene for wrapper
+            lock (_stateLock) { _mounted = false; }
+            // Idempotent dispose
+            if (System.Threading.Interlocked.Exchange(ref _disposedFlag, 1) == 1)
+                return;
+            try
+            {
+                await _inner.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+        }
 
         // --- IMountableStorage with explicit lifecycle gating ---
         public async Task MountAsync(CancellationToken cancellationToken = default)
         {
+            EnsureNotDisposed();
             if (_inner is IMountableStorage mountable)
                 await mountable.MountAsync(cancellationToken).ConfigureAwait(false);
             lock (_stateLock) { _mounted = true; }

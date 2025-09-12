@@ -25,7 +25,7 @@ namespace Silica.Storage
         private bool _metricsRegistered;
         private readonly object _stateLock = new();
         private bool _mounted;
-
+        private int _disposedFlag; // 0 = not disposed, 1 = disposed
 
 
         // Common defaults: no IO cap, no alignment requirement, no FUA
@@ -36,15 +36,15 @@ namespace Silica.Storage
             bool requiresAlignedIo = false,
             bool supportsFua = false)
         {
-            if (frameSize <= 0) throw new ArgumentOutOfRangeException(nameof(frameSize));
+            if (frameSize <= 0) throw new InvalidLengthException(frameSize);
             _frameSize = frameSize;
             _zeroFrame = new byte[_frameSize];
             // Enforce contract: frame I/O size must equal logical block size.
             if (logicalBlockSize != frameSize)
-                throw new ArgumentException("logicalBlockSize must equal frameSize for LoopbackDevice.", nameof(logicalBlockSize));
-            if (maxIoBytes < 0) throw new ArgumentOutOfRangeException(nameof(maxIoBytes));
+                throw new InvalidGeometryException("logicalBlockSize must equal frameSize for LoopbackDevice.");
+            if (maxIoBytes < 0) throw new InvalidLengthException(maxIoBytes);
             if (maxIoBytes > 0 && (maxIoBytes % logicalBlockSize) != 0)
-                throw new ArgumentException("maxIoBytes must be a multiple of logicalBlockSize when > 0.", nameof(maxIoBytes));
+                throw new InvalidGeometryException("maxIoBytes must be a multiple of logicalBlockSize when > 0.");
 
 
             Geometry = new StorageGeometry
@@ -107,12 +107,21 @@ namespace Silica.Storage
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-
+        public ValueTask DisposeAsync()
+        {
+            // Idempotent; mark disposed and unmounted, clear frames for hygiene
+            if (System.Threading.Interlocked.Exchange(ref _disposedFlag, 1) == 1)
+                return ValueTask.CompletedTask;
+            lock (_stateLock) { _mounted = false; }
+            try { _frames.Clear(); } catch { }
+            return ValueTask.CompletedTask;
+        }
 
         // --- IMountableStorage (no-op) ---
         public Task MountAsync(CancellationToken cancellationToken = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
             lock (_stateLock) { _mounted = true; }
             return Task.CompletedTask;
         }
@@ -125,9 +134,13 @@ namespace Silica.Storage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureMounted()
         {
+            // Prefer disposed signal over "not mounted"
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
+
             lock (_stateLock)
             {
-                if (!_mounted) throw new InvalidOperationException("Device is not mounted");
+                if (!_mounted) throw new DeviceNotMountedException();
             }
         }
 
@@ -139,9 +152,9 @@ namespace Silica.Storage
             EnsureMounted();
             EnsureMetricsRegistered();
             token.ThrowIfCancellationRequested();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
             if (buffer.Length != _frameSize)
-                throw new ArgumentException($"Frame I/O requires exactly {_frameSize} bytes", nameof(buffer));
+                throw new InvalidLengthException(buffer.Length);
 
             bool gaugeAdded = false;
             try { _inFlightGauge.Add(1); gaugeAdded = true; } catch { }
@@ -176,21 +189,17 @@ namespace Silica.Storage
             EnsureMounted();
             EnsureMetricsRegistered();
             token.ThrowIfCancellationRequested();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
             if (data.Length != _frameSize)
-                throw new ArgumentException($"Frame I/O requires exactly {_frameSize} bytes", nameof(data));
+                throw new InvalidLengthException(data.Length);
 
             bool gaugeAdded = false;
             try { _inFlightGauge.Add(1); gaugeAdded = true; } catch { }
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            var src = data.Span;
-            var existing = GetFrameSnapshot(frameId);
+            // Full-frame write: no need to snapshot the old frame; just copy once.
             var next = new byte[_frameSize];
-            // Start with existing snapshot
-            existing.AsSpan().CopyTo(next.AsSpan());
-            // Overlay full frame at offset 0 (require exact size)
-            src.CopyTo(next);
+            data.CopyTo(next);
 
             _frames[frameId] = next;
             UpdateMaxFrameWritten(frameId);
@@ -210,12 +219,12 @@ namespace Silica.Storage
             token.ThrowIfCancellationRequested();
 
             if (buffer.Length == 0) return ValueTask.FromResult(0);
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (buffer.Length % b) != 0)
-                    throw new ArgumentException("Aligned I/O required: offset and length must be multiples of LogicalBlockSize.");
+                    throw new AlignmentRequiredException(offset, buffer.Length, b);
             }
 
             bool gaugeAdded = false;
@@ -265,12 +274,12 @@ namespace Silica.Storage
             token.ThrowIfCancellationRequested();
 
             if (data.Length == 0) return ValueTask.CompletedTask;
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (data.Length % b) != 0)
-                    throw new ArgumentException("Aligned I/O required: offset and length must be multiples of LogicalBlockSize.");
+                    throw new AlignmentRequiredException(offset, data.Length, b);
             }
 
             bool gaugeAdded = false;

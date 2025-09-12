@@ -29,6 +29,13 @@ namespace Silica.BufferPool
         }
 
         public ValueTask DisposeAsync() => _core?.DisposeAsync() ?? ValueTask.CompletedTask;
-    }
 
+        /// <summary>
+        /// Explicitly mark the page dirty with the associated page LSN
+        /// after you have appended the corresponding log record(s).
+        /// Must be called while the write lease is still held.
+        /// </summary>
+        public void MarkDirty(long pageLsn)
+            => _core?.MarkDirty(pageLsn);
+    }
 }

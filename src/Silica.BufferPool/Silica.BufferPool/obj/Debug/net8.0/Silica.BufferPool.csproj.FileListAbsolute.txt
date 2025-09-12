@@ -5,12 +5,14 @@ C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.DiagnosticsCore.dll
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Durability.dll
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Evictions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Exceptions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Storage.dll
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Common.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Durability.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Evictions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Storage.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\bin\Debug\net8.0\Silica.Exceptions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.csproj.AssemblyReference.cache
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.GeneratedMSBuildEditorConfig.editorconfig
 C:\GitHubRepos\SilicaDB\src\Silica.BufferPool\Silica.BufferPool\obj\Debug\net8.0\Silica.BufferPool.AssemblyInfoInputs.cache

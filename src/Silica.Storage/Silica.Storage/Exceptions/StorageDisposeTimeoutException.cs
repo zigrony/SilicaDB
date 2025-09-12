@@ -1,17 +1,21 @@
-﻿namespace Silica.Storage.Exceptions
+﻿using System;
+using Silica.Exceptions;
+
+namespace Silica.Storage.Exceptions
 {
-    /// <summary>
-    /// Thrown when a storage device fails to shut down within the configured timeout.
-    /// </summary>
-    public class StorageDisposeTimeoutException : TimeoutException
+    public sealed class StorageDisposeTimeoutException : SilicaException
     {
-        public string DeviceName { get; }
         public TimeSpan Timeout { get; }
 
-        public StorageDisposeTimeoutException(string deviceName, TimeSpan timeout)
-            : base($"Dispose timed out after {timeout} on device '{deviceName}'.")
+        public StorageDisposeTimeoutException(TimeSpan timeout, Exception? innerException = null)
+            : base(
+                code: StorageExceptions.StorageDisposeTimeout.Code,
+                message: $"Storage device failed to shut down within the configured timeout of {timeout}.",
+                category: StorageExceptions.StorageDisposeTimeout.Category,
+                exceptionId: StorageExceptions.Ids.StorageDisposeTimeout,
+                innerException: innerException)
         {
-            DeviceName = deviceName;
+            StorageExceptions.ValidateId(ExceptionId, nameof(ExceptionId));
             Timeout = timeout;
         }
     }

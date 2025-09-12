@@ -42,5 +42,16 @@ namespace Silica.Durability
             Payload = payload;
             CreatedUtc = DateTimeOffset.UtcNow;
         }
+        /// <summary>
+        /// Returns true if the payload exposes a first byte considered as a "kind" discriminator.
+        /// Durability does not interpret this value; Transactions owns the schema.
+        /// </summary>
+        public bool TryGetKind(out byte kind)
+        {
+            var span = Payload.Span;
+            if (span.Length < 1) { kind = 0; return false; }
+            kind = span[0];
+            return true;
+        }
     }
 }

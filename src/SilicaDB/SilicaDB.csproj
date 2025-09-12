@@ -11,9 +11,10 @@
     <ProjectReference Include="..\Silica.Concurrency\Silica.Concurrency\Silica.Concurrency.csproj" />
     <ProjectReference Include="..\Silica.Durability\Silica.Durability\Silica.Durability.csproj" />
     <ProjectReference Include="..\Silica.Evictions\Silica.Evictions\Silica.Evictions.csproj" />
-    <ProjectReference Include="..\Silica.Instrumentation\Silica.Instrumentation\Silica.Instrumentation.csproj" />
-    <ProjectReference Include="..\Silica.Logging\Silica.Logging\Silica.Logging.csproj" />
-    <ProjectReference Include="..\Silica.Observability\Silica.Observability\Silica.Observability.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Bootstrap\" />
   </ItemGroup>
 
 </Project>

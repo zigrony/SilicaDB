@@ -7,6 +7,7 @@ using Silica.Storage.Interfaces;
 using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
 using Silica.Storage.Metrics; // StorageMetrics
+using Silica.Storage.Exceptions;
 
 namespace Silica.Storage
 {
@@ -20,7 +21,7 @@ namespace Silica.Storage
         private readonly StorageMetrics.IInFlightProvider _inFlightGauge;
         private readonly object _stateLock = new();
         private bool _mounted;
-
+        private int _disposedFlag; // 0 = not disposed, 1 = disposed
 
         public TelemetryDevice(
             int logicalBlockSize = 4096,
@@ -28,10 +29,10 @@ namespace Silica.Storage
             bool requiresAlignedIo = false,
             bool supportsFua = false)
         {
-            if (logicalBlockSize <= 0) throw new ArgumentOutOfRangeException(nameof(logicalBlockSize));
-            if (maxIoBytes < 0) throw new ArgumentOutOfRangeException(nameof(maxIoBytes));
+            if (logicalBlockSize <= 0) throw new InvalidLengthException(logicalBlockSize);
+            if (maxIoBytes < 0) throw new InvalidLengthException(maxIoBytes);
             if (maxIoBytes > 0 && (maxIoBytes % logicalBlockSize) != 0)
-                throw new ArgumentException("maxIoBytes must be a multiple of logicalBlockSize when > 0.", nameof(maxIoBytes));
+                throw new InvalidGeometryException("maxIoBytes must be a multiple of logicalBlockSize when > 0.");
 
             Geometry = new StorageGeometry
             {
@@ -72,21 +73,26 @@ namespace Silica.Storage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureMounted()
         {
+            // Prefer disposed signal
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
+
             lock (_stateLock)
             {
-                if (!_mounted) throw new InvalidOperationException("Device is not mounted");
+                if (!_mounted) throw new DeviceNotMountedException();
             }
         }
 
         public ValueTask<int> ReadAsync(long offset, Memory<byte> buffer, CancellationToken token = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1) throw new DeviceDisposedException();
             EnsureMounted();
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (buffer.Length % b) != 0)
-                    throw new ArgumentException("Aligned I/O required: offset and length must be multiples of LogicalBlockSize.");
+                    throw new AlignmentRequiredException(offset, buffer.Length, b);
             }
 
             Interlocked.Increment(ref _reads);
@@ -120,13 +126,14 @@ namespace Silica.Storage
 
         public ValueTask WriteAsync(long offset, ReadOnlyMemory<byte> data, CancellationToken token = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1) throw new DeviceDisposedException();
             EnsureMounted();
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset < 0) throw new InvalidOffsetException(offset);
             if (Geometry.RequiresAlignedIo)
             {
                 int b = Geometry.LogicalBlockSize;
                 if ((offset % b) != 0 || (data.Length % b) != 0)
-                    throw new ArgumentException("Aligned I/O required: offset and length must be multiples of LogicalBlockSize.");
+                    throw new AlignmentRequiredException(offset, data.Length, b);
             }
 
             Interlocked.Increment(ref _writes);
@@ -145,11 +152,12 @@ namespace Silica.Storage
 
         public ValueTask<int> ReadFrameAsync(long frameId, Memory<byte> buffer, CancellationToken token = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1) throw new DeviceDisposedException();
             EnsureMounted();
             token.ThrowIfCancellationRequested();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
             if (buffer.Length != Geometry.LogicalBlockSize)
-                throw new ArgumentException($"Frame I/O requires exactly {Geometry.LogicalBlockSize} bytes", nameof(buffer));
+                throw new InvalidLengthException(buffer.Length);
 
             // Use same pattern as offset-based read, but seed with frameId.
             Interlocked.Increment(ref _reads);
@@ -177,11 +185,12 @@ namespace Silica.Storage
 
         public ValueTask WriteFrameAsync(long frameId, ReadOnlyMemory<byte> data, CancellationToken token = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1) throw new DeviceDisposedException();
             EnsureMounted();
             token.ThrowIfCancellationRequested();
-            if (frameId < 0) throw new ArgumentOutOfRangeException(nameof(frameId));
+            if (frameId < 0) throw new InvalidOffsetException(frameId);
             if (data.Length != Geometry.LogicalBlockSize)
-                throw new ArgumentException($"Frame I/O requires exactly {Geometry.LogicalBlockSize} bytes", nameof(data));
+                throw new InvalidLengthException(data.Length);
 
             Interlocked.Increment(ref _writes);
             bool gaugeAdded = false;
@@ -198,15 +207,24 @@ namespace Silica.Storage
 
         public ValueTask FlushAsync(CancellationToken token = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1) throw new DeviceDisposedException();
             EnsureMounted();
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            // Best-effort local lifecycle hygiene for wrapper
+            lock (_stateLock) { _mounted = false; }
+            System.Threading.Interlocked.Exchange(ref _disposedFlag, 1);
+            return ValueTask.CompletedTask;
+        }
 
         // --- IMountableStorage (explicit mount gating) ---
         public Task MountAsync(CancellationToken cancellationToken = default)
         {
+            if (System.Threading.Volatile.Read(ref _disposedFlag) == 1)
+                throw new DeviceDisposedException();
             lock (_stateLock) { _mounted = true; }
             return Task.CompletedTask;
         }

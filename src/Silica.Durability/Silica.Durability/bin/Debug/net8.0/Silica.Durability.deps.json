@@ -25,6 +25,9 @@
         }
       },
       "Silica.DiagnosticsCore/1.0.0": {
+        "dependencies": {
+          "Silica.Exceptions": "1.0.0"
+        },
         "runtime": {
           "Silica.DiagnosticsCore.dll": {
             "assemblyVersion": "1.0.0",
@@ -38,6 +41,14 @@
         },
         "runtime": {
           "Silica.Evictions.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.Exceptions/1.0.0": {
+        "runtime": {
+          "Silica.Exceptions.dll": {
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -62,6 +73,11 @@
       "sha512": ""
     },
     "Silica.Evictions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Exceptions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

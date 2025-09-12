@@ -18,7 +18,7 @@ namespace Silica.Storage.Devices
     {
         // One entry per frameId
         private readonly ConcurrentDictionary<long, byte[]> _pages = new();
-
+        private long _maxFrameWritten = -1; // -1 => empty device
 
         // Define default geometry
         public override StorageGeometry Geometry { get; } = new StorageGeometry
@@ -50,20 +50,16 @@ namespace Silica.Storage.Devices
         {
             if (_pages.TryGetValue(frameId, out var existing))
             {
-                // Explicit span-to-span copy to avoid ambiguous overloads and guarantee correctness
                 existing.AsSpan().CopyTo(buffer.Span);
-                // Cache hit for in-memory page
                 try { StorageMetrics.IncrementCacheHit(Metrics); } catch { }
                 return Task.CompletedTask;
             }
-
-            // Cache miss (absent page) — surface metric before throwing
             try { StorageMetrics.IncrementCacheMiss(Metrics); } catch { }
-
+            var deviceLen = GetDeviceLength();
             throw new DeviceReadOutOfRangeException(
-                offset: frameId * Geometry.LogicalBlockSize,
+                offset: frameId * (long)Geometry.LogicalBlockSize,
                 requestedLength: Geometry.LogicalBlockSize,
-                deviceLength: frameId * Geometry.LogicalBlockSize);
+                deviceLength: deviceLen);
         }
 
         protected override Task WriteFrameInternalAsync(
@@ -75,11 +71,38 @@ namespace Silica.Storage.Devices
             var frame = new byte[Geometry.LogicalBlockSize];
             data.CopyTo(frame);
             _pages[frameId] = frame;
+            UpdateMaxFrameWritten(frameId);
             return Task.CompletedTask;
         }
 
         protected override Task FlushAsyncInternal(CancellationToken cancellationToken)
             => Task.CompletedTask; // Nothing to flush for in-memory device
 
+        // --- Length tracking helpers (enterprise-consistent EOF reporting) ---
+        private void UpdateMaxFrameWritten(long frameId)
+        {
+            long candidate = frameId;
+            long current;
+            do
+            {
+                current = Interlocked.Read(ref _maxFrameWritten);
+                if (candidate <= current) return;
+            }
+            while (Interlocked.CompareExchange(ref _maxFrameWritten, candidate, current) != current);
+        }
+
+        private long GetDeviceLength()
+        {
+            long max = Interlocked.Read(ref _maxFrameWritten);
+            if (max < 0) return 0;
+            long blocks = max + 1;
+            long size = (long)Geometry.LogicalBlockSize;
+            if (blocks > 0 && size > 0)
+            {
+                long limit = long.MaxValue / size;
+                if (blocks > limit) return long.MaxValue;
+            }
+            return blocks * size;
+        }
     }
 }

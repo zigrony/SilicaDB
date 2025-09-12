@@ -6,6 +6,7 @@ using Silica.Evictions.Interfaces;
 using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
+using Silica.Evictions.Exceptions;
 
 namespace Silica.Evictions
 {
@@ -60,8 +61,9 @@ namespace Silica.Evictions
             Func<TKey, TValue, ValueTask> onEvictedAsync,
             Func<long>? timeProvider = null)
         {
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _onEvictedAsync = onEvictedAsync ?? throw new ArgumentNullException(nameof(onEvictedAsync));
+            _factory = factory ?? throw new EvictionNullValueFactoryException();
+            _onEvictedAsync = onEvictedAsync ?? throw new EvictionNullOnEvictedException();
+            if (idleTimeout < TimeSpan.Zero) throw new EvictionInvalidIdleTimeoutException(idleTimeout);
             _now = timeProvider ?? Stopwatch.GetTimestamp;
 
             // Convert idleTimeout (100 ns ticks) → Stopwatch ticks
@@ -88,7 +90,7 @@ namespace Silica.Evictions
         public async ValueTask<TValue> GetOrAddAsync(TKey key)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(EvictionTimeCache<TKey, TValue>));
+                throw new EvictionDisposedException();
 
             var now = _now();
 

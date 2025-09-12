@@ -32,16 +32,35 @@ namespace Silica.Storage.Devices
         };
         public PhysicalBlockDevice(string path)
         {
-            _path = path ?? throw new ArgumentNullException(nameof(path));
+            if (path is null) throw new ArgumentNullException(nameof(path));
+            if (string.IsNullOrWhiteSpace(path)) throw new InvalidGeometryException("Path must be a non-empty string.");
+            _path = path;
         }
 
         protected override async Task OnMountAsync(CancellationToken cancellationToken)
         {
+            // Ensure directory exists when a directory is part of the path.
+            // This is a pragmatic hardening to avoid mount failures due to missing directories.
+            try
+            {
+                var dir = Path.GetDirectoryName(_path);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+            catch
+            {
+                // Preserve original behavior on file open; directory creation failures
+                // will naturally manifest on FileStream construction below if relevant.
+            }
+
             _fs = new FileStream(
                 _path,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                FileShare.ReadWrite,
+                // Allow delete sharing for operational flexibility (rotate/rename-friendly).
+                FileShare.ReadWrite | FileShare.Delete,
                 bufferSize: Geometry.LogicalBlockSize,
                 options: FileOptions.Asynchronous | FileOptions.RandomAccess);
 
@@ -61,7 +80,7 @@ namespace Silica.Storage.Devices
             CancellationToken cancellationToken)
         {
             if (_fs is null)
-                throw new InvalidOperationException("Device is not mounted");
+                throw new DeviceNotMountedException();
 
             long offset = checked(frameId * (long)Geometry.LogicalBlockSize);
             long endExclusive = checked(offset + Geometry.LogicalBlockSize);
@@ -96,7 +115,7 @@ namespace Silica.Storage.Devices
             CancellationToken cancellationToken)
         {
             if (_fs is null)
-                throw new InvalidOperationException("Device is not mounted");
+                throw new DeviceNotMountedException();
 
             long offset = checked(frameId * (long)Geometry.LogicalBlockSize);
 
@@ -107,12 +126,12 @@ namespace Silica.Storage.Devices
                     cancellationToken)
                 .ConfigureAwait(false);
             // Base will record operation metrics around this call.
-            }
+        }
 
         protected override Task FlushAsyncInternal(CancellationToken cancellationToken)
         {
             if (_fs is null)
-                throw new InvalidOperationException("Device is not mounted");
+                throw new DeviceNotMountedException();
             return _fs.FlushAsync(cancellationToken);
         }
     }

@@ -10,7 +10,6 @@ using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
 using Silica.Storage.Metrics; // StorageMetrics
 
-
 namespace Silica.Storage.Devices
 {
     public class StreamDevice : AsyncMiniDriver, IDisposable
@@ -33,11 +32,11 @@ namespace Silica.Storage.Devices
             _ownsStream = ownsStream;
 
             if (stream is FileStream fs && !fs.IsAsync)
-                throw new ArgumentException("FileStream must be opened with FileOptions.Asynchronous", nameof(stream));
+                throw new UnsupportedOperationException("FileStreamAsyncRequired");
 
             // Require basic capabilities up-front to fail fast (enterprise contract)
-            if (!_stream.CanRead) throw new NotSupportedException("Stream must be readable.");
-            if (!_stream.CanWrite) throw new NotSupportedException("Stream must be writable.");
+            if (!_stream.CanRead) throw new UnsupportedOperationException("Read");
+            if (!_stream.CanWrite) throw new UnsupportedOperationException("Write");
 
             if (stream is FileStream fileStream)
             {
@@ -48,7 +47,7 @@ namespace Silica.Storage.Devices
             {
                 // Non-positional mode requires seekability for strict offset I/O
                 if (!_stream.CanSeek)
-                    throw new NotSupportedException("Non-file streams must be seekable for strict offset I/O.");
+                    throw new UnsupportedOperationException("Seek");
             }
         }
 
@@ -88,7 +87,7 @@ namespace Silica.Storage.Devices
             if (_hasPositional && _fileHandle is not null)
             {
                 if (_stream is not FileStream fs)
-                    throw new InvalidOperationException("Positional mode requires FileStream.");
+                    throw new UnsupportedOperationException("PositionalRead");
 
                 long lengthSnapshot = fs.Length;
                 if (endExclusive > lengthSnapshot)
@@ -115,7 +114,7 @@ namespace Silica.Storage.Devices
             else
             {
                 if (!_stream.CanSeek)
-                    throw new NotSupportedException("Strict reads require a seekable stream.");
+                    throw new UnsupportedOperationException("StrictRead");
 
                 await _globalLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
@@ -133,7 +132,9 @@ namespace Silica.Storage.Devices
                                              .ConfigureAwait(false);
 
                         if (n == 0)
-                            throw new IOException($"Short read at position {_stream.Position}, expected {buffer.Length - total} more bytes.");
+                        {
+                            throw new ShortReadException(buffer.Length - total, n);
+                        }
 
                         total += n;
                     }

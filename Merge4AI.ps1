@@ -9,12 +9,10 @@ param(
         "Silica.DiagnosticsCore",
         "Silica.Durability",
         "Silica.Evictions",
-        #"Silica.Instrumentation",
-        #"Silica.Logging",
-        #"Silica.Observability",
+		"Silica.Exceptions",
         "Silica.Storage",
-        "Silica.PageAccess"
-        #"SilicaDB"
+        "Silica.PageAccess",
+		"test.app"
     )]
     [string[]]$Projects = @("All"),
     [int]$fileSize = 80000
@@ -67,12 +65,10 @@ $AllProjectsList = @(
         "Silica.DiagnosticsCore",
         "Silica.Durability",
         "Silica.Evictions",
-        #"Silica.Instrumentation",
-        #"Silica.Logging",
-        #"Silica.Observability",
+		"Silica.Exceptions",
         "Silica.Storage",
-        "Silica.PageAccess"
-        #"SilicaDB"
+        "Silica.PageAccess",
+		"test.app"
 )
 
 # Resolve project list
@@ -124,17 +120,26 @@ foreach ($project in $ProjectList) {
         continue
     }
 
+	$writer.WriteLine("//")
+	$writer.WriteLine("// Start Project: $project")
+	$writer.WriteLine("//")
+	$writer.WriteLine()
+
     $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Sort-Object FullName
     foreach ($file in $files) {
         Write-Host "`t[AllProjects] FileName[$($file.FullName)]"
         $relPath = Join-Path $project ($file.FullName.Substring($fullSrc.TrimEnd('\').Length).TrimStart('\'))
-        $writer.WriteLine("// Filename: $relPath")
+        $writer.WriteLine("// RelativeFilePath: $relPath")
         $writer.WriteLine()
         foreach ($line in Get-Content $file.FullName) {
             $writer.WriteLine($line)
         }
         $writer.WriteLine()
     }
+	$writer.WriteLine("//")
+	$writer.WriteLine("// End Project: $project")
+	$writer.WriteLine("//")
+	$writer.WriteLine()
 }
 $writer.Close()
 
