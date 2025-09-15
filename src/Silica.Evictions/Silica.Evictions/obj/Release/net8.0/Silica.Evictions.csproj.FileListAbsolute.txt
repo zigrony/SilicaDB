@@ -1,8 +1,10 @@
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Evictions.deps.json
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Evictions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Evictions.pdb
-C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Observability.dll
-C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Observability.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.DiagnosticsCore.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\bin\Release\net8.0\Silica.Exceptions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Release\net8.0\Silica.Evictions.csproj.AssemblyReference.cache
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Release\net8.0\Silica.Evictions.GeneratedMSBuildEditorConfig.editorconfig
 C:\GitHubRepos\SilicaDB\src\Silica.Evictions\Silica.Evictions\obj\Release\net8.0\Silica.Evictions.AssemblyInfoInputs.cache

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Common")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34614bdff734d9e092ea74f5ab27458b9eedc694")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8eb3cb947f50175a78e38d629b12a9ad78220189")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Common")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Common")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

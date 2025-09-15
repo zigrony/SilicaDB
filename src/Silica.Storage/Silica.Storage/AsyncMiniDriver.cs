@@ -28,8 +28,11 @@ namespace Silica.Storage
     ///  • offset/length I/O (ReadAsync/WriteAsync) with range locking & read-modify-write
     ///  • proper disposal hygiene
     /// </summary>
-    public abstract class AsyncMiniDriver : IStorageDevice, IMountableStorage
+    public abstract class AsyncMiniDriver : IStorageDevice, IMountableStorage, IStackManifestHost
     {
+        private const long MetadataFrameId = 0;
+        private DeviceManifest? _expectedManifest; // set by builder before MountAsync
+        private bool _metadataInitialized;
         private static readonly TimeSpan s_defaultDisposeTimeout = TimeSpan.FromSeconds(30);
         private int _disposedFlag; // 0 = not disposed, 1 = disposed
         // --- Interface to implement in concrete subclasses ---
@@ -362,6 +365,7 @@ namespace Silica.Storage
         /// </summary>
         public async Task MountAsync(CancellationToken cancellationToken = default)
         {
+            // Ensure this instance is not disposed and serialize lifecycle transitions.
             EnsureNotDisposed();
             await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
@@ -396,10 +400,14 @@ namespace Silica.Storage
 
             // Validate geometry before opening resources or exposing mount.
             ValidateGeometryOrThrow();
-
+            bool resourcesOpened = false;
             try
             {
                 await OnMountAsync(cancellationToken).ConfigureAwait(false);
+                // At this point, underlying resources may be open. Track so we can clean up on subsequent failure.
+                resourcesOpened = true;
+                // Initialize/validate metadata frame now that underlying resources are open.
+                await InitializeOrValidateMetadataAsync(cancellationToken).ConfigureAwait(false);
                 // Only now expose as mounted and install drain TCS
                 lock (_stateLock)
                 {
@@ -419,6 +427,20 @@ namespace Silica.Storage
                 {
                     _lifecycleCts.Dispose();
                     _lifecycleCts = new CancellationTokenSource();
+                }
+                // If OnMountAsync succeeded but a later step failed (e.g., manifest validation),
+                // tear down any resources opened during OnMountAsync to avoid leaking file handles.
+                if (resourcesOpened)
+                {
+                    try
+                    {
+                        // Best-effort: do not rely on mounted state for cleanup on failed mount.
+                        await OnUnmountAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Swallow to preserve the original mount failure as the primary error.
+                    }
                 }
                 throw;
             }
@@ -704,7 +726,8 @@ namespace Silica.Storage
 
                         // 5) Do the real I/O
                         var ioSw = Stopwatch.StartNew();
-                        await ReadFrameInternalAsync(frameId, buffer, effectiveToken).ConfigureAwait(false);
+                        // Skip metadata frame: logical frameId -> physical frameId + 1
+                        await ReadFrameInternalAsync(frameId + 1, buffer, effectiveToken).ConfigureAwait(false);
                         ioSw.Stop();
                         try { StorageMetrics.OnReadCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, buffer.Length); } catch { }
                         return buffer.Length;
@@ -828,7 +851,8 @@ namespace Silica.Storage
                         // Already marked acquired; continue to I/O
 
                         var ioSw = Stopwatch.StartNew();
-                        await WriteFrameInternalAsync(frameId, data, effectiveToken).ConfigureAwait(false);
+                        // Skip metadata frame: logical frameId -> physical frameId + 1
+                        await WriteFrameInternalAsync(frameId + 1, data, effectiveToken).ConfigureAwait(false);
                         ioSw.Stop();
                         try { StorageMetrics.OnWriteCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, data.Length); } catch { }
                     }
@@ -1009,18 +1033,21 @@ namespace Silica.Storage
             var frameSize = Geometry.LogicalBlockSize;
             var inner = (int)(offset % frameSize);
 
+            // Logical offset starts after metadata frame: shift by one frame
+            long physicalOffset = offset + frameSize;
+
             // fast-path single full frame
             if (inner == 0 && buffer.Length == frameSize)
             {
                 var ioSw = Stopwatch.StartNew();
-                await ReadFrameInternalAsync(offset / frameSize, buffer, cancellationToken).ConfigureAwait(false);
+                await ReadFrameInternalAsync(physicalOffset / frameSize, buffer, cancellationToken).ConfigureAwait(false);
                 ioSw.Stop();
                 try { StorageMetrics.OnReadCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, buffer.Length); } catch { }
                 return frameSize;
             }
 
             int total = 0;
-            long current = offset;
+            long current = physicalOffset;
             int remaining = buffer.Length;
             byte[] temp = ArrayPool<byte>.Shared.Rent(frameSize);
             try
@@ -1061,18 +1088,19 @@ namespace Silica.Storage
         {
             var frameSize = Geometry.LogicalBlockSize;
             var inner = (int)(offset % frameSize);
+            long physicalOffset = offset + frameSize;
 
             // fast-path single full frame
             if (inner == 0 && data.Length == frameSize)
             {
                 var ioSw = Stopwatch.StartNew();
-                await WriteFrameInternalAsync(offset / frameSize, data, cancellationToken).ConfigureAwait(false);
+                await WriteFrameInternalAsync(physicalOffset / frameSize, data, cancellationToken).ConfigureAwait(false);
                 ioSw.Stop();
                 try { StorageMetrics.OnWriteCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, data.Length); } catch { }
                 return;
             }
 
-            long current = offset;
+            long current = physicalOffset;
             int remaining = data.Length;
             byte[] temp = ArrayPool<byte>.Shared.Rent(frameSize);
             int srcIdx = 0;
@@ -1402,6 +1430,93 @@ namespace Silica.Storage
                 _ = g.LogicalBlockSize; // clarity
             }
         }
+
+        // -------- Metadata support (frame 0) --------
+
+        public void SetExpectedManifest(DeviceManifest manifest)
+        {
+            // Store for mount-time validation/initialization
+            _expectedManifest = manifest;
+        }
+
+        private async Task InitializeOrValidateMetadataAsync(CancellationToken cancellationToken)
+        {
+            if (_metadataInitialized) return;
+
+            // Read the whole metadata frame (exact LogicalBlockSize)
+            int size = Geometry.LogicalBlockSize;
+            byte[] buf = ArrayPool<byte>.Shared.Rent(size);
+            bool success = false;
+            try
+            {
+                bool exists;
+                // Attempt to read metadata frame. If out-of-range, treat as empty (fresh format).
+                try
+                {
+                    await ReadFrameInternalAsync(MetadataFrameId, buf.AsMemory(0, size), cancellationToken).ConfigureAwait(false);
+                    exists = true;
+                }
+                catch (DeviceReadOutOfRangeException)
+                {
+                    exists = false;
+                }
+
+                if (!exists || !DeviceManifest.TryDeserialize(new ReadOnlySpan<byte>(buf, 0, size), out var onDisk))
+                {
+                    // Fresh format required. Must have an expected manifest.
+                    if (!_expectedManifest.HasValue)
+                        throw new InvalidGeometryException("No manifest present and no expected manifest provided.");
+
+                    var expected = _expectedManifest.Value;
+                    if (expected.LogicalBlockSize != Geometry.LogicalBlockSize)
+                        throw new InvalidGeometryException("Expected manifest LBS differs from device geometry.");
+
+                    // Serialize into a zeroed buffer
+                    new Span<byte>(buf, 0, size).Clear();
+                    if (!expected.TrySerialize(new Span<byte>(buf, 0, size)))
+                        throw new InvalidGeometryException("Failed to serialize manifest into metadata frame.");
+                    await WriteFrameInternalAsync(MetadataFrameId, new ReadOnlyMemory<byte>(buf, 0, size), cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Validate against expected if provided; otherwise ensure geometry matches.
+                    if (_expectedManifest.HasValue)
+                    {
+                        var expected = _expectedManifest.Value;
+                        if (!onDisk.FormatAffectsLayoutEquals(expected))
+                            throw new IncompatibleStackException("Format-affecting mini-driver chain mismatch.");
+                    }
+                    else
+                    {
+                        if (onDisk.LogicalBlockSize != Geometry.LogicalBlockSize)
+                            throw new InvalidGeometryException("On-disk manifest LBS mismatch.");
+                    }
+                }
+                success = true;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buf, clearArray: true);
+                if (success)
+                {
+                    // Only mark initialized after successful read/validate/serialize flow.
+                    _metadataInitialized = true;
+                }
+            }
+        }
+
+        protected async ValueTask<int> ReadMetadataFrameAsync(Memory<byte> destination, CancellationToken token = default)
+        {
+            await ReadFrameInternalAsync(MetadataFrameId, destination, token).ConfigureAwait(false);
+            return destination.Length;
+        }
+
+        /// <summary>
+        /// Write raw metadata frame (frame 0) from source.
+        /// </summary>
+        protected ValueTask WriteMetadataFrameAsync(ReadOnlyMemory<byte> source, CancellationToken token = default)
+            => WriteFrameInternalAsync(MetadataFrameId, source, token).AsValueTask();
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TryEmitTrace(string operation, string status, string message, string fieldValue)

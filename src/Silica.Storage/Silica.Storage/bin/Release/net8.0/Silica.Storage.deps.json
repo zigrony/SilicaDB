@@ -9,8 +9,9 @@
       "Silica.Storage/1.0.0": {
         "dependencies": {
           "Silica.Common": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
           "Silica.Evictions": "1.0.0",
-          "Silica.Observability": "1.0.0"
+          "Silica.Exceptions": "1.0.0"
         },
         "runtime": {
           "Silica.Storage.dll": {}
@@ -24,9 +25,20 @@
           }
         }
       },
+      "Silica.DiagnosticsCore/1.0.0": {
+        "dependencies": {
+          "Silica.Exceptions": "1.0.0"
+        },
+        "runtime": {
+          "Silica.DiagnosticsCore.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "Silica.Evictions/1.0.0": {
         "dependencies": {
-          "Silica.Observability": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0"
         },
         "runtime": {
           "Silica.Evictions.dll": {
@@ -35,9 +47,9 @@
           }
         }
       },
-      "Silica.Observability/1.0.0": {
+      "Silica.Exceptions/1.0.0": {
         "runtime": {
-          "Silica.Observability.dll": {
+          "Silica.Exceptions.dll": {
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -56,12 +68,17 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Silica.DiagnosticsCore/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
     "Silica.Evictions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Silica.Observability/1.0.0": {
+    "Silica.Exceptions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

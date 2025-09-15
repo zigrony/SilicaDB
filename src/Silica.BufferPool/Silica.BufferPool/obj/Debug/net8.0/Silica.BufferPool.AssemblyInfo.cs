@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.BufferPool")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bab3b3676fbafceebdf15fffc1d264c6a54af09c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8eb3cb947f50175a78e38d629b12a9ad78220189")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.BufferPool")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.BufferPool")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

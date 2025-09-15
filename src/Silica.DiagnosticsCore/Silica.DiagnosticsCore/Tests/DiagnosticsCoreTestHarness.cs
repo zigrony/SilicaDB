@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
@@ -11,6 +13,7 @@ namespace Silica.DiagnosticsCore.Tests
     /// <summary>
     /// Self-contained harness that exercises DiagnosticsCore (metrics, tracing, redaction,
     /// timing scopes, lock scopes, dispatcher health) without external project dependencies.
+    /// Now also exercises FileTraceSink.
     /// </summary>
     public static class DiagnosticsCoreTestHarness
     {
@@ -53,26 +56,62 @@ namespace Silica.DiagnosticsCore.Tests
             options.AllowedCustomGlobalTagKeys = new[] { "custom_env", "build" };
             options.AllowedCustomMetricTagKeys = new[] { "custom_env", "phase" };
 
-            // Redaction knobs (message truncation is enforced even when redactMessage=false)
+            // Redaction knobs
             options.RedactTraceMessage = false;
             options.RedactExceptionMessage = true;
             options.RedactExceptionStack = false;
 
             options.Freeze();
 
-            // 2) Start DiagnosticsCore once (bootstraps metrics facade, dispatcher, sinks, trace manager)
-            DiagnosticsCoreBootstrap.Stop(throwOnErrors: false); // ensure a clean slate for repeated harness runs
+            // 2) Start DiagnosticsCore once
+            DiagnosticsCoreBootstrap.Stop(throwOnErrors: false);
             var bootstrap = DiagnosticsCoreBootstrap.Start(options);
 
-            var metrics = bootstrap.Metrics;     // MetricsFacade (implements IMetricsManager)
-            var traces = bootstrap.Traces;       // TraceManager
+            var metrics = bootstrap.Metrics;
+            var traces = bootstrap.Traces;
             var dispatcher = bootstrap.Dispatcher;
-            var bounded = bootstrap.BoundedSink; // BoundedInMemoryTraceSink
+            var bounded = bootstrap.BoundedSink;
 
             Console.WriteLine("-- Started DiagnosticsCore --");
             PrintStatus();
 
-            // 3) Register a few harness metrics (counter + histograms)
+            // --- NEW: FileTraceSink test wiring ---
+            var tempFile = Path.Combine(@"c:\temp\", $"harness_traces_{Guid.NewGuid():N}.log");
+            var fileSink = new FileTraceSink(
+                filePath: tempFile,
+                minLevel: "trace",
+                metrics: metrics,
+                dropPolicy: FileTraceSink.DropPolicy.BlockWithTimeout,
+                queueCapacity: 64,
+                shutdownDrainTimeoutMs: 500
+            ).WithFormatting(includeTags: true, includeException: true);
+
+            dispatcher.RegisterSink(fileSink);
+
+            traces.Emit("Harness", "FileSinkTest", "info",
+                new Dictionary<string, string> { { TagKeys.Operation, "file_sink_write" } },
+                "First trace to FileTraceSink");
+
+            traces.Emit("Harness", "FileSinkTest", "warn",
+                new Dictionary<string, string> { { TagKeys.Operation, "file_sink_write" } },
+                "Second trace to FileTraceSink with warning");
+
+            Thread.Sleep(100);
+
+            Console.WriteLine($"\n-- FileTraceSink output ({tempFile}) --");
+            try
+            {
+                var lines = File.ReadAllLines(tempFile);
+                foreach (var line in lines.Take(3))
+                    Console.WriteLine(line);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Could not read file sink output: {ex.Message}");
+            }
+            // --- END NEW ---
+
+            // 3) Register a few harness metrics
             var counterDef = new MetricDefinition(
                 Name: "harness.test_counter",
                 Type: MetricType.Counter,
@@ -98,7 +137,7 @@ namespace Silica.DiagnosticsCore.Tests
             metrics.Register(timingDef);
             metrics.Register(lockDef);
 
-            // 4) Emit a few metrics (exercise tag validator + global tag merge inside facade)
+            // 4) Emit a few metrics
             metrics.Increment("harness.test_counter", 1,
                 new KeyValuePair<string, object>(TagKeys.Component, "Harness"),
                 new KeyValuePair<string, object>("custom_env", "local"));
@@ -107,12 +146,12 @@ namespace Silica.DiagnosticsCore.Tests
                 new KeyValuePair<string, object>(TagKeys.Component, "Harness"),
                 new KeyValuePair<string, object>("phase", "warmup"));
 
-            // 5) Emit traces across levels, including sensitive tags and exception redaction
+            // 5) Emit traces
             var tagsInfo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { TagKeys.Operation, "startup" },
                 { "custom_env", "local" },
-                { "api_key", "ABCD-1234" } // will be redacted (sensitive)
+                { "api_key", "ABCD-1234" }
             };
             traces.Emit("Harness", "Bootstrap", "info", tagsInfo, "Harness startup event with a sensitive tag");
 
@@ -132,12 +171,12 @@ namespace Silica.DiagnosticsCore.Tests
                 var tagsErr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     { TagKeys.Operation, "exception_path" },
-                    { "secret", "top-secret" } // will be redacted
+                    { "secret", "top-secret" }
                 };
                 traces.Emit("Harness", "CrashyOp", "error", tagsErr, "Simulated exception occurred", ex);
             }
 
-            // 6) Timing scope: record duration via MetricsFacade in the onComplete callback
+            // 6) Timing scope
             using (var timing = Timing.Start(
                 component: "Harness",
                 operation: "TimedWork",
@@ -149,11 +188,10 @@ namespace Silica.DiagnosticsCore.Tests
                         new KeyValuePair<string, object>(TagKeys.Operation, scope.Operation));
                 }))
             {
-                // Simulate real work
                 Thread.Sleep(80);
             }
 
-            // 7) Lock scope: record held duration similarly
+            // 7) Lock scope
             using (var lscope = new LockScope(
                 component: "Harness",
                 lockName: "SampleLock",
@@ -185,7 +223,7 @@ namespace Silica.DiagnosticsCore.Tests
             foreach (var e in kept)
             {
                 Console.WriteLine($"{e.Timestamp:O} [{e.Status}] {e.Component}/{e.Operation} :: {Trunc(e.Message, 120)}");
-                if (++shown >= 5) break; // keep output short
+                if (++shown >= 5) break;
             }
 
             // 10) Tear down

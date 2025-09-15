@@ -2,7 +2,9 @@ C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Concurrency.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Concurrency.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.DiagnosticsCore.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\Silica.Concurrency.csproj.AssemblyReference.cache
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\Silica.Concurrency.GeneratedMSBuildEditorConfig.editorconfig
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\Silica.Concurrency.AssemblyInfoInputs.cache
@@ -14,5 +16,3 @@ C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\refint\Silica.Concurrency.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\Silica.Concurrency.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\obj\Debug\net8.0\ref\Silica.Concurrency.dll
-C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.dll
-C:\GitHubRepos\SilicaDB\src\Silica.Concurrency\Silica.Concurrency\bin\Debug\net8.0\Silica.Exceptions.pdb

@@ -1,0 +1,12 @@
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\bin\Release\net8.0\Silica.Exceptions.deps.json
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\bin\Release\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\bin\Release\net8.0\Silica.Exceptions.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.sourcelink.json
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\refint\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\Silica.Exceptions.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Exceptions\Silica.Exceptions\obj\Release\net8.0\ref\Silica.Exceptions.dll

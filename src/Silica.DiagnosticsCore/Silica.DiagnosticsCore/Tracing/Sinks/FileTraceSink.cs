@@ -10,7 +10,7 @@ using static Silica.DiagnosticsCore.DiagnosticsOptions;
 
 namespace Silica.DiagnosticsCore.Tracing
 {
-    internal sealed class FileTraceSink : ITraceSink, IDisposable, IAsyncDisposable
+    public sealed class FileTraceSink : ITraceSink, IDisposable, IAsyncDisposable
     {
         private int _disposed; // 0 = not disposed, 1 = disposed
         private readonly string _minLevel;
@@ -40,7 +40,7 @@ namespace Silica.DiagnosticsCore.Tracing
         private long _circuitOpenUntilTicks;
 
 
-        internal enum DropPolicy
+        public enum DropPolicy
         {
             DropNewest = 0,
             DropOldest = 1,
