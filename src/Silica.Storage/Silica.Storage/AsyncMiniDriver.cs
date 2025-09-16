@@ -76,7 +76,7 @@ namespace Silica.Storage
             public readonly SemaphoreSlim Sem = new SemaphoreSlim(1, 1);
             int _holders, _waiters;
             private int _closed; // 0 = open, 1 = closed
-            private int _disposed; // 0 = not disposed, 1 = disposed
+            private int _disposed; // 0 = not disposed, 1 = disposed (disposes Sem when closed and idle)
 
             public int HolderCount => Volatile.Read(ref _holders);
             public int WaiterCount => Volatile.Read(ref _waiters);
@@ -84,7 +84,6 @@ namespace Silica.Storage
             // True only when nobody holds or waits
             public bool IsIdle => HolderCount == 0 && WaiterCount == 0;
             public bool IsClosed => Volatile.Read(ref _closed) == 1;
-            private bool IsDisposed => Volatile.Read(ref _disposed) == 1;
 
             public void MarkWaiting()
             {
@@ -369,6 +368,7 @@ namespace Silica.Storage
             EnsureNotDisposed();
             await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
+            bool mountSucceeded = false;
             // Prepare lifecycle CTS but do not expose as mounted until OnMountAsync has succeeded
             TaskCompletionSource<object> newDrainTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
             CancellationTokenSource? oldCts = null;
@@ -377,6 +377,8 @@ namespace Silica.Storage
                 if (_mounted) throw new DeviceAlreadyMountedException();
                 oldCts = _lifecycleCts;
                 _lifecycleCts = new CancellationTokenSource();
+                // Force re-validation of metadata on each mount of this instance.
+                _metadataInitialized = false;
             }
             oldCts?.Dispose();
 
@@ -414,6 +416,7 @@ namespace Silica.Storage
                     _mounted = true;
                     _drainTcs = newDrainTcs;
                 }
+                mountSucceeded = true;
             }
             catch
             {
@@ -447,7 +450,11 @@ namespace Silica.Storage
             finally
             {
                 sw.Stop();
-                try { StorageMetrics.OnMountCompleted(_metrics, sw.Elapsed.TotalMilliseconds); } catch { }
+                // Record only on successful mount to keep metrics semantically true.
+                if (mountSucceeded)
+                {
+                    try { StorageMetrics.OnMountCompleted(_metrics, sw.Elapsed.TotalMilliseconds); } catch { }
+                }
                 _lifecycleGate.Release();
             }
         }
@@ -460,6 +467,7 @@ namespace Silica.Storage
             await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
             bool wasMounted;
+            bool unmountSucceeded = false;
             // Snapshot and block new operations
             lock (_stateLock)
             {
@@ -521,11 +529,18 @@ namespace Silica.Storage
                     // Maintain a valid CTS object (fresh and not canceled) for subsequent effective token linking logic.
                     _lifecycleCts = new CancellationTokenSource();
                 }
+                // Ensure metadata is re-validated on subsequent mounts.
+                _metadataInitialized = false;
+                unmountSucceeded = true;
             }
             finally
             {
                 sw.Stop();
-                try { StorageMetrics.OnUnmountCompleted(_metrics, sw.Elapsed.TotalMilliseconds); } catch { }
+                // Only emit if we actually unmounted a mounted device and completed teardown.
+                if (wasMounted && unmountSucceeded)
+                {
+                    try { StorageMetrics.OnUnmountCompleted(_metrics, sw.Elapsed.TotalMilliseconds); } catch { }
+                }
                 _lifecycleGate.Release();
             }
         }
@@ -631,6 +646,17 @@ namespace Silica.Storage
             if (buffer.Length != Geometry.LogicalBlockSize)
                 throw new InvalidLengthException(buffer.Length);
 
+            // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
+            long physicalFrameId;
+            try
+            {
+                physicalFrameId = checked(frameId + 1);
+            }
+            catch (OverflowException)
+            {
+                throw new InvalidOffsetException(frameId);
+            }
+
             int attempt = 0;
             int maxAttempts = MaxLockAcquireAttempts;
             if (maxAttempts < 1) maxAttempts = 1;
@@ -644,8 +670,8 @@ namespace Silica.Storage
                     // Be responsive to cancellation between retries.
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // 1) Grab or create the per-frame lock
-                    var fl = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
+                    // 1) Grab or create the per-frame lock (physical)
+                    var fl = await _frameLockCache.GetOrAddAsync(physicalFrameId).ConfigureAwait(false);
 
                     // 2) Compose effective cancellation without per-op allocation unless needed
                     CancellationTokenSource? linkedCts = null;
@@ -682,13 +708,16 @@ namespace Silica.Storage
                         if (fl.IsClosed)
                         {
                             // We hold the semaphore and have been marked as holder; undo both.
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             finally
                             {
-                                fl.MarkReleased();
+                                if (semReleased)
+                                    fl.MarkReleased();
                             }
                             acquired = false;
                             markedAcquired = false;
@@ -726,8 +755,8 @@ namespace Silica.Storage
 
                         // 5) Do the real I/O
                         var ioSw = Stopwatch.StartNew();
-                        // Skip metadata frame: logical frameId -> physical frameId + 1
-                        await ReadFrameInternalAsync(frameId + 1, buffer, effectiveToken).ConfigureAwait(false);
+                        // Already using physical lock; perform I/O at the matching physical frame id
+                        await ReadFrameInternalAsync(physicalFrameId, buffer, effectiveToken).ConfigureAwait(false);
                         ioSw.Stop();
                         try { StorageMetrics.OnReadCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, buffer.Length); } catch { }
                         return buffer.Length;
@@ -737,13 +766,15 @@ namespace Silica.Storage
                         linkedCts?.Dispose();
                         if (acquired)
                         {
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             finally
                             {
-                                if (markedAcquired)
+                                if (markedAcquired && semReleased)
                                     fl.MarkReleased();
                             }
                         }
@@ -766,6 +797,17 @@ namespace Silica.Storage
             if (data.Length != Geometry.LogicalBlockSize)
                 throw new InvalidLengthException(data.Length);
 
+            // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
+            long physicalFrameId;
+            try
+            {
+                physicalFrameId = checked(frameId + 1);
+            }
+            catch (OverflowException)
+            {
+                throw new InvalidOffsetException(frameId);
+            }
+
             int attempt = 0;
             int maxAttempts = MaxLockAcquireAttempts;
             if (maxAttempts < 1) maxAttempts = 1;
@@ -777,7 +819,7 @@ namespace Silica.Storage
                 {
                     // Be responsive to cancellation between retries.
                     cancellationToken.ThrowIfCancellationRequested();
-                    var fl = await _frameLockCache.GetOrAddAsync(frameId).ConfigureAwait(false);
+                    var fl = await _frameLockCache.GetOrAddAsync(physicalFrameId).ConfigureAwait(false);
                     CancellationTokenSource? linkedCts = null;
                     var effectiveToken = GetEffectiveToken(cancellationToken, out linkedCts);
                     // Fail fast on cancellation before any lock work
@@ -809,13 +851,16 @@ namespace Silica.Storage
                         if (fl.IsClosed)
                         {
                             // We hold the semaphore and have been marked as holder; undo both.
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             finally
                             {
-                                fl.MarkReleased();
+                                if (semReleased)
+                                    fl.MarkReleased();
                             }
                             acquired = false;
                             markedAcquired = false;
@@ -851,8 +896,8 @@ namespace Silica.Storage
                         // Already marked acquired; continue to I/O
 
                         var ioSw = Stopwatch.StartNew();
-                        // Skip metadata frame: logical frameId -> physical frameId + 1
-                        await WriteFrameInternalAsync(frameId + 1, data, effectiveToken).ConfigureAwait(false);
+                        // Already using physical lock; perform I/O at the matching physical frame id
+                        await WriteFrameInternalAsync(physicalFrameId, data, effectiveToken).ConfigureAwait(false);
                         ioSw.Stop();
                         try { StorageMetrics.OnWriteCompleted(_metrics, ioSw.Elapsed.TotalMilliseconds, data.Length); } catch { }
                     }
@@ -861,13 +906,15 @@ namespace Silica.Storage
                         linkedCts?.Dispose();
                         if (acquired)
                         {
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             finally
                             {
-                                if (markedAcquired)
+                                if (markedAcquired && semReleased)
                                     fl.MarkReleased();
                             }
                         }
@@ -911,17 +958,30 @@ namespace Silica.Storage
                 {
                     int remaining = buffer.Length - totalRead;
                     int batchLen = remaining < maxBytesPerBatch ? remaining : maxBytesPerBatch;
-                    // maintain block alignment for batch size
-                    int rem = batchLen % frameSize;
-                    if (rem != 0) batchLen -= rem;
-                    if (batchLen <= 0) batchLen = frameSize;
+                    if (Geometry.RequiresAlignedIo)
+                    {
+                        // For aligned devices, keep batch multiples of frameSize.
+                        int rem = batchLen % frameSize;
+                        if (rem != 0) batchLen -= rem;
+                        if (batchLen <= 0) batchLen = frameSize;
+                    }
 
                     long chunkOffset = offset + totalRead;
                     var chunkBuffer = buffer.Slice(totalRead, batchLen);
 
                     // Fail fast on cancellation before acquiring the batch of locks
                     effectiveToken.ThrowIfCancellationRequested();
-                    var frameIds = GetFrameRange(chunkOffset, batchLen, frameSize);
+                    // Acquire locks by physical frame id (skip metadata frame at physical 0).
+                    long physicalChunkOffset;
+                    try
+                    {
+                        physicalChunkOffset = checked(chunkOffset + frameSize);
+                    }
+                    catch (OverflowException)
+                    {
+                        throw new InvalidOffsetException(chunkOffset);
+                    }
+                    var frameIds = GetFrameRange(physicalChunkOffset, batchLen, frameSize);
                     var locks = await AcquireFrameLocksAsync(frameIds, effectiveToken).ConfigureAwait(false);
                     try
                     {
@@ -971,16 +1031,30 @@ namespace Silica.Storage
                 {
                     int remaining = data.Length - totalWritten;
                     int batchLen = remaining < maxBytesPerBatch ? remaining : maxBytesPerBatch;
-                    int rem = batchLen % frameSize;
-                    if (rem != 0) batchLen -= rem;
-                    if (batchLen <= 0) batchLen = frameSize;
+                    if (Geometry.RequiresAlignedIo)
+                    {
+                        // For aligned devices, keep batch multiples of frameSize.
+                        int rem = batchLen % frameSize;
+                        if (rem != 0) batchLen -= rem;
+                        if (batchLen <= 0) batchLen = frameSize;
+                    }
 
                     long chunkOffset = offset + totalWritten;
                     var chunkData = data.Slice(totalWritten, batchLen);
 
                     // Fail fast on cancellation before acquiring the batch of locks
                     effectiveToken.ThrowIfCancellationRequested();
-                    var frameIds = GetFrameRange(chunkOffset, batchLen, frameSize);
+                    // Acquire locks by physical frame id (skip metadata frame at physical 0).
+                    long physicalChunkOffset;
+                    try
+                    {
+                        physicalChunkOffset = checked(chunkOffset + frameSize);
+                    }
+                    catch (OverflowException)
+                    {
+                        throw new InvalidOffsetException(chunkOffset);
+                    }
+                    var frameIds = GetFrameRange(physicalChunkOffset, batchLen, frameSize);
                     var locks = await AcquireFrameLocksAsync(frameIds, effectiveToken).ConfigureAwait(false);
                     try
                     {
@@ -1034,7 +1108,15 @@ namespace Silica.Storage
             var inner = (int)(offset % frameSize);
 
             // Logical offset starts after metadata frame: shift by one frame
-            long physicalOffset = offset + frameSize;
+            long physicalOffset;
+            try
+            {
+                physicalOffset = checked(offset + frameSize);
+            }
+            catch (OverflowException)
+            {
+                throw new InvalidOffsetException(offset);
+            }
 
             // fast-path single full frame
             if (inner == 0 && buffer.Length == frameSize)
@@ -1088,7 +1170,15 @@ namespace Silica.Storage
         {
             var frameSize = Geometry.LogicalBlockSize;
             var inner = (int)(offset % frameSize);
-            long physicalOffset = offset + frameSize;
+            long physicalOffset;
+            try
+            {
+                physicalOffset = checked(offset + frameSize);
+            }
+            catch (OverflowException)
+            {
+                throw new InvalidOffsetException(offset);
+            }
 
             // fast-path single full frame
             if (inner == 0 && data.Length == frameSize)
@@ -1248,9 +1338,11 @@ namespace Silica.Storage
                             TryEmitTrace("range_lock_acquire", "warn", "retry_on_framelock_closed", "exid_2012");
                             // We waited and acquired the semaphore for a closed lock;
                             // release it and drop holder before retrying to avoid deadlock.
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             catch
                             {
@@ -1258,7 +1350,8 @@ namespace Silica.Storage
                             }
                             finally
                             {
-                                fl.MarkReleased();
+                                if (semReleased)
+                                    fl.MarkReleased();
                             }
                             lastWaited = null;
 
@@ -1289,33 +1382,38 @@ namespace Silica.Storage
                         for (int i = 0; i < locks.Count; i++)
                         {
                             var fl = locks[i];
+                            bool semReleased = false;
                             try
                             {
                                 fl.Sem.Release();
+                                semReleased = true;
                             }
                             finally
                             {
-                                fl.MarkReleased();
+                                if (semReleased)
+                                    fl.MarkReleased();
                             }
                         }
                         locks.Clear();
                         // If we broke out on a closed lock after waiting, ensure it's not left held.
                         if (lastWaited is not null)
                         {
+                            bool semReleased = false;
                             try
                             {
                                 lastWaited.Sem.Release();
+                                semReleased = true;
                             }
                             catch
                             {
                             }
                             finally
                             {
-                                lastWaited.MarkReleased();
+                                if (semReleased)
+                                    lastWaited.MarkReleased();
                             }
                             lastWaited = null;
                         }
-
                     }
                 }
                 attempts++;
@@ -1356,13 +1454,16 @@ namespace Silica.Storage
         {
             foreach (var fl in locks)
             {
+                bool semReleased = false;
                 try
                 {
                     fl.Sem.Release();
+                    semReleased = true;
                 }
                 finally
                 {
-                    fl.MarkReleased();
+                    if (semReleased)
+                        fl.MarkReleased();
                 }
             }
         }
@@ -1412,6 +1513,10 @@ namespace Silica.Storage
             // Logical block size must be positive.
             if (g.LogicalBlockSize <= 0)
                 throw new InvalidGeometryException("Geometry.LogicalBlockSize must be > 0.");
+            // Logical block size should be a power of two for predictable alignment/IO boundaries.
+            // This prevents pathological configurations and aligns with common device constraints.
+            if ((g.LogicalBlockSize & (g.LogicalBlockSize - 1)) != 0)
+                throw new InvalidGeometryException("Geometry.LogicalBlockSize must be a power of two.");
 
             // Max I/O bytes cannot be negative.
             if (g.MaxIoBytes < 0)
@@ -1435,8 +1540,17 @@ namespace Silica.Storage
 
         public void SetExpectedManifest(DeviceManifest manifest)
         {
-            // Store for mount-time validation/initialization
-            _expectedManifest = manifest;
+            // Enforce: must be called before MountAsync on this instance.
+            EnsureNotDisposed();
+            lock (_stateLock)
+            {
+                if (_mounted)
+                    throw new DeviceAlreadyMountedException();
+                // Store for mount-time validation/initialization
+                _expectedManifest = manifest;
+                // Force re-validation of metadata on next mount for this instance.
+                _metadataInitialized = false;
+            }
         }
 
         private async Task InitializeOrValidateMetadataAsync(CancellationToken cancellationToken)
@@ -1449,6 +1563,7 @@ namespace Silica.Storage
             bool success = false;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 bool exists;
                 // Attempt to read metadata frame. If out-of-range, treat as empty (fresh format).
                 try
@@ -1507,6 +1622,10 @@ namespace Silica.Storage
 
         protected async ValueTask<int> ReadMetadataFrameAsync(Memory<byte> destination, CancellationToken token = default)
         {
+            EnsureMounted();
+            // Enforce exact metadata frame size reads for contract clarity.
+            if (destination.Length != Geometry.LogicalBlockSize)
+                throw new InvalidLengthException(destination.Length);
             await ReadFrameInternalAsync(MetadataFrameId, destination, token).ConfigureAwait(false);
             return destination.Length;
         }
@@ -1515,7 +1634,13 @@ namespace Silica.Storage
         /// Write raw metadata frame (frame 0) from source.
         /// </summary>
         protected ValueTask WriteMetadataFrameAsync(ReadOnlyMemory<byte> source, CancellationToken token = default)
-            => WriteFrameInternalAsync(MetadataFrameId, source, token).AsValueTask();
+        {
+            EnsureMounted();
+            // Enforce exact metadata frame size writes for contract clarity.
+            if (source.Length != Geometry.LogicalBlockSize)
+                throw new InvalidLengthException(source.Length);
+            return WriteFrameInternalAsync(MetadataFrameId, source, token).AsValueTask();
+        }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

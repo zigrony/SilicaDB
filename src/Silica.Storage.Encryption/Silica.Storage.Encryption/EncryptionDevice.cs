@@ -31,8 +31,30 @@ namespace Silica.Storage.Encryption
         private readonly object _metricsLock = new object();
         private readonly int _keyLen;
         private readonly int _saltLen;
+        // Counter derivation config and strategy
+        private readonly CounterDerivationConfig _cfg;
+        private readonly ICounterDerivation _derivation;
 
+        // Back-compat ctor: defaults to deterministic salt^frameId (no epoch)
         public EncryptionDevice(IStorageDevice inner, IEncryptionKeyProvider keys)
+            : this(inner, keys, new CounterDerivationConfig(CounterDerivationKind.SaltXorFrameId_V1, 1, 0, 0))
+        {
+            // Warn explicitly: CTR unauthenticated + keystream reuse on rewrites with this default
+            try
+            {
+                EncryptionDiagnostics.Emit("init", "warn", "aes_ctr_unauthenticated_and_nonce_reuse_on_rewrites",
+                    more: new Dictionary<string, string>
+                    {
+                        { "mode", "AES-CTR" },
+                        { "integrity", "none" },
+                        { "frame_keystream_reuse", "on_rewrite" }
+                    });
+            }
+            catch { }
+        }
+
+        // Preferred ctor: explicit, versioned counter derivation strategy
+        public EncryptionDevice(IStorageDevice inner, IEncryptionKeyProvider keys, CounterDerivationConfig cfg)
             : base(inner)
         {
             _keys = keys ?? throw new EncryptionKeyProviderNullException();
@@ -69,6 +91,23 @@ namespace Silica.Storage.Encryption
             _metrics = DiagnosticsCoreBootstrap.IsStarted
                 ? DiagnosticsCoreBootstrap.Instance.Metrics
                 : new NoOpMetricsManager();
+
+            // Bind counter derivation strategy
+            _cfg = cfg;
+            switch (_cfg.Kind)
+            {
+                case CounterDerivationKind.SaltXorFrameId_V1:
+                    _derivation = SaltXorFrameIdV1.Instance;
+                    break;
+                case CounterDerivationKind.SaltXorFrameId_Epoch_V1:
+                    _derivation = new SaltXorFrameIdEpochV1(_cfg.Epoch);
+                    break;
+                default:
+                    // Future strategies can be added; default to deterministic V1 if unknown
+                    _derivation = SaltXorFrameIdV1.Instance;
+                    break;
+            }
+
             if (DiagnosticsCoreBootstrap.IsStarted)
             {
                 try
@@ -76,25 +115,19 @@ namespace Silica.Storage.Encryption
                     EncryptionMetrics.RegisterAll(_metrics, _componentName);
                     _metricsRegistered = true;
                     EncryptionDiagnostics.Emit("init", "info", "encryption_device_initialized",
-                        more: new Dictionary<string, string>
-                        {
+                         more: new Dictionary<string, string>
+                         {
                             { "component", _componentName },
                             { "key_bytes", keyLen.ToString(CultureInfo.InvariantCulture) },
-                            { "salt_bytes", "16" }
-                        });
-                    // Explicitly warn at initialization: unauthenticated CTR mode and keystream reuse across rewrites.
-                    EncryptionDiagnostics.Emit("init", "warn", "aes_ctr_unauthenticated_and_nonce_reuse_on_rewrites",
-                        more: new Dictionary<string, string>
-                        {
-                            { "mode", "AES-CTR" },
-                            { "integrity", "none" },
-                            { "frame_keystream_reuse", "on_rewrite" }
-                        });
+                            { "salt_bytes", "16" },
+                            { "ctr_kind", ((uint)_cfg.Kind).ToString(CultureInfo.InvariantCulture) },
+                            { "ctr_ver", _cfg.Version.ToString(CultureInfo.InvariantCulture) },
+                            { "ctr_epoch", _cfg.Epoch.ToString(CultureInfo.InvariantCulture) }
+                         });
                 }
                 catch { }
             }
         }
-
 
         private void EnsureMetricsRegistered()
         {
@@ -163,18 +196,11 @@ namespace Silica.Storage.Encryption
             }
         }
 
-        // Derive a 16-byte counter block for AES-CTR from device salt + frameId.
+        // Derive a 16-byte counter block for AES-CTR using the configured derivation strategy.
         private void InitCounterBlock(long frameId, Span<byte> counter16)
         {
             if (counter16.Length != 16)
                 throw new InvalidCounterBlockException(counter16.Length);
-
-            // SECURITY NOTE:
-            // This derivation is deterministic per (device salt, frameId).
-            // Rewriting the same frame reuses the same keystream (CTR is unauthenticated here).
-            // We surface a warn at initialization. If keystream reuse is unacceptable,
-            // introduce a per-frame epoch/tweak (stored externally or via metadata) and
-            // mix it into the low 8 bytes before increment domain.
 
             var salt = _keys.GetDeviceSalt();
             if (salt.Length != _saltLen || salt.Length != 16)
@@ -182,27 +208,7 @@ namespace Silica.Storage.Encryption
                 try { EncryptionMetrics.IncrementValidationFailure(_metrics); } catch { }
                 throw new InvalidSaltException(salt.Length);
             }
-            // First 8 bytes: salt high half (static per device)
-            counter16[0] = salt[0];
-            counter16[1] = salt[1];
-            counter16[2] = salt[2];
-            counter16[3] = salt[3];
-            counter16[4] = salt[4];
-            counter16[5] = salt[5];
-            counter16[6] = salt[6];
-            counter16[7] = salt[7];
-
-            // Last 8 bytes: salt low half XOR frameId (big-endian).
-            // This preserves full 16-byte salt contribution while keeping the increment domain in the last 8 bytes.
-            ulong id = unchecked((ulong)frameId);
-            counter16[8] = (byte)(salt[8] ^ ((id >> 56) & 0xFF));
-            counter16[9] = (byte)(salt[9] ^ ((id >> 48) & 0xFF));
-            counter16[10] = (byte)(salt[10] ^ ((id >> 40) & 0xFF));
-            counter16[11] = (byte)(salt[11] ^ ((id >> 32) & 0xFF));
-            counter16[12] = (byte)(salt[12] ^ ((id >> 24) & 0xFF));
-            counter16[13] = (byte)(salt[13] ^ ((id >> 16) & 0xFF));
-            counter16[14] = (byte)(salt[14] ^ ((id >> 8) & 0xFF));
-            counter16[15] = (byte)(salt[15] ^ (id & 0xFF));
+            _derivation.Derive(salt, frameId, counter16);
         }
 
         // READ: split-path so no Span/stackalloc lives in an async body

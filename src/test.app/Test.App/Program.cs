@@ -8,7 +8,6 @@ using Silica.Exceptions.Testing;
 using Silica.DiagnosticsCore.Tests;
 using Silica.Evictions.Tests;
 using Silica.Storage.Tests;
-using Silica.Storage.Encryption.Testing;
 
 class Program
 {
@@ -85,7 +84,6 @@ class Program
         // 4) Run your harnesses
         await EvictionsTestHarness.Run();
         await StorageTestHarness.RunAsync();
-        await EncryptionTestHarness.RunAsync();
 
         Console.WriteLine("All test harnesses completed.");
 

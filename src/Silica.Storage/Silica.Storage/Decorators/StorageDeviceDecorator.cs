@@ -8,7 +8,7 @@ namespace Silica.Storage.Decorators
     /// <summary>
     /// Common decorator base that forwards I/O by default.
     /// </summary>
-    public abstract class StorageDeviceDecorator : IStorageDevice, IMountableStorage
+    public abstract class StorageDeviceDecorator : IStorageDevice, IMountableStorage, IStackManifestHost
     {
         protected readonly IStorageDevice Inner;
 
@@ -37,11 +37,66 @@ namespace Silica.Storage.Decorators
         public virtual async ValueTask DisposeAsync() => await Inner.DisposeAsync().ConfigureAwait(false);
         public virtual async Task MountAsync(CancellationToken cancellationToken = default)
         {
-            if (Inner is IMountableStorage m) await m.MountAsync(cancellationToken).ConfigureAwait(false);
+            // Deterministically traverse decorator chain (no reflection) to first mountable device.
+            IStorageDevice current = Inner;
+            while (true)
+            {
+                if (current is IMountableStorage mountable)
+                {
+                    await mountable.MountAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+                if (current is StorageDeviceDecorator decorator)
+                {
+                    current = decorator.InnerDevice;
+                    continue;
+                }
+                break;
+            }
+            throw new InvalidOperationException("No mountable device found in decorator chain (IMountableStorage required at the base).");
         }
         public virtual async Task UnmountAsync(CancellationToken cancellationToken = default)
         {
-            if (Inner is IMountableStorage m) await m.UnmountAsync(cancellationToken).ConfigureAwait(false);
+            // Deterministically traverse decorator chain (no reflection) to first mountable device.
+            IStorageDevice current = Inner;
+            while (true)
+            {
+                if (current is IMountableStorage mountable)
+                {
+                    await mountable.UnmountAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+                if (current is StorageDeviceDecorator decorator)
+                {
+                    current = decorator.InnerDevice;
+                    continue;
+                }
+                break;
+            }
+            throw new InvalidOperationException("No mountable device found in decorator chain (IMountableStorage required at the base).");
+        }
+
+        // Forward manifest control to the base device when present.
+        public void SetExpectedManifest(DeviceManifest manifest)
+        {
+            // Deterministically traverse decorator chain to the first manifest host.
+            IStorageDevice current = Inner;
+            while (true)
+            {
+                if (current is IStackManifestHost host)
+                {
+                    host.SetExpectedManifest(manifest);
+                    return;
+                }
+                if (current is StorageDeviceDecorator decorator)
+                {
+                    current = decorator.InnerDevice;
+                    continue;
+                }
+                break;
+            }
+            // If a non-host device sits at the bottom, make the failure explicit.
+            throw new InvalidOperationException("No stack manifest host found in decorator chain (IStackManifestHost required at the base).");
         }
     }
 }

@@ -3,13 +3,13 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{D6580EEE-FA72-4258-ABDC-9FCB8FB4996B}|..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\Silica.Storage.Encryption.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage.encryption\\silica.storage.encryption\\encryptiondevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devices\\streamdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D6580EEE-FA72-4258-ABDC-9FCB8FB4996B}|..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\Silica.Storage.Encryption.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage.encryption\\silica.storage.encryption\\fixedkeyprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D6580EEE-FA72-4258-ABDC-9FCB8FB4996B}|..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\Silica.Storage.Encryption.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage.encryption\\silica.storage.encryption\\aesctrtransform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devicemanifest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -28,40 +28,40 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "EncryptionDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\EncryptionDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\EncryptionDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\EncryptionDevice.cs*",
-              "RelativeToolTip": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\EncryptionDevice.cs*",
-              "ViewState": "AgIAAMUAAAAAAAAAAAArwOUAAAAAAAAAAAAAAA==",
+              "Title": "StreamDevice.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs*",
+              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs*",
+              "ViewState": "AgIAAI8AAAAAAAAAAADgv8UAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-13T16:08:27.147Z",
+              "WhenOpened": "2025-09-16T12:09:13.458Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "FixedKeyProvider.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\FixedKeyProvider.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\FixedKeyProvider.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\FixedKeyProvider.cs*",
-              "RelativeToolTip": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\FixedKeyProvider.cs*",
-              "ViewState": "AgIAAEcAAAAAAAAAAAAjwGQAAAAAAAAAAAAAAA==",
+              "Title": "PhysicalBlockDevice.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs*",
+              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs*",
+              "ViewState": "AgIAAG8AAAAAAAAAAAAswKcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-13T16:07:42.356Z",
+              "WhenOpened": "2025-09-16T12:07:54.045Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "AesCtrTransform.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\AesCtrTransform.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\AesCtrTransform.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\AesCtrTransform.cs*",
-              "RelativeToolTip": "..\\Silica.Storage.Encryption\\Silica.Storage.Encryption\\AesCtrTransform.cs*",
-              "ViewState": "AgIAADIBAAAAAAAAAAArwFABAAAAAAAAAAAAAA==",
+              "Title": "DeviceManifest.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs*",
+              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs*",
+              "ViewState": "AgIAAIgAAAAAAAAAAADgv7IAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-13T16:04:46.234Z",
+              "WhenOpened": "2025-09-16T12:07:09.526Z",
               "EditorCaption": ""
             }
           ]

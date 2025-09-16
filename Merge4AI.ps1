@@ -9,11 +9,11 @@ param(
         "Silica.DiagnosticsCore",
         "Silica.Durability",
         "Silica.Evictions",
-		"Silica.Exceptions",
+        "Silica.Exceptions",
         "Silica.Storage",
         "Silica.PageAccess",
-		"Silica.Storage.Encryption",
-		"test.app"
+        #"Silica.Storage.Encryption",
+        "test.app"
     )]
     [string[]]$Projects = @("All"),
     [int]$fileSize = 80000
@@ -60,17 +60,17 @@ function Split-LargeFile {
 
 # Master project list
 $AllProjectsList = @(
-        "Silica.BufferPool",
-        "Silica.Common",
-        "Silica.Concurrency",
-        "Silica.DiagnosticsCore",
-        "Silica.Durability",
-        "Silica.Evictions",
-		"Silica.Exceptions",
-        "Silica.Storage",
-        "Silica.PageAccess",
-		"Silica.Storage.Encryption",
-		"test.app"
+    "Silica.BufferPool",
+    "Silica.Common",
+    "Silica.Concurrency",
+    "Silica.DiagnosticsCore",
+    "Silica.Durability",
+    "Silica.Evictions",
+    "Silica.Exceptions",
+    "Silica.Storage",
+    "Silica.PageAccess",
+    #"Silica.Storage.Encryption",
+    "test.app"
 )
 
 # Resolve project list
@@ -93,7 +93,11 @@ foreach ($project in $ProjectList) {
     $fullDst = Join-Path $dstPath "$($project)_AllContent.txt"
     $writer = [System.IO.StreamWriter]::new($fullDst, $false, [System.Text.Encoding]::UTF8)
 
-    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Sort-Object FullName
+    # Skip files containing 'Tests' in the path
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" |
+             Where-Object { $_.FullName -notmatch "Tests" } |
+             Sort-Object FullName
+
     foreach ($file in $files) {
         Write-Host "`tFileName[$($file.FullName)]"
         $relPath = $file.FullName.Substring($fullSrc.TrimEnd('\').Length).TrimStart('\')
@@ -109,7 +113,7 @@ foreach ($project in $ProjectList) {
     Split-LargeFile -FilePath $fullDst -MaxSize $fileSize -prefix $project
 }
 
-# --- Combined AllProjects processing (always runs, but only for selected subset) ---
+# --- Combined AllProjects processing ---
 Write-Host "Creating combined AllProjects.txt"
 
 $allDst = Join-Path $dstPath "AllProjects.txt"
@@ -122,12 +126,16 @@ foreach ($project in $ProjectList) {
         continue
     }
 
-	$writer.WriteLine("//")
-	$writer.WriteLine("// Start Project: $project")
-	$writer.WriteLine("//")
-	$writer.WriteLine()
+    $writer.WriteLine("//")
+    $writer.WriteLine("// Start Project: $project")
+    $writer.WriteLine("//")
+    $writer.WriteLine()
 
-    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Sort-Object FullName
+    # Skip files containing 'Tests' in the path
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" |
+             Where-Object { $_.FullName -notmatch "Tests" } |
+             Sort-Object FullName
+
     foreach ($file in $files) {
         Write-Host "`t[AllProjects] FileName[$($file.FullName)]"
         $relPath = Join-Path $project ($file.FullName.Substring($fullSrc.TrimEnd('\').Length).TrimStart('\'))
@@ -138,10 +146,11 @@ foreach ($project in $ProjectList) {
         }
         $writer.WriteLine()
     }
-	$writer.WriteLine("//")
-	$writer.WriteLine("// End Project: $project")
-	$writer.WriteLine("//")
-	$writer.WriteLine()
+
+    $writer.WriteLine("//")
+    $writer.WriteLine("// End Project: $project")
+    $writer.WriteLine("//")
+    $writer.WriteLine()
 }
 $writer.Close()
 

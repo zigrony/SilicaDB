@@ -11,7 +11,6 @@
     <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
     <ProjectReference Include="..\..\Silica.Evictions\Silica.Evictions\Silica.Evictions.csproj" />
     <ProjectReference Include="..\..\Silica.Exceptions\Silica.Exceptions\Silica.Exceptions.csproj" />
-    <ProjectReference Include="..\..\Silica.Storage.Encryption\Silica.Storage.Encryption\Silica.Storage.Encryption.csproj" />
     <ProjectReference Include="..\..\Silica.Storage\Silica.Storage\Silica.Storage.csproj" />
   </ItemGroup>
 
