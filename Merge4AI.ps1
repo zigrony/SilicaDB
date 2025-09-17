@@ -12,7 +12,7 @@ param(
         "Silica.Exceptions",
         "Silica.Storage",
         "Silica.PageAccess",
-        #"Silica.Storage.Encryption",
+        "Silica.Sql.Lexer",
         "test.app"
     )]
     [string[]]$Projects = @("All"),
@@ -69,7 +69,7 @@ $AllProjectsList = @(
     "Silica.Exceptions",
     "Silica.Storage",
     "Silica.PageAccess",
-    #"Silica.Storage.Encryption",
+    "Silica.Sql.Lexer",
     "test.app"
 )
 

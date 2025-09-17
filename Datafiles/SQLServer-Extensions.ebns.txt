@@ -1,0 +1,249 @@
+/* Vendor-specific extensions: SQL Server DBCC
+   Scope:
+   - General DBCC command shape
+   - Specifics for: CHECKDB, CHECKTABLE, CHECKCATALOG, CHECKIDENT,
+                    UPDATEUSAGE, PAGE, SHOW_STATISTICS, INPUTBUFFER,
+                    OPENTRAN, SQLPERF, TRACEON/TRACEOFF
+   - WITH() option patterns and named-arg patterns
+*/
+
+directly_executable_statement ::=
+    /* augment the ISO rule via unioning grammars */
+    dbcc_statement
+  | directly_executable_statement  /* from ISO */
+
+/* ---------- Common DBCC surface ------------------------------------------------ */
+
+dbcc_statement ::=
+  DBCC dbcc_command dbcc_args? dbcc_with_options? semicolon?
+
+dbcc_command ::=
+    CHECKDB
+  | CHECKTABLE
+  | CHECKCATALOG
+  | CHECKIDENT
+  | UPDATEUSAGE
+  | PAGE
+  | SHOW_STATISTICS
+  | INPUTBUFFER
+  | OPENTRAN
+  | SQLPERF
+  | TRACEON
+  | TRACEOFF
+  | identifier   /* forward-compat for unlisted DBCC commands */
+
+/* Generic args: DBCC <cmd> ( ... ) */
+dbcc_args ::=
+  left_paren dbcc_arg_list? right_paren
+
+dbcc_arg_list ::=
+  dbcc_arg ( comma dbcc_arg )*
+
+dbcc_arg ::=
+    character_string_literal
+  | unsigned_numeric_literal
+  | identifier
+  | ON
+  | OFF
+
+/* WITH options: DBCC <cmd> WITH opt [, opt | opt = value ]... */
+dbcc_with_options ::=
+  WITH dbcc_with_option ( comma dbcc_with_option )*
+
+dbcc_with_option ::=
+    /* common DBCC options across commands */
+    NO_INFOMSGS
+  | ALL_ERRORMSGS
+  | EXTENDED_LOGICAL_CHECKS
+  | TABLOCK
+  | ESTIMATEONLY
+  | PHYSICAL_ONLY
+  | DATA_PURITY
+  | NOINDEX
+  | MAXDOP equals_operator unsigned_numeric_literal
+  | TABLERESULTS
+  | NOCOUNT
+  | INDEX /* (index name/ID) optional refinement handled in command-specific rules */
+
+/* ---------- DBCC CHECKDB ------------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC CHECKDB dbcc_checkdb_args? dbcc_checkdb_with? semicolon?
+
+dbcc_checkdb_args ::=
+  left_paren dbcc_checkdb_arg_list right_paren
+
+/* CHECKDB(<db-or-name> [ , repair_option ]) */
+dbcc_checkdb_arg_list ::=
+    dbcc_db_name_or_id
+  | dbcc_db_name_or_id comma dbcc_checkdb_repair
+
+dbcc_db_name_or_id ::=
+    character_string_literal /* 'MyDb' */
+  | unsigned_numeric_literal /* database_id */
+
+dbcc_checkdb_repair ::=
+    REPAIR_ALLOW_DATA_LOSS
+  | REPAIR_REBUILD
+  | REPAIR_FAST
+
+dbcc_checkdb_with ::=
+  WITH dbcc_checkdb_option ( comma dbcc_checkdb_option )*
+
+dbcc_checkdb_option ::=
+    NO_INFOMSGS
+  | ALL_ERRORMSGS
+  | EXTENDED_LOGICAL_CHECKS
+  | TABLOCK
+  | ESTIMATEONLY
+  | PHYSICAL_ONLY
+  | DATA_PURITY
+  | MAXDOP equals_operator unsigned_numeric_literal
+
+/* ---------- DBCC CHECKTABLE ---------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC CHECKTABLE dbcc_checktable_args? dbcc_checktable_with? semicolon?
+
+/* CHECKTABLE( 'schema.table' [ , NOINDEX | index_name | index_id ] ) */
+dbcc_checktable_args ::=
+  left_paren dbcc_checktable_target ( comma dbcc_checktable_index_spec )? right_paren
+
+dbcc_checktable_target ::=
+    character_string_literal  /* 'dbo.MyTable' */
+  | identifier                /* MyTable (unqualified) */
+
+dbcc_checktable_index_spec ::=
+    NOINDEX
+  | identifier
+  | unsigned_numeric_literal
+
+dbcc_checktable_with ::=
+  WITH dbcc_checktable_option ( comma dbcc_checktable_option )*
+
+dbcc_checktable_option ::=
+    NO_INFOMSGS
+  | ALL_ERRORMSGS
+  | EXTENDED_LOGICAL_CHECKS
+  | TABLOCK
+  | ESTIMATEONLY
+  | PHYSICAL_ONLY
+  | DATA_PURITY
+  | MAXDOP equals_operator unsigned_numeric_literal
+
+/* ---------- DBCC CHECKCATALOG -------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC CHECKCATALOG dbcc_checkcatalog_args? dbcc_with_options? semicolon?
+
+dbcc_checkcatalog_args ::=
+  left_paren dbcc_db_name_or_id right_paren
+
+/* ---------- DBCC CHECKIDENT ---------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC CHECKIDENT dbcc_checkident_args dbcc_with_options? semicolon?
+
+/* CHECKIDENT ( 'schema.table' [, { NORESEED | RESEED [ , new_reseed_val ] } ] ) */
+dbcc_checkident_args ::=
+  left_paren
+    dbcc_checktable_target
+    ( comma dbcc_checkident_action )?
+  right_paren
+
+dbcc_checkident_action ::=
+    NORESEED
+  | RESEED
+  | RESEED comma signed_numeric_literal
+
+/* ---------- DBCC UPDATEUSAGE --------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC UPDATEUSAGE dbcc_updateusage_args? dbcc_with_options? semicolon?
+
+/* UPDATEUSAGE ( {db | 'db'} [ , { 'schema.table' | 'table' } [ , index_id ] ] ) */
+dbcc_updateusage_args ::=
+  left_paren
+    dbcc_db_name_or_id
+    ( comma dbcc_updateusage_target ( comma unsigned_numeric_literal )? )?
+  right_paren
+
+dbcc_updateusage_target ::=
+    character_string_literal
+  | identifier
+
+/* ---------- DBCC PAGE ---------------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC PAGE dbcc_page_args dbcc_page_with? semicolon?
+
+/* PAGE ( {db | 'db'}, file_id, page_id [ , print_option ] ) */
+dbcc_page_args ::=
+  left_paren
+    dbcc_db_name_or_id comma unsigned_numeric_literal comma unsigned_numeric_literal
+    ( comma unsigned_numeric_literal )?
+  right_paren
+
+dbcc_page_with ::=
+  WITH dbcc_page_option ( comma dbcc_page_option )*
+
+dbcc_page_option ::=
+    TABLERESULTS
+  | NO_INFOMSGS
+
+/* ---------- DBCC SHOW_STATISTICS ---------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC SHOW_STATISTICS dbcc_showstats_args dbcc_with_options? semicolon?
+
+/* SHOW_STATISTICS ( 'schema.table', 'stats_name' ) */
+dbcc_showstats_args ::=
+  left_paren dbcc_checktable_target comma character_string_literal right_paren
+
+/* ---------- DBCC INPUTBUFFER --------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC INPUTBUFFER dbcc_inputbuffer_args dbcc_with_options? semicolon?
+
+/* INPUTBUFFER ( session_id ) */
+dbcc_inputbuffer_args ::=
+  left_paren unsigned_numeric_literal right_paren
+
+/* ---------- DBCC OPENTRAN ----------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC OPENTRAN dbcc_opentran_args? dbcc_with_options? semicolon?
+
+/* OPENTRAN ( {db | 'db'} ) */
+dbcc_opentran_args ::=
+  left_paren dbcc_db_name_or_id right_paren
+
+/* ---------- DBCC SQLPERF ------------------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC SQLPERF dbcc_sqlperf_args? dbcc_with_options? semicolon?
+
+/* SQLPERF ( LOGSPACE ) | SQLPERF ( 'sys.dm_os_wait_stats', CLEAR ) */
+dbcc_sqlperf_args ::=
+  left_paren dbcc_sqlperf_item ( comma CLEAR )? right_paren
+
+dbcc_sqlperf_item ::=
+    LOGSPACE
+  | character_string_literal  /* e.g., 'sys.dm_os_wait_stats' */
+
+/* ---------- DBCC TRACEON / TRACEOFF ------------------------------------------- */
+
+dbcc_statement ::=
+  DBCC TRACEON dbcc_trace_args dbcc_trace_with? semicolon?
+| DBCC TRACEOFF dbcc_trace_args dbcc_trace_with? semicolon?
+
+/* TRACEON ( trace_flag [ , trace_flag ]... [ , -1 ] ) */
+dbcc_trace_args ::=
+  left_paren dbcc_trace_item ( comma dbcc_trace_item )* right_paren
+
+dbcc_trace_item ::=
+    unsigned_numeric_literal
+  | minus_sign unsigned_numeric_literal  /* -1: global */
+
+dbcc_trace_with ::=
+  WITH NO_INFOMSGS

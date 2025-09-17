@@ -8,6 +8,7 @@ using Silica.Exceptions.Testing;
 using Silica.DiagnosticsCore.Tests;
 using Silica.Evictions.Tests;
 using Silica.Storage.Tests;
+using Silica.Sql.Lexer.Tests;
 
 class Program
 {
@@ -82,6 +83,7 @@ class Program
         Console.WriteLine($"Diagnostics started: {status.IsStarted}, Policy: {status.DispatcherPolicy}");
 
         // 4) Run your harnesses
+        LexerTestHarness.Run();
         await EvictionsTestHarness.Run();
         await StorageTestHarness.RunAsync();
 

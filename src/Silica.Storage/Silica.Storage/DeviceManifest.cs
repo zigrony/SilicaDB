@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Text;
+using Silica.Common;
 
 namespace Silica.Storage
 {
@@ -157,7 +158,7 @@ namespace Silica.Storage
             }
 
             // Checksum (algorithm depends on manifest version). Writer uses V3 CRC32C.
-            uint sum = ComputeCrc32C(span.Slice(0, checksumPos));
+            uint sum = ChecksumHelper.ComputeCRC32C(span.Slice(0, checksumPos));
             BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(checksumPos, 4), sum);
             return true;
         }
@@ -215,7 +216,7 @@ namespace Silica.Storage
             else
             {
                 // V3 uses CRC32C (Castagnoli)
-                actual = ComputeCrc32C(src.Slice(0, checksumPos));
+                actual = ChecksumHelper.ComputeCRC32(src.Slice(0, checksumPos));
             }
             if (expected != actual) return false;
 
@@ -235,39 +236,6 @@ namespace Silica.Storage
             }
             while (i < n) { sum += data[i]; i++; }
             return sum;
-        }
-
-        // ---------------- CRC32C (Castagnoli) ----------------
-        // Pure .NET implementation, no third-party dependencies. Table precomputed on first use.
-        private static readonly uint[] s_crc32cTable = CreateCrc32CTable();
-
-        private static uint[] CreateCrc32CTable()
-        {
-            // Polynomial 0x1EDC6F41 (reflected 0x82F63B78)
-            const uint poly = 0x82F63B78u;
-            var table = new uint[256];
-            for (uint i = 0; i < 256; i++)
-            {
-                uint c = i;
-                for (int k = 0; k < 8; k++)
-                {
-                    if ((c & 1) != 0) c = poly ^ (c >> 1);
-                    else c >>= 1;
-                }
-                table[i] = c;
-            }
-            return table;
-        }
-
-        private static uint ComputeCrc32C(ReadOnlySpan<byte> data)
-        {
-            uint crc = 0xFFFFFFFFu;
-            for (int i = 0; i < data.Length; i++)
-            {
-                uint idx = (crc ^ data[i]) & 0xFFu;
-                crc = s_crc32cTable[idx] ^ (crc >> 8);
-            }
-            return ~crc;
         }
 
         public bool FormatAffectsLayoutEquals(in DeviceManifest other)
@@ -466,14 +434,13 @@ namespace Silica.Storage
             return arr;
         }
     }
-
     public static class MiniDriverKind
     {
-        // Stable, low-cardinality IDs for format-affecting drivers only.
         public const byte None = 0;
-        public const byte Compression = 1;
+        public const byte Compression = 1; // Reserved for future use
         public const byte Encryption = 2;
         public const byte Versioning = 3;
         // Reserved: 4..31
     }
+
 }

@@ -55,6 +55,13 @@ namespace Silica.Storage.Devices
                 // will naturally manifest on FileStream construction below if relevant.
             }
 
+            var options = FileOptions.Asynchronous | FileOptions.RandomAccess;
+            if (Geometry.SupportsFua)
+            {
+                // Write-through when requested by geometry (explicit durability trade-off).
+                options |= FileOptions.WriteThrough;
+            }
+
             _fs = new FileStream(
                 _path,
                 FileMode.OpenOrCreate,
@@ -62,7 +69,7 @@ namespace Silica.Storage.Devices
                 // Allow delete sharing for operational flexibility (rotate/rename-friendly).
                 FileShare.ReadWrite | FileShare.Delete,
                 bufferSize: Geometry.LogicalBlockSize,
-                options: FileOptions.Asynchronous | FileOptions.RandomAccess);
+                options: options);
 
             await Task.CompletedTask;
         }

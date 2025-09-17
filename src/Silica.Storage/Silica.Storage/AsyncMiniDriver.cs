@@ -238,6 +238,13 @@ namespace Silica.Storage
 
             linkedCts = null;
 
+            // If the caller token is already canceled, honor it directly without linking.
+            // This preserves the caller's cancel cause and avoids per-op allocation.
+            if (operationToken.IsCancellationRequested)
+            {
+                return operationToken;
+            }
+
             // Retry loop only if lifecycle CTS was disposed between snapshot and Token access.
             while (true)
             {
@@ -646,25 +653,25 @@ namespace Silica.Storage
             if (buffer.Length != Geometry.LogicalBlockSize)
                 throw new InvalidLengthException(buffer.Length);
 
-            // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
-            long physicalFrameId;
-            try
-            {
-                physicalFrameId = checked(frameId + 1);
-            }
-            catch (OverflowException)
-            {
-                throw new InvalidOffsetException(frameId);
-            }
-
-            int attempt = 0;
-            int maxAttempts = MaxLockAcquireAttempts;
-            if (maxAttempts < 1) maxAttempts = 1;
-
             bool opGaugeAdded = false;
             EnterOperation(out opGaugeAdded);
             try
             {
+                // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
+                long physicalFrameId;
+                try
+                {
+                    physicalFrameId = checked(frameId + 1);
+                }
+                catch (OverflowException)
+                {
+                    throw new InvalidOffsetException(frameId);
+                }
+
+                int attempt = 0;
+                int maxAttempts = MaxLockAcquireAttempts;
+                if (maxAttempts < 1) maxAttempts = 1;
+
                 while (true)
                 {
                     // Be responsive to cancellation between retries.
@@ -797,24 +804,25 @@ namespace Silica.Storage
             if (data.Length != Geometry.LogicalBlockSize)
                 throw new InvalidLengthException(data.Length);
 
-            // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
-            long physicalFrameId;
-            try
-            {
-                physicalFrameId = checked(frameId + 1);
-            }
-            catch (OverflowException)
-            {
-                throw new InvalidOffsetException(frameId);
-            }
-
-            int attempt = 0;
-            int maxAttempts = MaxLockAcquireAttempts;
-            if (maxAttempts < 1) maxAttempts = 1;
+            // Fail fast on not-mounted devices before additional work.
             bool opGaugeAdded = false;
             EnterOperation(out opGaugeAdded);
             try
             {
+                // Lock domain is physical frame ids. Logical id N maps to physical id N+1 (skipping metadata at 0).
+                long physicalFrameId;
+                try
+                {
+                    physicalFrameId = checked(frameId + 1);
+                }
+                catch (OverflowException)
+                {
+                    throw new InvalidOffsetException(frameId);
+                }
+
+                int attempt = 0;
+                int maxAttempts = MaxLockAcquireAttempts;
+                if (maxAttempts < 1) maxAttempts = 1;
                 while (true)
                 {
                     // Be responsive to cancellation between retries.

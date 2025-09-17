@@ -14,5 +14,6 @@ namespace Silica.Exceptions
         Internal = 5,
         Timeout = 6,
         Cancelled = 7,
+        ResourceLimits,
     }
 }

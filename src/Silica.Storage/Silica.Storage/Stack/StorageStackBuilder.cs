@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Silica.Storage.Interfaces;
-using Silica.Storage.MiniDrivers;
 using Silica.Storage.Encryption;
+using Silica.Storage.MiniDrivers;
+using Silica.DiagnosticsCore; // for trace emit
+using Silica.DiagnosticsCore.Tracing;
+using Silica.DiagnosticsCore.Metrics;
 
 namespace Silica.Storage.Stack
 {
@@ -85,8 +88,27 @@ namespace Silica.Storage.Stack
                 switch (s.Kind)
                 {
                     case MiniDriverKind.Compression:
+                        // Reserved for future use: Compression decorator not implemented.
+                        // Manifest entries are preserved for forward compatibility.
                         if (!s.Passive)
-                            device = new CompressionDevice(device, s.Param1, s.Param2);
+                        {
+                            if (DiagnosticsCoreBootstrap.IsStarted)
+                            {
+                                try
+                                {
+                                    DiagnosticsCoreBootstrap.Instance.Traces.Emit(
+                                        component: "StorageStackBuilder",
+                                        operation: "compose",
+                                        status: "info",
+                                        tags: new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase)
+                                        {
+                                            { TagKeys.Field, "compression_reserved" }
+                                        },
+                                        message: "Compression mini-driver is reserved for future use. Entry preserved in manifest but no decorator applied.");
+                                }
+                                catch { /* swallow */ }
+                            }
+                        }
                         break;
                     // Encryption handled by the overload below (requires out-of-band keys/config).
                     // This default Build overload intentionally does not compose Encryption to avoid manifest-coupled secrets.
@@ -173,8 +195,24 @@ namespace Silica.Storage.Stack
                 switch (s.Kind)
                 {
                     case MiniDriverKind.Compression:
-                        if (!s.Passive)
-                            device = new CompressionDevice(device, s.Param1, s.Param2);
+                        // Reserved for future use: Compression decorator not implemented.
+                        // Manifest entries are preserved for forward compatibility.
+                        if (!s.Passive && DiagnosticsCoreBootstrap.IsStarted)
+                        {
+                            try
+                            {
+                                DiagnosticsCoreBootstrap.Instance.Traces.Emit(
+                                    component: "StorageStackBuilder",
+                                    operation: "compose",
+                                    status: "info",
+                                    tags: new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase)
+                                    {
+                     { TagKeys.Field, "compression_reserved" }
+                                    },
+                                    message: "Compression mini-driver is reserved for future use. Entry preserved in manifest but no decorator applied.");
+                            }
+                            catch { /* swallow */ }
+                        }
                         break;
                     case MiniDriverKind.Encryption:
                         if (!s.Passive)

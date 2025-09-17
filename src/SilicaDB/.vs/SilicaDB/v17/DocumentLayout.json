@@ -3,13 +3,10 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devices\\streamdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5C3ED85E-2F62-4794-A078-BB30AECC00C1}|..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Silica.Sql.Lexer.csproj|c:\\githubrepos\\silicadb\\src\\silica.sql.lexer\\silica.sql.lexer\\config\\lexeroptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devices\\physicalblockdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D77AAACA-F4E3-4A22-9D20-800543164F27}|..\\Silica.Storage\\Silica.Storage\\Silica.Storage.csproj|c:\\githubrepos\\silicadb\\src\\silica.storage\\silica.storage\\devicemanifest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5C3ED85E-2F62-4794-A078-BB30AECC00C1}|..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Silica.Sql.Lexer.csproj|c:\\githubrepos\\silicadb\\src\\silica.sql.lexer\\silica.sql.lexer\\sqllexer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,7 +16,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -27,41 +24,28 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "StreamDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\Devices\\StreamDevice.cs",
-              "ViewState": "AgIAAI8AAAAAAAAAAADgv8UAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T12:09:13.458Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "PhysicalBlockDevice.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\Devices\\PhysicalBlockDevice.cs",
-              "ViewState": "AgIAAG8AAAAAAAAAAAAswKcAAAAAAAAAAAAAAA==",
+              "Title": "SqlLexer.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
+              "RelativeToolTip": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
+              "ViewState": "AgIAAIYEAAAAAAAAAADwv74EAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T12:07:54.045Z",
+              "WhenOpened": "2025-09-17T20:42:25.562Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "DeviceManifest.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
-              "RelativeToolTip": "..\\Silica.Storage\\Silica.Storage\\DeviceManifest.cs",
-              "ViewState": "AgIAAIgAAAAAAAAAAADgv7IAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "LexerOptions.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
+              "RelativeToolTip": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAA4wDcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T12:07:09.526Z",
+              "WhenOpened": "2025-09-17T20:39:47.946Z",
               "EditorCaption": ""
             }
           ]
