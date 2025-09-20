@@ -149,7 +149,8 @@
         public static void RegisterAll(
             IMetricsManager metrics,
             string walComponentName,
-            Func<long> latestLsnProvider)
+            Func<long> latestLsnProvider,
+            Func<long> inFlightOpsProvider)
         {
             if (metrics is null) throw new ArgumentNullException(nameof(metrics));
             if (string.IsNullOrWhiteSpace(walComponentName))
@@ -181,7 +182,13 @@
 
             // Lock / In-flight
             Reg(LockWaitDurationMs);
-            Reg(InFlightOps);
+            var inflightGauge = InFlightOps with
+            {
+                LongCallback = () =>
+                    new[] { new Measurement<long>(inFlightOpsProvider(), defTag) },
+                DefaultTags = single
+            };
+            TryRegister(metrics, inflightGauge);
 
             // Latest LSN gauge
             var gauge = LatestLsn with

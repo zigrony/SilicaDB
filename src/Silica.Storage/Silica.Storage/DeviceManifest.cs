@@ -215,8 +215,8 @@ namespace Silica.Storage
             }
             else
             {
-                // V3 uses CRC32C (Castagnoli)
-                actual = ChecksumHelper.ComputeCRC32(src.Slice(0, checksumPos));
+                // V3 uses CRC32C (Castagnoli) — must match the writer
+                actual = ChecksumHelper.ComputeCRC32C(src.Slice(0, checksumPos));
             }
             if (expected != actual) return false;
 

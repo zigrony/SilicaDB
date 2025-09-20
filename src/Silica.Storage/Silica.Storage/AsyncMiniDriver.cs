@@ -17,6 +17,7 @@ using Silica.DiagnosticsCore; // DiagnosticsCoreBootstrap
 using Silica.DiagnosticsCore.Metrics; // IMetricsManager, NoOpMetricsManager
 using Silica.Storage.Metrics; // StorageMetrics
 using Silica.DiagnosticsCore.Tracing; // TraceManager
+using Silica.Storage.Diagnostics; // StorageDiagnostics
 
 namespace Silica.Storage
 {
@@ -1286,7 +1287,13 @@ namespace Silica.Storage
         {
             // Pre-size to incoming count to minimize reallocations on large ranges.
             // Note: final unique count may be smaller after in-place deduplication.
-            var locks = new List<FrameLock>(frameIds is null ? 0 : frameIds.Count);
+            if (frameIds is null || frameIds.Count == 0)
+            {
+                // Nothing to acquire; return an empty, reusable list instance.
+                return new List<FrameLock>(0);
+            }
+
+            var locks = new List<FrameLock>(frameIds.Count);
             FrameLock? lastWaited = null;
 
             int attempts = 0;
@@ -1654,25 +1661,55 @@ namespace Silica.Storage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TryEmitTrace(string operation, string status, string message, string fieldValue)
         {
-            if (!DiagnosticsCoreBootstrap.IsStarted) return;
+            // Drop low-signal traces unless verbose: align with ConcurrencyDiagnostics behavior.
             try
             {
-                // Use only allowed tag keys (Field) to avoid schema drift
-                var tags = new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase)
+                bool verbose = StorageDiagnostics.EnableVerbose;
+                bool isLowSignal =
+                    (string.Equals(status, "attempt", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "start", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "blocked", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "debug", StringComparison.OrdinalIgnoreCase));
+                if (!verbose && isLowSignal)
                 {
-                    { TagKeys.Field, fieldValue }
-                };
-                DiagnosticsCoreBootstrap.Instance.Traces.Emit(
-                    component: _componentName,
-                    operation: operation,
-                    status: status,
-                    tags: tags,
-                    message: message);
+                    return;
+                }
             }
-            catch
+            catch { /* never throw */ }
+
+            // Map status -> canonical level (same normalization as Concurrency)
+            string level = "info";
+            try
             {
-                // swallow
+                if (string.Equals(status, "error", StringComparison.OrdinalIgnoreCase))
+                    level = "error";
+                else if (string.Equals(status, "warn", StringComparison.OrdinalIgnoreCase))
+                    level = "warn";
+                else if (string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase))
+                    level = "warn";
+                else if (string.Equals(status, "start", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(status, "attempt", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(status, "blocked", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(status, "info", StringComparison.OrdinalIgnoreCase))
+                    level = "info";
+                else if (string.Equals(status, "debug", StringComparison.OrdinalIgnoreCase))
+                    level = "debug";
             }
+            catch { level = "info"; }
+
+            var more = new Dictionary<string, string>(3, StringComparer.OrdinalIgnoreCase);
+            try { more[TagKeys.Field] = fieldValue ?? string.Empty; } catch { }
+            try { more["status"] = status ?? string.Empty; } catch { }
+            try { more["component"] = _componentName ?? "Silica.Storage"; } catch { }
+
+            StorageDiagnostics.Emit(
+                component: _componentName,
+                operation: operation,
+                level: level,
+                message: message,
+                ex: null,
+                more: more);
         }
 
     }

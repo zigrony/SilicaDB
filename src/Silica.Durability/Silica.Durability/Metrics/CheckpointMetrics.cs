@@ -95,6 +95,16 @@
             Unit: "entries",
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
+        // --------------------------
+        // DIRECTORY FLUSH UNSUPPORTED
+        // --------------------------
+        public static readonly MetricDefinition DirectoryFlushUnsupportedCount = new(
+            Name: "checkpoint.directory_flush_unsupported.count",
+            Type: MetricType.Counter,
+            Description: "Number of times a checkpoint directory flush was attempted but not supported",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
         // =====================================================================
         // REGISTRATION
         // =====================================================================
@@ -136,6 +146,9 @@
             Reg(ReadCount);
             Reg(ReadDurationMs);
             Reg(ReadFailures);
+
+            // Directory flush unsupported (write/prune paths)
+            Reg(DirectoryFlushUnsupportedCount);
         }
 
         private static void TryRegister(

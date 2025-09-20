@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Filename: Silica.BufferPool\Interfaces\IBufferPoolManager.cs
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 

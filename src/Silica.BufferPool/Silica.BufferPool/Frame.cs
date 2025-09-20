@@ -92,7 +92,7 @@ namespace Silica.BufferPool
         {
             var newCount = Interlocked.Decrement(ref _pinCount);
             if (newCount < 0)
-                throw new InvalidOperationException("Unbalanced pin/unpin.");
+                throw new UnbalancedPinException(newCount);
             // Optional: metric hook for pin/unpin tracking
             // BufferPoolMetrics.RecordUnpinned(_metrics);
         }

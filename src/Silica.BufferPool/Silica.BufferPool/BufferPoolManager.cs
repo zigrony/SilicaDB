@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 using Silica.Durability;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.BufferPool.Metrics;
-using Silica.Storage.Metrics;
+using Silica.BufferPool.Diagnostics;
+using System.Globalization;
 
 namespace Silica.BufferPool
 {
@@ -41,6 +42,11 @@ namespace Silica.BufferPool
     /// </summary>
     public sealed class BufferPoolManager : IAsyncDisposable, IBufferPoolManager
     {
+        // Static initializer to register exception definitions once.
+        static BufferPoolManager()
+        {
+            try { BufferPoolExceptions.RegisterAll(); } catch { /* never throw from type init */ }
+        }
         // Current eviction selection policy: FIFO via _loadOrder queue.
         // Tag into metrics for cross-subsystem policy heatmaps.
         private const string EvictionPolicyTag = "fifo";
@@ -58,6 +64,10 @@ namespace Silica.BufferPool
 
                 // Optional: flag the missed Dispose (wrap to keep finalizer safe).
                 try { BufferPoolMetrics.RecordFinalizedWithoutDispose(_metrics, _poolName); } catch { }
+                // Trace warning for ops clarity (best-effort)
+                TryEmitTrace("lifecycle", "warn",
+                    "finalized_without_dispose pool=" + _poolName,
+                    "finalized_without_dispose");
 
                 // Take snapshots needed for cleanup without capturing "this".
                 var state = new FinalizerCleanupState(_frames, _metrics, _poolName);
@@ -86,6 +96,16 @@ namespace Silica.BufferPool
 
                         // Optional: metric for reclaimed frames. Safe but still wrapped.
                         try { BufferPoolMetrics.RecordFinalizerReclaimedFrames(st.Metrics, reclaimed, st.PoolName); } catch { }
+                        // Trace reclaimed count
+                        try
+                        {
+                            var more = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            more["reclaimed"] = reclaimed.ToString(CultureInfo.InvariantCulture);
+                            BufferPoolDiagnostics.Emit("Silica.BufferPool", "lifecycle", "warn",
+                                "finalizer_reclaimed_frames pool=" + st.PoolName + ", reclaimed=" + reclaimed.ToString(CultureInfo.InvariantCulture),
+                                null, more);
+                        }
+                        catch { }
                     }
                     catch { /* never let this escape */ }
                 }, state);
@@ -118,6 +138,8 @@ namespace Silica.BufferPool
 
         // In-flight IO tracking as a drainable event
         private readonly ManualResetEventSlim _ioDrained = new(initialState: true);
+        [ThreadStatic]
+        private static int _traceReentrancy;
 
         /// <summary>
         /// Constructs the manager.
@@ -236,6 +258,10 @@ namespace Silica.BufferPool
             for (; ; )
             {
                 ThrowIfNotAccepting();
+                TryEmitTrace("read", "start",
+                    "acquire_read pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "acquire_read_start",
+                    pid);
                 var frame = await GetOrCreateAndLoadFrameAsync(pid, ct)
                                 .ConfigureAwait(false);
 
@@ -248,11 +274,19 @@ namespace Silica.BufferPool
                 catch (ObjectDisposedException)
                 {
                     // Latch was closed due to eviction; retry with a fresh frame
+                    TryEmitTrace("read", "blocked",
+                        "read_retry_due_to_eviction pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                        "latch_evicted_retry",
+                        pid);
                     continue;
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                 {
                     // Latch canceled due to eviction/dispose (not user cancellation); retry.
+                    TryEmitTrace("read", "blocked",
+                        "read_retry_due_to_shutdown pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                        "latch_shutdown_retry",
+                        pid);
                     continue;
                 }
                 var waitMs = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
@@ -269,7 +303,12 @@ namespace Silica.BufferPool
 
                 OnLeaseAcquired();
                 var core = new LeaseCore(this, frame, releaser);
-                return new PageReadLease(core, frame.Buffer);
+                var lease = new PageReadLease(core, frame.Buffer);
+                TryEmitTrace("read", "ok",
+                    "acquire_read_granted pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "acquire_read_granted",
+                    pid);
+                return lease;
             }
 
         }
@@ -292,6 +331,10 @@ namespace Silica.BufferPool
                         BufferPoolMetrics.RecordEvictionBlocked(_metrics);
                         lock (_loadOrderLock)
                             _loadOrder.Enqueue(pageId);
+                        TryEmitTrace("evict", "warn",
+                            "eviction_blocked pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture) + ", reason=capacity/pinned",
+                            "eviction_blocked",
+                            pageId);
                     }
                 }
             }
@@ -306,6 +349,11 @@ namespace Silica.BufferPool
                 {
                     // swallow anything further—metrics must never throw
                 }
+                TryEmitTrace("evict", "error",
+                    "eviction_error pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "eviction_error",
+                    pageId,
+                    ex);
             }
         }
 
@@ -319,15 +367,21 @@ namespace Silica.BufferPool
             int length,
             CancellationToken ct = default)
         {
-            // Validate bounds before acquiring the latch
-            if ((uint)offset > (uint)_device.PageSize)
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            if ((uint)length == 0 || (long)offset + (long)length > _device.PageSize)
-                throw new ArgumentOutOfRangeException(nameof(length));
+            // Validate bounds before acquiring the latch using contract-first exception
+            if ((uint)offset > (uint)_device.PageSize ||
+                (uint)length == 0 ||
+                (long)offset + (long)length > _device.PageSize)
+            {
+                throw new InvalidWriteRangeException(offset, length, _device.PageSize);
+            }
 
             for (; ; )
             {
                 ThrowIfNotAccepting();
+                TryEmitTrace("write", "start",
+                    "acquire_write pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture) + ", off=" + offset.ToString(CultureInfo.InvariantCulture) + ", len=" + length.ToString(CultureInfo.InvariantCulture),
+                    "acquire_write_start",
+                    pid);
                 var frame = await GetOrCreateAndLoadFrameAsync(pid, ct)
                                 .ConfigureAwait(false);
 
@@ -340,11 +394,19 @@ namespace Silica.BufferPool
                 catch (ObjectDisposedException)
                 {
                     // Latch was closed due to eviction; retry
+                    TryEmitTrace("write", "blocked",
+                        "write_retry_due_to_eviction pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                        "latch_evicted_retry",
+                        pid);
                     continue;
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                 {
                     // Latch canceled due to eviction/dispose (not user cancellation); retry.
+                    TryEmitTrace("write", "blocked",
+                        "write_retry_due_to_shutdown pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                        "latch_shutdown_retry",
+                        pid);
                     continue;
                 }
 
@@ -367,7 +429,13 @@ namespace Silica.BufferPool
                 // Call lease.MarkDirty(lsn) after appending the corresponding WAL record(s).
                 OnLeaseAcquired();
                 var core = new LeaseCore(this, frame, releaser);
-                return new PageWriteLease(core, frame.Buffer);
+                // Expose only the requested range to the writer to enforce bounds.
+                var lease = new PageWriteLease(core, frame.Buffer.Slice(offset, length));
+                TryEmitTrace("write", "ok",
+                    "acquire_write_granted pool=" + _poolName + ", file=" + pid.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pid.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "acquire_write_granted",
+                    pid);
+                return lease;
             }
         }
         /// <summary>
@@ -389,7 +457,15 @@ namespace Silica.BufferPool
 
             try
             {
+                TryEmitTrace("flush", "start",
+                    "flush_page_begin pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "flush_begin",
+                    pageId);
                 await FlushFrameIfDirtyAsync(pageId, frame, ct).ConfigureAwait(false);
+                TryEmitTrace("flush", "ok",
+                    "flush_page_done pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "flush_done",
+                    pageId);
             }
             finally
             {
@@ -465,6 +541,10 @@ namespace Silica.BufferPool
                         EvictionPolicyTag);
                     BufferPoolMetrics.RecordBufferReturned(_metrics);
                     frame.ReturnBuffer();
+                    TryEmitTrace("evict", "ok",
+                        "evicted pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture) + ", reason=" + (reason ?? string.Empty),
+                        "evicted",
+                        pageId);
                 }
                 return removed;
             }
@@ -482,6 +562,8 @@ namespace Silica.BufferPool
             // Transition to ShuttingDown only once.
             if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
                 return;
+
+            TryEmitTrace("lifecycle", "start", "stop_begin pool=" + _poolName, "stop_begin");
 
             // Block until all outstanding leases are released.
             await Task.Run(() => _leasesDrained.Wait(ct), ct).ConfigureAwait(false);
@@ -513,6 +595,8 @@ namespace Silica.BufferPool
             // Mark disposed state.
             Volatile.Write(ref _state, 2);
             _disposed = true;
+
+            TryEmitTrace("lifecycle", "ok", "stop_complete pool=" + _poolName, "stop_complete");
         }
 
         public async ValueTask DisposeAsync()
@@ -579,6 +663,11 @@ namespace Silica.BufferPool
                     return frame;
                 }
 
+                TryEmitTrace("load", "start",
+                    "page_load_begin pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "page_load_begin",
+                    pageId);
+
                 frame.InitializeBuffer(_device.PageSize);
                 BufferPoolMetrics.IncrementPageFault(_metrics);
                 IncrementInFlight();
@@ -616,10 +705,18 @@ namespace Silica.BufferPool
                                     // ignore
                                 }
                             });
+                            TryEmitTrace("evict", "attempt",
+                                "eviction_scheduled pool=" + _poolName + ", file=" + oldest.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + oldest.PageIndex.ToString(CultureInfo.InvariantCulture) + ", policy=fifo",
+                                "eviction_scheduled",
+                                oldest);
                         }
                     }
                 }
                 BufferPoolMetrics.IncrementMiss(_metrics);
+                TryEmitTrace("load", "ok",
+                    "page_load_done pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "page_load_done",
+                    pageId);
                 return frame;
             }
             finally
@@ -641,7 +738,7 @@ namespace Silica.BufferPool
                 throw new ArgumentException(nameof(page));
             // Prevent integer overflow in allocation
             if (pageSize < 0 || pageSize > int.MaxValue - 16)
-                throw new ArgumentOutOfRangeException(nameof(pageSize), "Page size too large for WAL payload.");
+                throw new PageSizeTooLargeForWalPayloadException(pageSize);
             var buf = new byte[16 + pageSize];
             BinaryPrimitives.WriteInt64LittleEndian(buf.AsSpan(0, 8), pageId.FileId);
             BinaryPrimitives.WriteInt64LittleEndian(buf.AsSpan(8, 8), pageId.PageIndex);
@@ -662,7 +759,15 @@ namespace Silica.BufferPool
                 IncrementInFlight();
                 try
                 {
+                    TryEmitTrace("flush", "start",
+                        "wal_ensure_begin pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture) + ", lsn=" + pageLsn.ToString(CultureInfo.InvariantCulture),
+                        "wal_ensure_begin",
+                        pageId);
                     await _logFlush.EnsureFlushedAsync(pageLsn, ct).ConfigureAwait(false);
+                    TryEmitTrace("flush", "ok",
+                        "wal_ensure_done pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture) + ", lsn=" + pageLsn.ToString(CultureInfo.InvariantCulture),
+                        "wal_ensure_done",
+                        pageId);
                 }
                 finally
                 {
@@ -682,8 +787,17 @@ namespace Silica.BufferPool
                 var tWal = Stopwatch.GetTimestamp();
                 try
                 {
+                    TryEmitTrace("flush", "start",
+                        "wal_append_begin pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                        "wal_append_begin",
+                        pageId);
                     await _wal.AppendAsync(new WalRecord(0, payload), ct).ConfigureAwait(false);
                     await _wal.FlushAsync(ct).ConfigureAwait(false);
+                    var walMs = Stopwatch.GetElapsedTime(tWal).TotalMilliseconds;
+                    TryEmitTrace("flush", "ok",
+                        "wal_append_done pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture) + ", ms=" + walMs.ToString(CultureInfo.InvariantCulture),
+                        "wal_append_done",
+                        pageId);
                 }
                 finally
                 {
@@ -697,7 +811,20 @@ namespace Silica.BufferPool
             var tIo = Stopwatch.GetTimestamp();
             try
             {
+                TryEmitTrace("flush", "start",
+                    "device_write_begin pool=" + _poolName + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture) + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture),
+                    "device_write_begin",
+                    pageId);
                 await _device.WritePageAsync(pageId, frame.Buffer, ct).ConfigureAwait(false);
+                var ioMs = Stopwatch.GetElapsedTime(tIo).TotalMilliseconds;
+                TryEmitTrace("flush", "ok",
+                    "device_write_done pool=" + _poolName
+                    + ", file=" + pageId.FileId.ToString(CultureInfo.InvariantCulture)
+                    + ", page=" + pageId.PageIndex.ToString(CultureInfo.InvariantCulture)
+                    + ", ms=" + ioMs.ToString(CultureInfo.InvariantCulture),
+                    "device_write_done",
+                    pageId);
+
             }
             finally
             {
@@ -726,7 +853,7 @@ namespace Silica.BufferPool
         private void ThrowIfDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(BufferPoolManager));
+                throw new BufferPoolDisposedException();
         }
 
         // ---- Gauge helpers ----
@@ -757,7 +884,7 @@ namespace Silica.BufferPool
         private void ThrowIfNotAccepting()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(BufferPoolManager));
+                throw new BufferPoolDisposedException();
             if (_state == 1)
                 throw new InvalidOperationException(
                     "BufferPoolManager is shutting down and no longer accepts new leases.");
@@ -770,6 +897,55 @@ namespace Silica.BufferPool
         {
             _leasesDrained.Reset();
             Interlocked.Increment(ref _activeLeases);
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Diagnostics helper (metrics + tracing parity with Concurrency)
+        // ─────────────────────────────────────────────────────────────
+        private void TryEmitTrace(string operation, string status, string message, string code, PageId? pid = null, Exception? ex = null)
+        {
+            // Drop low-signal statuses unless verbose (attempt/start/blocked).
+            try
+            {
+                bool verbose = BufferPoolDiagnostics.EnableVerbose;
+                bool isLowSignal =
+                    (string.Equals(status, "attempt", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "start", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "blocked", StringComparison.OrdinalIgnoreCase));
+                if (!verbose && isLowSignal) return;
+            }
+            catch { /* never throw */ }
+
+            if (Interlocked.CompareExchange(ref _traceReentrancy, 1, 0) != 0) return;
+            try
+            {
+                var more = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
+                try { more["code"] = code ?? string.Empty; } catch { }
+                try { more["status"] = status ?? string.Empty; } catch { }
+                try { more["pool"] = _poolName ?? string.Empty; } catch { }
+                if (pid.HasValue)
+                {
+                    try { more["file_id"] = pid.Value.FileId.ToString(CultureInfo.InvariantCulture); } catch { }
+                    try { more["page_index"] = pid.Value.PageIndex.ToString(CultureInfo.InvariantCulture); } catch { }
+                }
+                string level = "info";
+                try
+                {
+                    if (string.Equals(status, "error", StringComparison.OrdinalIgnoreCase)) level = "error";
+                    else if (string.Equals(status, "warn", StringComparison.OrdinalIgnoreCase)) level = "warn";
+                    else if (string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase)) level = "warn";
+                    else if (string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase)) level = "info";
+                    else level = "info";
+                }
+                catch { level = "info"; }
+
+                BufferPoolDiagnostics.Emit("Silica.BufferPool", operation, level, message, ex, more);
+            }
+            catch { }
+            finally
+            {
+                Interlocked.Exchange(ref _traceReentrancy, 0);
+            }
         }
 
         internal void OnLeaseReleased()

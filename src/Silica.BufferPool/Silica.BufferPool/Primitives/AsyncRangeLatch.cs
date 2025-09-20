@@ -126,7 +126,7 @@ namespace Silica.BufferPool
                 {
                     _activeReaders--;
                     if (_activeReaders < 0)
-                        throw new InvalidOperationException("Reader underflow");
+                        throw new LatchReaderUnderflowException();
                 }
 
                 Promote();

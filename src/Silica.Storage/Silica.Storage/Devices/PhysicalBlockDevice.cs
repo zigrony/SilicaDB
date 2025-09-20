@@ -14,6 +14,13 @@ namespace Silica.Storage.Devices
     /// A file-system backed block device. Creates the file if it does not exist.
     /// Uses positional, handle-based I/O (RandomAccess.ReadAsync/WriteAsync)
     /// to allow concurrent reads/writes without a global seek lock.
+    /// EOF semantics (intentional asymmetry with InMemoryBlockDevice):
+    ///  - This device treats the underlying file length as authoritative and
+    ///    throws DeviceReadOutOfRangeException for any frame read whose end
+    ///    crosses EOF; it does not zero-fill.
+    ///  - InMemoryBlockDevice may zero-fill reads within its tracked logical
+    ///    length and only throws when the read extends beyond that length.
+    ///    The divergence is deliberate and documented.
     /// </summary>
     public class PhysicalBlockDevice : AsyncMiniDriver
     {
@@ -110,6 +117,9 @@ namespace Silica.Storage.Devices
             long lengthSnapshot = _fs.Length;
 
             if (endExclusive > lengthSnapshot)
+                // Strict EOF check: unlike the in-memory device, we do not emulate sparse
+                // zero-fill here. Callers should handle EOF deterministically via this
+                // canonical exception in file-backed configurations.
                 throw new DeviceReadOutOfRangeException(offset, Geometry.LogicalBlockSize, lengthSnapshot);
 
             int total = 0;

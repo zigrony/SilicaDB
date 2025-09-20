@@ -1,6 +1,7 @@
 ﻿// File: Silica.DiagnosticsCore/DiagnosticsCoreBootstrap.cs
 using System;
 using System.Threading;
+using Silica.DiagnosticsCore; // ensure namespace visibility for exceptions
 using Silica.DiagnosticsCore.Metrics;
 using Silica.DiagnosticsCore.Tracing;
 using System.Collections.Generic;
@@ -177,6 +178,8 @@ namespace Silica.DiagnosticsCore
                 throw new ArgumentNullException(nameof(options));
 
             options.Freeze();
+            // One-time, safe registration of DiagnosticsCore exception catalog (idempotent).
+            try { DiagnosticsCoreExceptions.RegisterAll(); } catch { /* never throw on bootstrap */ }
 
             lock (_gate) // serialize with Stop()
             {
@@ -321,9 +324,10 @@ namespace Silica.DiagnosticsCore
                 // Strictly reject unsupported full mode in strict bootstrap configurations.
                 // In lenient mode we still coerce to DropWrite (and surface metrics/traces below).
                 if (options.DispatcherFullMode == BoundedChannelFullMode.Wait && options.StrictBootstrapOptions)
-                    throw new InvalidOperationException(
-                        "DispatcherFullMode=Wait is not supported in DiagnosticsCore. " +
-                        "Set DispatcherFullMode=DropWrite (default) or disable StrictBootstrapOptions for lenient coercion.");
+                    throw new DispatcherFullModeUnsupportedException(
+                        requestedMode: "wait",
+                        effectiveMode: "dropwrite",
+                        strictBootstrap: true);
 
                 // 3) Tracing pipeline
                 var registerInfraGauges = ownManager; // only register gauges if we own the meter

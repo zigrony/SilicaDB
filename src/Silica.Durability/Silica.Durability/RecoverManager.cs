@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Buffers;
 using Silica.Durability.Metrics;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.Exceptions;
 
 namespace Silica.Durability
 {
@@ -24,6 +25,11 @@ namespace Silica.Durability
         private readonly IMetricsManager _metrics;
         private readonly string _componentName = nameof(RecoverManager);
 
+        static RecoverManager()
+        {
+            try { DurabilityExceptions.RegisterAll(); } catch { }
+        }
+
         public RecoverManager(string walFilePath, IMetricsManager metrics)
         {
             _path = walFilePath ?? throw new ArgumentNullException(nameof(walFilePath));
@@ -36,7 +42,7 @@ namespace Silica.Durability
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            if (_started) throw new InvalidOperationException("RecoverManager already started.");
+            if (_started) throw new RecoverManagerAlreadyStartedException();
 
             var sw = Stopwatch.StartNew();
             try
@@ -64,7 +70,7 @@ namespace Silica.Durability
         public async Task<WalRecord?> ReadNextAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            if (!_started) throw new InvalidOperationException("RecoverManager not started.");
+            if (!_started) throw new RecoverManagerNotStartedException();
 
             await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
@@ -79,6 +85,7 @@ namespace Silica.Durability
 
                 // Try to read new header first (24 bytes). If magic/version mismatch, fall back to legacy 12-byte header.
                 byte[] hdr = ArrayPool<byte>.Shared.Rent(WalFormat.NewHeaderSize);
+                int hdrLen = hdr.Length;
                 try
                 {
                     // Peek first 4 bytes
@@ -118,6 +125,7 @@ namespace Silica.Durability
                     {
                         // Legacy header: read remaining 8 bytes to complete 12-byte header
                         byte[] legacy = ArrayPool<byte>.Shared.Rent(WalFormat.LegacyHeaderSize);
+                        int legacyLen = legacy.Length;
                         bool legacyRented = true;
                         try
                         {
@@ -137,7 +145,7 @@ namespace Silica.Durability
                         {
                             if (legacyRented)
                             {
-                                System.Array.Clear(legacy, 0, WalFormat.LegacyHeaderSize);
+                                System.Array.Clear(legacy, 0, legacyLen);
                                 ArrayPool<byte>.Shared.Return(legacy);
                             }
                         }
@@ -170,10 +178,15 @@ namespace Silica.Durability
                         if (actual != expectedCrc)
                         {
                             _metrics.Increment(RecoveryMetrics.CorruptTailCount.Name);
+                            sw.Stop();
                             return null;
                         }
                     }
                     sw.Stop();
+                    if (payloadLen > 0)
+                    {
+                        _metrics.Record(RecoveryMetrics.PayloadBytesRead.Name, payloadLen);
+                    }
                     _metrics.Increment(RecoveryMetrics.RecordReadCount.Name);
                     _metrics.Record(RecoveryMetrics.RecordReadDurationMs.Name, sw.Elapsed.TotalMilliseconds);
 
@@ -181,7 +194,7 @@ namespace Silica.Durability
                 }
                 finally
                 {
-                    System.Array.Clear(hdr, 0, WalFormat.NewHeaderSize);
+                    System.Array.Clear(hdr, 0, hdrLen);
                     ArrayPool<byte>.Shared.Return(hdr);
                 }
             }
@@ -255,7 +268,7 @@ namespace Silica.Durability
         private void ThrowIfDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(RecoverManager));
+                throw new RecoverManagerDisposedException();
         }
 
         private static async Task<int> ReadExactlyAsync(FileStream stream, byte[] buffer, int offset, int count, CancellationToken ct)

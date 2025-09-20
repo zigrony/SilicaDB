@@ -14,6 +14,14 @@ namespace Silica.Storage.Devices
     /// <summary>
     /// In-memory block device that supports concurrent,
     /// page-aligned I/O. Stores frames in a ConcurrentDictionary.
+    /// 
+    /// EOF semantics (intentional asymmetry):
+    ///  - This device zero-fills reads for frames that are within the current logical
+    ///    device length (tracked by the highest frame ever written), and throws
+    ///    DeviceReadOutOfRangeException only when a read extends past that length.
+    ///  - PhysicalBlockDevice, by contrast, throws at EOF (strict file length check)
+    ///    and never zero-fills. This difference is deliberate and documented to
+    ///    avoid surprises when swapping device implementations.
     /// </summary>
     public class InMemoryBlockDevice : AsyncMiniDriver
     {
@@ -77,6 +85,12 @@ namespace Silica.Storage.Devices
             }
 
             // Miss: decide between zero-fill (within current device length) vs. out-of-range
+            // NOTE: "device length" here is derived from the maximum frame index written so far
+            // (i.e., (_maxFrameWritten + 1) * LogicalBlockSize). Reads that end within this
+            // length are treated as sparse and return zeros to emulate filesystem behavior
+            // over sparse regions. Reads that extend beyond this logical length throw
+            // DeviceReadOutOfRangeException for crisp EOF signaling.
+            // See PhysicalBlockDevice for strict EOF behavior.
             long deviceLen = GetDeviceLength();
             long offset;
             long endExclusive;

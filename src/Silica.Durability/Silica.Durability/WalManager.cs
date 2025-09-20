@@ -10,6 +10,7 @@ using Silica.Durability.Metrics;
 using Silica.DiagnosticsCore.Metrics;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Silica.Exceptions;
 
 
 namespace Silica.Durability
@@ -23,13 +24,19 @@ namespace Silica.Durability
         private FileStream? _stream;
         private readonly SemaphoreSlim _lock = new(1, 1);
         private long _lsnCounter;
-        private long _writtenLsn; // highest LSN successfully written to the file
         private long _flushedLsn; // highest LSN durably flushed to stable storage
+        private long _writtenLsn; // highest LSN successfully written to the file
+        private long _inFlightOps; // observable: concurrent operations in flight
         private bool _started;
         private bool _disposed;
 
         private readonly IMetricsManager _metrics;
         private readonly string _walName;
+
+        static WalManager()
+        {
+            try { DurabilityExceptions.RegisterAll(); } catch { }
+        }
 
         /// <summary>
         /// Initializes a new WAL manager and registers all WAL metrics.
@@ -48,13 +55,14 @@ namespace Silica.Durability
                 _metrics,
                 _walName,
                 // Report the latest successfully written LSN to avoid exposing unpersisted allocations
-                latestLsnProvider: () => Interlocked.Read(ref _writtenLsn));
+                latestLsnProvider: () => Interlocked.Read(ref _writtenLsn),
+                inFlightOpsProvider: () => Interlocked.Read(ref _inFlightOps));
         }
 
         public async Task StartAsync(CancellationToken ct)
         {
             ThrowIfDisposed();
-            if (_started) throw new InvalidOperationException("WAL already started.");
+            if (_started) throw new WalAlreadyStartedException();
 
             var sw = Stopwatch.StartNew();
             try
@@ -192,8 +200,8 @@ namespace Silica.Durability
                     _path,
                     FileMode.OpenOrCreate,
                     FileAccess.Write,
-                    // Allow readers but prevent a second writer in the same process/machine context.
-                    FileShare.Read,
+                    // Allow readers and delete-sharing for safe log rotation; still prevents second writers.
+                    FileShare.Read | FileShare.Delete,
                     bufferSize: 4096,
                     options: FileOptions.Asynchronous | FileOptions.WriteThrough);
                 _stream.Seek(0, SeekOrigin.End);
@@ -232,13 +240,27 @@ namespace Silica.Durability
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            if (!_started) throw new InvalidOperationException("WAL not started.");
+            if (!_started) throw new WalNotStartedException();
 
-            // 1) Wait for lock
+            Interlocked.Increment(ref _inFlightOps);
+            bool lockTaken = false;
             var waitSw = Stopwatch.StartNew();
-            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            waitSw.Stop();
-            _metrics.Record(WalMetrics.LockWaitDurationMs.Name, waitSw.Elapsed.TotalMilliseconds);
+            try
+            {
+                await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                lockTaken = true;
+            }
+            catch
+            {
+                // Ensure gauge accuracy if acquisition fails (e.g., cancellation).
+                Interlocked.Decrement(ref _inFlightOps);
+                throw;
+            }
+            finally
+            {
+                waitSw.Stop();
+                _metrics.Record(WalMetrics.LockWaitDurationMs.Name, waitSw.Elapsed.TotalMilliseconds);
+            }
 
             try
             {
@@ -263,7 +285,11 @@ namespace Silica.Durability
             }
             finally
             {
-                _lock.Release();
+                if (lockTaken)
+                {
+                    _lock.Release();
+                }
+                Interlocked.Decrement(ref _inFlightOps);
             }
         }
 
@@ -275,10 +301,9 @@ namespace Silica.Durability
             var sw = Stopwatch.StartNew();
             try
             {
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
-                }
+                // Best-effort durability on shutdown irrespective of caller cancellation.
+                // Use CancellationToken.None to avoid skipping flush during orchestrator-initiated cancels.
+                try { await FlushAsync(CancellationToken.None).ConfigureAwait(false); } catch { /* swallow best-effort */ }
                 // Make shutdown deterministic: prevent new appends, then serialize with in-flight writers.
                 _started = false;
                 await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
@@ -333,13 +358,13 @@ namespace Silica.Durability
         private void ThrowIfDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(WalManager));
+                throw new WalManagerDisposedException();
         }
 
         public Task<long> GetLastSequenceNumberAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!_started) throw new InvalidOperationException("WAL not started.");
+            if (!_started) throw new WalNotStartedException();
             // Return the highest successfully written LSN (not merely allocated).
             return Task.FromResult(Interlocked.Read(ref _writtenLsn));
         }
@@ -347,7 +372,7 @@ namespace Silica.Durability
         public Task<long> GetFlushedSequenceNumberAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!_started) throw new InvalidOperationException("WAL not started.");
+            if (!_started) throw new WalNotStartedException();
             // Read is atomic for 64-bit via Interlocked
             return Task.FromResult(Interlocked.Read(ref _flushedLsn));
         }
@@ -375,24 +400,47 @@ namespace Silica.Durability
         private async Task<long> AppendCoreAsync(WalRecord record, CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            if (!_started) throw new InvalidOperationException("WAL not started.");
+            if (!_started) throw new WalNotStartedException();
 
             // Validate payload size early
             int payloadLenChecked = record.Payload.Length;
             if (payloadLenChecked < 0 || payloadLenChecked > WalFormat.MaxRecordBytes)
-                throw new ArgumentOutOfRangeException(nameof(record), "Payload length exceeds maximum allowed size.");
+                throw new PayloadTooLargeException(payloadLenChecked, WalFormat.MaxRecordBytes);
 
-            // Ensure write-order == LSN-order
+            // Ensure write-order == LSN-order; include wait time in observable gauge,
+            // but guarantee decrement if acquisition fails.
+            Interlocked.Increment(ref _inFlightOps);
+            bool lockTaken = false;
             var waitSw = Stopwatch.StartNew();
-            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            waitSw.Stop();
-            _metrics.Record(WalMetrics.LockWaitDurationMs.Name, waitSw.Elapsed.TotalMilliseconds);
+            try
+            {
+                await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                lockTaken = true;
+            }
+            catch
+            {
+                Interlocked.Decrement(ref _inFlightOps);
+                throw;
+            }
+            finally
+            {
+                waitSw.Stop();
+                _metrics.Record(WalMetrics.LockWaitDurationMs.Name, waitSw.Elapsed.TotalMilliseconds);
+            }
 
             long lsn = 0;
             byte[] header = ArrayPool<byte>.Shared.Rent(WalFormat.NewHeaderSize);
+            int headerLen = header.Length;
             try
             {
-                // Allocate LSN inside the lock
+                // Allocate LSN inside the lock and guard against overflow wraparound.
+                // Fail fast if the last written LSN has reached long.MaxValue.
+                long current = _lsnCounter;
+                if (current == long.MaxValue)
+                {
+                    // Do not modify state; surface a stable, low-cardinality exception.
+                    throw new WalSequenceOverflowException(current);
+                }
                 lsn = Interlocked.Increment(ref _lsnCounter);
 
                 // Build header
@@ -433,9 +481,13 @@ namespace Silica.Durability
             finally
             {
                 // Clear header to avoid leaking LSN/payload length/CRC through the pool
-                System.Array.Clear(header, 0, WalFormat.NewHeaderSize);
+                System.Array.Clear(header, 0, headerLen);
                 ArrayPool<byte>.Shared.Return(header);
-                _lock.Release();
+                if (lockTaken)
+                {
+                    _lock.Release();
+                }
+                Interlocked.Decrement(ref _inFlightOps);
             }
         }
 
@@ -443,7 +495,7 @@ namespace Silica.Durability
         private void TruncateTail(string path, FileStream reader, long safeLength)
         {
             reader.Dispose();
-            using (var trunc = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.Read))
+            using (var trunc = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.Read | FileShare.Delete))
             {
                 trunc.SetLength(safeLength);
                 // Best-effort flush of metadata to commit truncation
@@ -481,7 +533,7 @@ namespace Silica.Durability
             catch
             {
                 // Cross-platform tolerant; directory flush may not be supported
-                _metrics.Increment(WalMetrics.DirectoryFlushUnsupportedCount.Name);
+                try { _metrics.Increment(WalMetrics.DirectoryFlushUnsupportedCount.Name); } catch { }
                 try { Trace.WriteLine($"[WalManager] Directory flush not supported after truncation for '{path}'"); } catch { }
             }
         }

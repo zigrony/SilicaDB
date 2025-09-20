@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using Silica.Durability.Metrics;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.Exceptions;
 
 namespace Silica.Durability
 {
@@ -18,6 +20,10 @@ namespace Silica.Durability
         private const int CheckpointRecordBytes = 16;
         private const string CheckpointPrefix = "checkpoint_";
         private const string CheckpointSuffix = ".bin";
+        // Use full Int64 width for lexicographic filename ordering and future-proofing.
+        // Accept older 16-digit names at read/hygiene; write new files at 19 digits.
+        private const int CheckpointDigitsLegacy = 16;
+        private const int CheckpointDigitsFull = 19;
 
         private readonly string _directory;
         private readonly IWalManager _wal;
@@ -28,6 +34,11 @@ namespace Silica.Durability
 
         private bool _started;
         private bool _disposed;
+
+        static CheckpointManager()
+        {
+            try { DurabilityExceptions.RegisterAll(); } catch { }
+        }
 
         public CheckpointManager(
             string checkpointDirectory,
@@ -48,7 +59,7 @@ namespace Silica.Durability
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             if (_started)
-                throw new InvalidOperationException("CheckpointManager already started.");
+                throw new CheckpointManagerAlreadyStartedException();
 
             Directory.CreateDirectory(_directory);
 
@@ -68,9 +79,10 @@ namespace Silica.Durability
                 {
                     // Normalize names to content LSN, delete malformed, then prune to the single latest
                     long latestLsn = -1;
-                    string latestPath = null;
+                    string? latestPath = null;
                     for (int i = 0; i < bins.Length; i++)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         string path = bins[i];
                         try
                         {
@@ -87,6 +99,7 @@ namespace Silica.Durability
                                 try { File.Delete(path); } catch { }
                                 continue;
                             }
+                            // Always normalize to the full-width (19-digit) filename
                             string expectedName = BuildCheckpointFileName(contentLsn);
                             string expectedPath = Path.Combine(_directory, expectedName);
                             if (!string.Equals(Path.GetFileName(path), expectedName, StringComparison.Ordinal))
@@ -119,6 +132,7 @@ namespace Silica.Durability
                         bins = Directory.GetFiles(_directory, CheckpointFilePattern);
                         for (int i = 0; i < bins.Length; i++)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             string p = bins[i];
                             if (!string.Equals(Path.GetFileName(p), Path.GetFileName(latestPath), StringComparison.Ordinal))
                             {
@@ -133,7 +147,12 @@ namespace Silica.Durability
                                 dirHandle.Flush(true);
                             }
                         }
-                        catch { }
+                        catch
+                        {
+                            // Parity with write/prune: surface unsupported directory flush capability
+                            try { _metrics.Increment(CheckpointMetrics.DirectoryFlushUnsupportedCount.Name); } catch { }
+                            try { Trace.WriteLine($"[CheckpointManager] Directory flush not supported for '{_directory}' (startup hygiene)"); } catch { }
+                        }
                     }
                 }
             }
@@ -161,13 +180,6 @@ namespace Silica.Durability
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             gateWait.Stop();
             _metrics.Record(CheckpointMetrics.LockWaitDurationMs.Name, gateWait.Elapsed.TotalMilliseconds);
-
-            // Re-check disposal state after acquiring the gate
-            if (_disposed || !_started)
-            {
-                throw new InvalidOperationException("CheckpointManager not in a writable state.");
-            }
-
             var writeSw = Stopwatch.StartNew();
             var pruneSw = new Stopwatch();
             int pruned = 0;
@@ -176,6 +188,11 @@ namespace Silica.Durability
 
             try
             {
+                // Re-check disposal/writable state only inside try/finally so the gate is always released.
+                if (_disposed || !_started)
+                {
+                    throw new CheckpointNotWritableStateException();
+                }
                 //
                 // WRITE PHASE
                 //
@@ -190,7 +207,7 @@ namespace Silica.Durability
                     return;
                 }
 
-                string fileName = $"checkpoint_{lastLsn:0000000000000000}.bin";
+                string fileName = BuildCheckpointFileName(lastLsn);
                 tmpPath = Path.Combine(_directory, fileName + ".tmp");
                 outPath = Path.Combine(_directory, fileName);
 
@@ -217,13 +234,21 @@ namespace Silica.Durability
                 {
                     await Task.Delay(50, cancellationToken).ConfigureAwait(false);
                     if (!File.Exists(outPath))
-                        throw new IOException("Checkpoint rename not visible after retry.");
+                        throw new CheckpointRenameNotVisibleException(outPath);
                 }
 
                 var fi = new FileInfo(outPath);
                 _metrics.Record(CheckpointMetrics.CheckpointFileBytes.Name, fi.Length);
                 if (fi.Length != CheckpointRecordBytes)
-                    throw new IOException($"Checkpoint file has unexpected length {fi.Length} (expected {CheckpointRecordBytes}).");
+                    throw new CheckpointFileCorruptException(outPath, CheckpointRecordBytes, fi.Length);
+
+                // Reopen and verify content to ensure rename visibility and correctness under FS edge cases
+                long verifyLsn, verifyTicks;
+                if (!TryReadCheckpointContent(outPath, out verifyLsn, out verifyTicks) || verifyLsn != lastLsn)
+                {
+                    // Treat as corruption if the content doesn't match our intended LSN
+                    throw new CheckpointFileCorruptException(outPath, CheckpointRecordBytes, fi.Length);
+                }
 
                 try
                 {
@@ -234,9 +259,8 @@ namespace Silica.Durability
                 }
                 catch
                 {
-                    // Optional parity: count unsupported directory flushes for observability
-                    try { Trace.WriteLine($"[CheckpointManager] Directory flush not supported for '{_directory}' (post-rename)"); }
-                    catch { }
+                    try { _metrics.Increment(CheckpointMetrics.DirectoryFlushUnsupportedCount.Name); } catch { }
+                    try { Trace.WriteLine($"[CheckpointManager] Directory flush not supported for '{_directory}' (post-rename)"); } catch { }
                 }
 
                 writeSw.Stop();
@@ -281,8 +305,8 @@ namespace Silica.Durability
                 }
                 catch
                 {
-                    try { Trace.WriteLine($"[CheckpointManager] Directory flush not supported for '{_directory}'"); }
-                    catch { }
+                    try { _metrics.Increment(CheckpointMetrics.DirectoryFlushUnsupportedCount.Name); } catch { }
+                    try { Trace.WriteLine($"[CheckpointManager] Directory flush not supported for '{_directory}'"); } catch { }
                 }
             }
             catch
@@ -335,6 +359,19 @@ namespace Silica.Durability
                         string latest = files[latestIdx];
                         try
                         {
+                            // Quick length sanity to avoid partial/truncated reads before opening
+                            var info = new FileInfo(latest);
+                            if (info.Exists && info.Length != CheckpointRecordBytes)
+                            {
+                                // Delete malformed and retry previous
+                                try { File.Delete(latest); } catch { /* ignore */ }
+                                attempts++;
+                                if (attempts >= 3)
+                                    throw new CheckpointReadFailedException();
+                                await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                                continue;
+                            }
+
                             using var fs = new FileStream(
                                 latest,
                                 FileMode.Open,
@@ -347,9 +384,22 @@ namespace Silica.Durability
                             var buffer = new byte[CheckpointRecordBytes];
                             int n = await ReadExactlyAsync(fs, buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
                             if (n < buffer.Length)
-                                throw new IOException("Truncated checkpoint file.");
+                                throw new CheckpointReadFailedException();
                             long lastLsn = BinaryPrimitives.ReadInt64LittleEndian(buffer.AsSpan(0, 8));
                             long ticks = BinaryPrimitives.ReadInt64LittleEndian(buffer.AsSpan(8, 8));
+                            // Validate ticks to defend against corrupt-but-correct-length files.
+                            // DateTime ticks must be within [DateTime.MinValue.Ticks, DateTime.MaxValue.Ticks].
+                            if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks)
+                            {
+                                // Treat as corruption: delete and retry older one(s).
+                                try { File.Delete(latest); } catch { /* ignore */ }
+                                attempts++;
+                                if (attempts >= 3)
+                                    throw new CheckpointReadFailedException();
+                                try { Trace.WriteLine($"[CheckpointManager] Invalid checkpoint ticks in '{latest}' deleted during read attempt {attempts}"); } catch { }
+                                await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                                continue;
+                            }
                             var checkpoint = new CheckpointData
                             {
                                 LastSequenceNumber = lastLsn,
@@ -370,7 +420,7 @@ namespace Silica.Durability
                             // Race with pruning; retry a couple times
                             attempts++;
                             if (attempts >= 2)
-                                throw;
+                                throw new CheckpointReadFailedException();
                             try { Trace.WriteLine($"[CheckpointManager] Checkpoint file not found during read attempt {attempts}"); } catch { }
                             await Task.Delay(10, cancellationToken).ConfigureAwait(false);
                             continue;
@@ -382,7 +432,7 @@ namespace Silica.Durability
                             try { File.Delete(latest); } catch { /* ignore */ }
                             attempts++;
                             if (attempts >= 3)
-                                throw;
+                                throw new CheckpointReadFailedException();
                             try { Trace.WriteLine($"[CheckpointManager] Corrupt checkpoint file '{latest}' deleted during read attempt {attempts}"); } catch { }
                             await Task.Delay(10, cancellationToken).ConfigureAwait(false);
                             continue;
@@ -427,13 +477,13 @@ namespace Silica.Durability
         private void ThrowIfNotStarted()
         {
             if (!_started)
-                throw new InvalidOperationException("CheckpointManager not started.");
+                throw new CheckpointManagerNotStartedException();
         }
 
         private void ThrowIfDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(CheckpointManager));
+                throw new CheckpointManagerDisposedException();
         }
 
         // Optional: make StopAsync explicit in the concrete for discoverability; delegates to DisposeAsync
@@ -469,26 +519,27 @@ namespace Silica.Durability
                     if (string.CompareOrdinal(a, b) > 0) latestIdx = i;
                 }
                 string name = Path.GetFileName(files[latestIdx]);
-                // Expect "checkpoint_XXXXXXXXXXXXXXXX.bin"
-                if (name.Length == CheckpointPrefix.Length + 16 + CheckpointSuffix.Length &&
-                    name.StartsWith(CheckpointPrefix, StringComparison.Ordinal) &&
+                // Accept "checkpoint_<digits>.bin" where <digits> length is either legacy 16 or full 19.
+                if (name.StartsWith(CheckpointPrefix, StringComparison.Ordinal) &&
                     name.EndsWith(CheckpointSuffix, StringComparison.Ordinal))
                 {
-                    int start = CheckpointPrefix.Length;
-                    // Enforce exactly 16 digits to match writer format and avoid malformed names.
-                    long parsed;
-                    string lsnText = name.Substring(start, 16);
-                    if (lsnText.Length == 16)
+                    int digitsLen = name.Length - CheckpointPrefix.Length - CheckpointSuffix.Length;
+                    if (digitsLen == CheckpointDigitsLegacy || digitsLen == CheckpointDigitsFull)
                     {
-                        // Quick digit-only validation without LINQ
+                        int start = CheckpointPrefix.Length;
+                        string lsnText = name.Substring(start, digitsLen);
                         bool allDigits = true;
-                        for (int i = 0; i < 16; i++)
+                        for (int i = 0; i < digitsLen; i++)
                         {
                             char c = lsnText[i];
                             if (c < '0' || c > '9') { allDigits = false; break; }
                         }
-                        if (allDigits && long.TryParse(lsnText, out parsed))
-                            return parsed;
+                        if (allDigits)
+                        {
+                            long parsed;
+                            if (long.TryParse(lsnText, NumberStyles.None, CultureInfo.InvariantCulture, out parsed))
+                                return parsed;
+                        }
                     }
                 }
             }
@@ -515,7 +566,10 @@ namespace Silica.Durability
                     if (total != CheckpointRecordBytes) return false;
                     lsn = BinaryPrimitives.ReadInt64LittleEndian(buffer.AsSpan(0, 8));
                     ticks = BinaryPrimitives.ReadInt64LittleEndian(buffer.AsSpan(8, 8));
-                    return lsn >= 0;
+                    if (lsn < 0) return false;
+                    // Defend against corrupt-but-correct-length files: enforce valid DateTime tick range.
+                    if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks) return false;
+                    return true;
                 }
             }
             catch { }
@@ -524,8 +578,9 @@ namespace Silica.Durability
 
         private static string BuildCheckpointFileName(long lsn)
         {
-            // 16-digit zero-padded decimal
-            return CheckpointPrefix + lsn.ToString("0000000000000000") + CheckpointSuffix;
+            // 19-digit zero-padded decimal (full Int64 width), culture-invariant
+            // Matches the declared contract and startup hygiene normalization.
+            return CheckpointPrefix + lsn.ToString("0000000000000000000", CultureInfo.InvariantCulture) + CheckpointSuffix;
         }
     }
 }

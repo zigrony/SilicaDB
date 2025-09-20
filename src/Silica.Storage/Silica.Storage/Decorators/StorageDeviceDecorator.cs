@@ -7,6 +7,17 @@ namespace Silica.Storage.Decorators
 {
     /// <summary>
     /// Common decorator base that forwards I/O by default.
+    ///
+    /// Mount semantics (intentional behavior):
+    ///  - MountAsync/UnmountAsync deterministically traverse to the first mountable
+    ///    device in the chain (the base) and invoke mount/unmount there only.
+    ///    Decorators themselves are assumed passive and non-mountable.
+    ///  - If you later introduce mountable decorators (e.g., ones that manage their
+    ///    own resources), this class will not auto-mount them. In that case,
+    ///    either extend the traversal to mount all IMountableStorage instances
+    ///    in order, or keep the invariant that only the base device owns resources.
+    ///  - These semantics are documented to avoid surprises for integrators who
+    ///    expect a “mount-all” behavior along the chain.
     /// </summary>
     public abstract class StorageDeviceDecorator : IStorageDevice, IMountableStorage, IStackManifestHost
     {
@@ -38,6 +49,9 @@ namespace Silica.Storage.Decorators
         public virtual async Task MountAsync(CancellationToken cancellationToken = default)
         {
             // Deterministically traverse decorator chain (no reflection) to first mountable device.
+            // NOTE: This mounts only the first IMountableStorage (typically the base device).
+            // It intentionally does not mount intermediate decorators even if they implement
+            // IMountableStorage. See class comment for rationale and options.
             IStorageDevice current = Inner;
             while (true)
             {
@@ -58,6 +72,9 @@ namespace Silica.Storage.Decorators
         public virtual async Task UnmountAsync(CancellationToken cancellationToken = default)
         {
             // Deterministically traverse decorator chain (no reflection) to first mountable device.
+            // NOTE: This unmounts only the first IMountableStorage (typically the base device),
+            // mirroring MountAsync behavior. See class comment for the intentional design and
+            // guidance if mountable decorators are introduced in the future.
             IStorageDevice current = Inner;
             while (true)
             {
