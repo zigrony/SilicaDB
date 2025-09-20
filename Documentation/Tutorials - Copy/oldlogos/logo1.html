@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SilicaDB Logo Concepts</title>
+<style>
+body {
+  background: #111;
+  color: #eee;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  padding: 40px;
+}
+h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #7df9ff;
+}
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 1. Cylinder */
+.cylinder {
+  width: 80px;
+  height: 100px;
+  background: linear-gradient(to bottom, #00d1ff, #0077aa);
+  border-radius: 50% / 15%;
+  position: relative;
+}
+.cylinder::before, .cylinder::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 20px;
+  border-radius: 50%;
+}
+.cylinder::before {
+  top: -10px;
+  background: radial-gradient(circle at 50% 30%, #7df9ff, #00d1ff);
+}
+.cylinder::after {
+  bottom: -10px;
+  background: radial-gradient(circle at 50% 70%, #0077aa, #004466);
+}
+
+/* 2. Hexagon with S */
+.hex {
+  width: 100px;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #7b61ff, #00d1ff);
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: bold 40px sans-serif;
+  color: white;
+}
+
+/* 3. Node cluster */
+.node {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #00d1ff;
+  box-shadow:
+    60px 0 #7b61ff,
+    30px 50px #7df9ff,
+    -30px 50px #00d1ff,
+    -60px 0 #7b61ff,
+    -30px -50px #7df9ff,
+    30px -50px #00d1ff;
+}
+</style>
+</head>
+<body>
+  <div class="logo">
+    <div class="cylinder"></div>
+    <h2>Cylinder (Database)</h2>
+  </div>
+
+  <div class="logo">
+    <div class="hex">S</div>
+    <h2>Hexagon + S</h2>
+  </div>
+
+  <div class="logo">
+    <div class="node"></div>
+    <h2>Node Cluster</h2>
+  </div>
+</body>
+</html>

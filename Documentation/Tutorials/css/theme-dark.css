@@ -1,0 +1,48 @@
+:root {
+  /* Base palette */
+  --color-bg: #0f1115;
+  --color-surface: #171a21;
+  --color-border: #2a2f3a;
+  --color-text: #e5e7eb;
+  --color-muted: #a1a1aa;
+  --color-accent: #62a0ff;
+
+  /* Header/Footer */
+  --header-bg: var(--color-surface);
+  --header-text: var(--color-text);
+
+  /* Sidebar */
+  --sidebar-bg: #141821;
+  --sidebar-text: var(--color-text);
+  --sidebar-hover: #1b2230;
+
+  /* Content */
+  --content-bg: var(--color-bg);
+  --content-text: var(--color-text);
+
+  /* Callouts - base defaults */
+  --callout-bg: #1b2533;
+  --callout-border: #3c73c7;
+  --callout-text: #cfe2ff;
+
+  /* Callout variants */
+  --callout-info-bg: #1b2533;
+  --callout-info-border: #3c73c7;
+  --callout-info-text: #cfe2ff;
+
+  --callout-success-bg: #14271d;
+  --callout-success-border: #2e7d52;
+  --callout-success-text: #c7edd8;
+
+  --callout-warning-bg: #30260e;
+  --callout-warning-border: #a87c2a;
+  --callout-warning-text: #ffe8b5;
+
+  --callout-danger-bg: #2b1618;
+  --callout-danger-border: #b04a4a;
+  --callout-danger-text: #ffd1d1;
+
+  /* Code blocks */
+  --code-bg: #1b1f2a;
+  --code-text: #ffd27e;
+}

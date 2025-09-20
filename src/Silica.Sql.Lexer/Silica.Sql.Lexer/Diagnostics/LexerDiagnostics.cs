@@ -27,8 +27,18 @@ namespace Silica.Sql.Lexer.Diagnostics
                 return;
             }
 
-            // Keep tag cardinality low and stable.
-            var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            // Keep tag cardinality low and stable. Pre-size for reserved + 'more' spill-ins.
+            int cap = 4;
+            try
+            {
+                if (more is not null)
+                {
+                    // Reserve space for 'more' while keeping small dictionary footprint.
+                    cap += more.Count;
+                }
+            }
+            catch { /* best-effort sizing only */ }
+            var tags = new Dictionary<string, string>(cap, StringComparer.OrdinalIgnoreCase);
             // Normalize and retain component locally so we don't rely on tags indexing later.
             string comp = Component;
             try

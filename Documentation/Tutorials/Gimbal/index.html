@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Silica Gyroscope Demo</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <h3>Silica Gyroscope Demo</h3>
+    <div class="layout">
+      <div class="stage">
+        <svg id="svg" viewBox="-200 -200 400 400" preserveAspectRatio="xMidYMid meet" aria-label="Gyroscope instrument" role="img">
+          <defs>
+            <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1" result="b" /><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <g id="rings" aria-hidden="true"></g>
+          <g id="attitude" aria-hidden="true"></g>
+          <g id="labels" aria-hidden="true"></g>
+        </svg>
+      </div>
+
+      <div class="panel" aria-label="Controls">
+        <div class="row">
+          <label>Source</label>
+          <select id="mode"><option value="sim">Simulated</option><option value="manual">Manual</option></select>
+        </div>
+
+        <div id="manualControls" class="hidden">
+          <div class="row"><label for="pitch">Pitch °</label><input id="pitch" type="range" min="-45" max="45" value="-10"/><input id="pitchn" type="number" value="-10" step="0.1"/></div>
+          <div class="row"><label for="roll">Roll °</label><input id="roll" type="range" min="-45" max="45" value="6"/><input id="rolln" type="number" value="6" step="0.1"/></div>
+          <div class="row"><label for="heading">Heading °</label><input id="heading" type="range" min="0" max="360" value="45"/><input id="headingn" type="number" value="45" step="0.1"/></div>
+          <div class="row"><label for="zoom">Zoom</label><input id="zoom" type="range" min="0.6" max="2.0" step="0.01" value="1"/><input id="zoomn" type="number" value="1" step="0.01"/></div>
+        </div>
+
+        <div class="row">
+          <label>Auto-sim</label>
+          <button id="toggleSim">Pause sim</button>
+          <div class="hint">Click instrument face to toggle crosshair. Arrow keys nudge pitch and roll</div>
+        </div>
+
+        <div class="row metrics" id="metricReadout" aria-live="polite">
+          <div class="metric">pitch: <span id="mPitch">-10</span>°</div>
+          <div class="metric">roll: <span id="mRoll">6</span>°</div>
+          <div class="metric">heading: <span id="mHead">45</span>°</div>
+        </div>
+
+        <div class="row" style="gap:6px;margin-top:8px">
+          <button id="copySvg">Copy SVG</button>
+          <button id="exportPng">Export PNG</button>
+          <button id="compact">Compact</button>
+        </div>
+
+        <div style="flex:1"></div>
+        <footer>Instrument is accessible, keyboard controllable, and accepts telemetry via window.applyTelemetry</footer>
+      </div>
+    </div>
+  </div>
+
+<script src="/js/gimbal.js"></script>
+</body>
+</html>

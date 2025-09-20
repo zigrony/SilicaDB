@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pressure Gauge — Constrained Needle and Hard Zone Edges</title>
+<style>
+  :root{
+    --bg:#071226; --panel:#0b1b2bcc; --muted:#9aa7bd; --accent:#58a6ff;
+    --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c; --glass:rgba(255,255,255,0.06);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#061425,#031022);color:#e6eef8}
+  .wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  h3{margin:0;font-weight:600}
+  .layout{display:flex;gap:16px;width:100%;max-width:1100px}
+  .stage{flex:1;min-width:320px;background:linear-gradient(180deg,#071726,#041322);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  svg{width:min(72vw,560px);height:min(60vh,560px);display:block}
+  .panel{width:360px;background:var(--panel);border-radius:12px;padding:14px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:8px;align-items:center}
+  label{width:130px;color:#cfe3ff;font-size:13px}
+  input[type="range"]{flex:1}
+  input[type="number"]{width:86px;padding:6px;border-radius:6px;border:none;background:#071022;color:#dbeefe}
+  select,button,input[type="color"]{background:#071022;color:#dbeefe;border-radius:6px;padding:6px;border:none}
+  button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.primary{background:var(--accent);color:#071022;border:none}
+  .hint{font-size:12px;color:var(--muted)}
+  .metrics{display:flex;gap:8px;flex-wrap:wrap}
+  .metric{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:6px;font-size:13px}
+  footer{font-size:12px;color:var(--muted)}
+  @media (max-width:880px){.layout{flex-direction:column}.panel{width:100%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Pressure Gauge — Constrained Needle and Hard Zone Edges</h3>
+    <div class="layout">
+      <div class="stage" id="stage">
+        <svg id="gauge" viewBox="-220 -120 440 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Pressure gauge">
+          <defs>
+            <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+            <linearGradient id="glass" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/><stop offset="100%" stop-color="#000000" stop-opacity="0.02"/></linearGradient>
+          </defs>
+
+          <!-- background plate -->
+          <rect x="-210" y="-120" width="420" height="240" rx="18" ry="18" fill="url(#glass)" stroke="rgba(255,255,255,0.03)" />
+
+          <!-- colored arc zones (green, yellow, red) -->
+          <g id="zones"></g>
+
+          <!-- ticks and labels (drawn after zones so they appear crisp on top) -->
+          <g id="ticks"></g>
+
+          <!-- central needle pivot and needle -->
+          <g id="needleGroup">
+            <circle cx="0" cy="40" r="6" fill="#222" stroke="rgba(255,255,255,0.08)"/>
+            <path id="needle" d="" fill="#ffdf6b" stroke="#c57c00" stroke-width="0.8"/>
+          </g>
+
+          <!-- numeric display -->
+          <g id="readout" transform="translate(0,105)">
+            <rect x="-80" y="-26" width="160" height="34" rx="8" fill="rgba(0,0,0,0.36)"/>
+            <text id="valueText" x="0" y="0" fill="#e6eef8" font-size="20" text-anchor="middle" font-weight="600">0</text>
+            <text id="unitText" x="0" y="18" fill="#9aa7bd" font-size="11" text-anchor="middle">units</text>
+          </g>
+
+          <!-- min/max labels (bottom edges) -->
+          <text id="minLabel" x="-180" y="140" fill="#9aa7bd" font-size="12" text-anchor="middle">0</text>
+          <text id="maxLabel" x="180" y="140" fill="#9aa7bd" font-size="12" text-anchor="middle">100</text>
+        </svg>
+      </div>
+
+      <div class="panel" aria-label="Controls">
+        <div class="row">
+          <label>Source</label>
+          <select id="mode"><option value="sim">Simulated</option><option value="manual">Manual</option></select>
+        </div>
+
+        <div id="manualControls" style="display:none">
+          <div class="row"><label for="value">Value</label><input id="value" type="range" min="0" max="100" value="34"/><input id="valuen" type="number" value="34" /></div>
+        </div>
+
+        <div class="row"><label for="max">Max scale</label><input id="max" type="number" min="1" max="10000" value="100" /></div>
+
+        <div class="row"><label for="greenEnd">Green end</label><input id="greenEnd" type="number" min="0" max="10000" value="60" /></div>
+        <div class="row"><label for="yellowEnd">Yellow end</label><input id="yellowEnd" type="number" min="0" max="10000" value="80" /></div>
+
+        <div class="row"><label for="smoothing">Smoothing</label><input id="smoothing" type="range" min="0" max="1" step="0.02" value="0.18"/><input id="smoothingn" type="number" step="0.02" value="0.18"/></div>
+
+        <div class="row">
+          <label>Auto-sim</label>
+          <button id="toggleSim">Pause sim</button>
+          <div class="hint">Click gauge to give a brief pulse. Arrow keys nudge value</div>
+        </div>
+
+        <div class="row metrics">
+          <div class="metric">value: <span id="mValue">34</span></div>
+          <div class="metric">max: <span id="mMax">100</span></div>
+          <div class="metric">zone: <span id="mZone">GREEN</span></div>
+        </div>
+
+        <div class="row" style="gap:8px">
+          <button id="copySvg">Copy SVG</button>
+          <button id="exportPng">Export PNG</button>
+          <button id="reset" class="primary">Reset</button>
+        </div>
+
+        <div style="flex:1"></div>
+        <footer>Pressure gauge: needle constrained to scale; zone edges are hard-aligned with ticks. API: window.applyPressure({value, max, ts, source})</footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Pressure gauge — constrained and hard zone edges
+   - Target and display are clamped to [0, max].
+   - Zones drawn with stroke-linecap="butt" so edges align exactly to tick lines.
+   - Ticks are rendered after zones so they sit visibly on top.
+*/
+
+(function(){
+  // DOM
+  const svg = document.getElementById('gauge');
+  const zonesG = document.getElementById('zones');
+  const ticksG = document.getElementById('ticks');
+  const needlePath = document.getElementById('needle');
+  const valueText = document.getElementById('valueText');
+  const unitText = document.getElementById('unitText');
+  const minLabel = document.getElementById('minLabel');
+  const maxLabel = document.getElementById('maxLabel');
+
+  const mode = document.getElementById('mode');
+  const manualControls = document.getElementById('manualControls');
+  const valueRange = document.getElementById('value'), valueNum = document.getElementById('valuen');
+  const maxInput = document.getElementById('max');
+  const greenEndInput = document.getElementById('greenEnd'), yellowEndInput = document.getElementById('yellowEnd');
+  const smoothingRange = document.getElementById('smoothing'), smoothingNum = document.getElementById('smoothingn');
+  const toggleSim = document.getElementById('toggleSim');
+  const mValue = document.getElementById('mValue'), mMax = document.getElementById('mMax'), mZone = document.getElementById('mZone');
+  const copySvgBtn = document.getElementById('copySvg'), exportPngBtn = document.getElementById('exportPng'), resetBtn = document.getElementById('reset');
+
+  // gauge geometry parameters (scale across the bottom: 0 at left-bottom, max at right-bottom)
+  const startAngle = 135; // degrees
+  const endAngle = 45;    // degrees (wrap-aware)
+  const radius = 150;
+
+  // authoritative targets
+  let target = { value: 34, max: 100, ts: Date.now(), source: 'sim' };
+
+  // smoothed display
+  let display = { value: target.value };
+
+  // sim
+  let simT = 0, simRunning = true;
+
+  // helpers
+  const toRad = (d) => d * Math.PI / 180;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+  // convert value -> angle, wrap-aware
+  function valueToAngle(v, max){
+    const t = clamp(v / max, 0, 1);
+    let a0 = startAngle;
+    let a1 = endAngle;
+    if(a1 <= a0) a1 += 360;
+    const angle = a0 + (a1 - a0) * t;
+    return angle % 360;
+  }
+
+  // build zones and ticks; zones drawn with stroke-linecap='butt' for hard edges
+  function buildZonesAndTicks(){
+    while(zonesG.firstChild) zonesG.removeChild(zonesG.firstChild);
+    while(ticksG.firstChild) ticksG.removeChild(ticksG.firstChild);
+
+    const max = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), 0, max);
+    const yEnd = clamp(Number(yellowEndInput.value), 0, max);
+
+    function arcForRange(v0, v1, color, opacity){
+      const a0 = toRad(valueToAngle(v0, max));
+      const a1 = toRad(valueToAngle(v1, max));
+      const x0 = Math.cos(a0) * radius, y0 = Math.sin(a0) * radius;
+      const x1 = Math.cos(a1) * radius, y1 = Math.sin(a1) * radius;
+      let delta = a1 - a0;
+      if(delta < 0) delta += Math.PI*2;
+      const large = Math.abs(delta) > Math.PI ? 1 : 0;
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const d = `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${radius} ${radius} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', 20);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'butt'); // hard edge
+      path.setAttribute('opacity', String(opacity));
+      zonesG.appendChild(path);
+    }
+
+    // draw zones in order (green -> yellow -> red)
+    arcForRange(0, gEnd, '#2ecc71', 1);
+    arcForRange(gEnd, yEnd, '#f39c12', 1);
+    arcForRange(yEnd, max, '#e74c3c', 1);
+
+    // draw ticks on top so they crisp-overlap zone edges
+    const ticks = 20;
+    for(let i=0;i<=ticks;i++){
+      const v = max * i / ticks;
+      const a = toRad(valueToAngle(v, max));
+      const rOut = radius + (i%5===0 ? 12 : 6);
+      const rIn = radius - 12;
+      const x1 = Math.cos(a) * rIn, y1 = Math.sin(a) * rIn;
+      const x2 = Math.cos(a) * rOut, y2 = Math.sin(a) * rOut;
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#e6eef8'); // slightly brighter to stand out
+      line.setAttribute('stroke-width', i%5===0 ? 2.2 : 1.2);
+      line.setAttribute('opacity', 1);
+      line.setAttribute('stroke-linecap','square');
+      ticksG.appendChild(line);
+      if(i%5===0){
+        const tx = Math.cos(a) * (radius - 30), ty = Math.sin(a) * (radius - 30);
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x', String(tx)); lbl.setAttribute('y', String(ty + 4));
+        lbl.setAttribute('fill', '#cfe3ff'); lbl.setAttribute('font-size', '12'); lbl.setAttribute('text-anchor', 'middle');
+        lbl.textContent = String(Math.round(v));
+        ticksG.appendChild(lbl);
+      }
+    }
+
+    minLabel.textContent = '0';
+    maxLabel.textContent = String(max);
+  }
+
+  // draw needle; needle constrained by clamped angles (we clamp upstream)
+  function drawNeedle(angleDeg){
+    const angle = toRad(angleDeg - 90);
+    const len = radius - 28;
+    const x = Math.cos(angle) * len, y = Math.sin(angle) * len;
+    const left = {x: Math.cos(angle + 0.03)*8, y: Math.sin(angle + 0.03)*8};
+    const right = {x: Math.cos(angle - 0.03)*8, y: Math.sin(angle - 0.03)*8};
+    const d = `M ${left.x.toFixed(2)} ${left.y.toFixed(2)} L ${x.toFixed(2)} ${y.toFixed(2)} L ${right.x.toFixed(2)} ${right.y.toFixed(2)} Z`;
+    needlePath.setAttribute('d', d);
+  }
+
+  function zoneForValue(v){
+    const max = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), 0, max);
+    const yEnd = clamp(Number(yellowEndInput.value), 0, max);
+    if(v <= gEnd) return 'GREEN';
+    if(v <= yEnd) return 'YELLOW';
+    return 'RED';
+  }
+
+  function smoothStep(displayVal, targetVal, alpha){
+    return displayVal + (targetVal - displayVal) * alpha;
+  }
+
+  // Render loop with clamping of both target and display to [0,max]
+  function renderLoop(ts){
+    if(!renderLoop.last) renderLoop.last = ts;
+    const dt = Math.min(0.1, (ts - renderLoop.last) / 1000);
+    renderLoop.last = ts;
+
+    // simulate target changes when in sim mode
+    if(mode.value === 'sim' && simRunning){
+      simT += dt;
+      const max = Number(maxInput.value);
+      const base = (Math.sin(simT*0.6) * 0.35 + 0.5) * max;
+      const spike = Math.max(0, Math.sin(simT*2.7) > 0.98 ? Math.random()*0.5*max : 0);
+      target.value = clamp(base + spike, 0, max);
+      target.ts = Date.now();
+    }
+
+    // always clamp target within [0,max]
+    const max = Number(maxInput.value);
+    target.value = clamp(Number(target.value), 0, max);
+
+    // smoothing with clamped display
+    const alpha = Number(smoothingRange.value);
+    display.value = smoothStep(display.value, target.value, alpha);
+    display.value = clamp(display.value, 0, max);
+
+    // compute angle and draw needle
+    const angle = valueToAngle(display.value, max);
+    drawNeedle(angle);
+
+    // update readout and metrics
+    valueText.textContent = (display.value).toFixed(1);
+    unitText.textContent = `of ${max}`;
+    mValue.textContent = Math.round(display.value);
+    mMax.textContent = max;
+    mZone.textContent = zoneForValue(display.value);
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  // UI bindings
+  valueRange.addEventListener('input', ()=>{ valueNum.value = valueRange.value; target.value = clamp(Number(valueRange.value), 0, Number(maxInput.value)); target.ts = Date.now(); });
+  valueNum.addEventListener('input', ()=>{ valueRange.value = valueNum.value; target.value = clamp(Number(valueNum.value), 0, Number(maxInput.value)); target.ts = Date.now(); });
+
+  maxInput.addEventListener('change', ()=>{ buildZonesAndTicks(); target.value = clamp(target.value,0,Number(maxInput.value)); display.value = clamp(display.value,0,Number(maxInput.value)); });
+  greenEndInput.addEventListener('change', buildZonesAndTicks);
+  yellowEndInput.addEventListener('change', buildZonesAndTicks);
+
+  smoothingRange.addEventListener('input', ()=>{ smoothingNum.value = smoothingRange.value; });
+  smoothingNum.addEventListener('input', ()=>{ smoothingRange.value = smoothingNum.value; });
+
+  mode.addEventListener('change', ()=>{
+    if(mode.value === 'manual'){ manualControls.style.display = 'block'; simRunning = false; toggleSim.textContent = 'Sim paused'; }
+    else { manualControls.style.display = 'none'; simRunning = true; toggleSim.textContent = 'Pause sim'; }
+  });
+
+  toggleSim.addEventListener('click', ()=>{ simRunning = !simRunning; toggleSim.textContent = simRunning ? 'Pause sim' : 'Resume sim'; });
+
+  // keyboard nudges and click impulse (target clamped)
+  window.addEventListener('keydown', (e)=>{
+    const nudge = e.shiftKey ? 5 : 1;
+    const max = Number(maxInput.value);
+    if(e.key === 'ArrowUp'){ target.value = clamp(Number(target.value) + nudge, 0, max); valueRange.value = target.value; valueNum.value = target.value; }
+    if(e.key === 'ArrowDown'){ target.value = clamp(Number(target.value) - nudge, 0, max); valueRange.value = target.value; valueNum.value = target.value; }
+  });
+
+  svg.addEventListener('click', (ev)=>{
+    const rect = svg.getBoundingClientRect();
+    const x = ev.clientX - (rect.left + rect.width/2);
+    const impulse = clamp(Math.abs(x)/160 * Number(maxInput.value) * 0.12, 1, Number(maxInput.value)*0.3);
+    target.value = clamp(Number(target.value) + impulse, 0, Number(maxInput.value));
+    valueRange.value = target.value; valueNum.value = target.value;
+  });
+
+  // copy svg
+  copySvgBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    navigator.clipboard?.writeText(out).then(()=>{ copySvgBtn.textContent='Copied'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); }, ()=>{ copySvgBtn.textContent='Fail'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); });
+  });
+
+  // export png
+  exportPngBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    const img = new Image();
+    const svg64 = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out);
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      const w = img.width || 1200, h = img.height || 700;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#031022';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(function(blob){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'gauge.png'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+    };
+    img.src = svg64;
+  });
+
+  // reset
+  resetBtn.addEventListener('click', ()=>{
+    target.value = 34; target.max = 100; target.ts = Date.now();
+    valueRange.value = 34; valueNum.value = 34;
+    maxInput.value = 100; greenEndInput.value = 60; yellowEndInput.value = 80;
+    smoothingRange.value = 0.18; smoothingNum.value = 0.18;
+    buildZonesAndTicks();
+  });
+
+  // telemetry API
+  window.applyPressure = function(payload){
+    if(!payload || typeof payload !== 'object') return;
+    if('max' in payload){
+      maxInput.value = Number(payload.max);
+      buildZonesAndTicks();
+    }
+    if('value' in payload){
+      target.value = clamp(Number(payload.value), 0, Number(maxInput.value));
+      valueRange.value = target.value; valueNum.value = target.value;
+    }
+    if('ts' in payload) target.ts = payload.ts;
+    if('source' in payload) target.source = payload.source;
+  };
+
+  // initialize
+  buildZonesAndTicks();
+  target = { value: clamp(Number(valueRange.value),0,Number(maxInput.value)), max: Number(maxInput.value), ts: Date.now(), source: 'init' };
+  display = { value: target.value };
+  requestAnimationFrame(renderLoop);
+})();
+</script>
+</body>
+</html>
+```

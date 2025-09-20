@@ -99,12 +99,30 @@ namespace Silica.Concurrency.Metrics
             DefaultTags: Array.Empty<KeyValuePair<string, object>>());
 
         // --------------------------
+        // ABORTS / TOKEN MAINTENANCE
+        // --------------------------
+        public static readonly MetricDefinition AbortCount = new(
+            Name: "concurrency.tx.abort.count",
+            Type: MetricType.Counter,
+            Description: "Transactions force-aborted",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        public static readonly MetricDefinition TokenPruneCount = new(
+            Name: "concurrency.fencing.pruned.count",
+            Type: MetricType.Counter,
+            Description: "Per-resource fencing token associations pruned",
+            Unit: "entries",
+            DefaultTags: Array.Empty<KeyValuePair<string, object>>());
+
+        // --------------------------
         // TAG FIELDS (low cardinality)
         // --------------------------
         public static class Fields
         {
             public const string Shared = "shared";
             public const string Exclusive = "exclusive";
+            public const string None = "none";
             public const string Txn = "txn";
             public const string Resource = "resource";
             public const string Mode = "mode";
@@ -139,6 +157,8 @@ namespace Silica.Concurrency.Metrics
             Reg(WaitTimeoutCount);
             Reg(DeadlockCount);
             Reg(DeadlockGraphSize);
+            Reg(AbortCount);
+            Reg(TokenPruneCount);
 
             if (queueDepthProvider is not null)
             {
@@ -224,6 +244,21 @@ namespace Silica.Concurrency.Metrics
             if (metrics is null) return;
             TryRegister(metrics, DeadlockCount);
             metrics.Increment(DeadlockCount.Name, 1);
+        }
+
+        public static void IncrementAbort(IMetricsManager metrics)
+        {
+            if (metrics is null) return;
+            TryRegister(metrics, AbortCount);
+            metrics.Increment(AbortCount.Name, 1);
+        }
+
+        public static void IncrementTokenPruned(IMetricsManager metrics, int count)
+        {
+            if (metrics is null) return;
+            if (count <= 0) return;
+            TryRegister(metrics, TokenPruneCount);
+            metrics.Increment(TokenPruneCount.Name, count);
         }
 
         private static void TryRegister(IMetricsManager metrics, MetricDefinition def)

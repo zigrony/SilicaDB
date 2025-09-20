@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pressure Gauge — Tube with Per‑segment 3D shading (Improved)</title>
+<style>
+  :root{
+    --bg:#071226; --panel:#0b1b2bcc; --muted:#9aa7bd; --accent:#58a6ff;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#061425,#031022);color:#e6eef8}
+  .wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  h3{margin:0;font-weight:600}
+  .layout{display:flex;gap:16px;width:100%;max-width:1200px}
+  .stage{flex:1;min-width:320px;background:linear-gradient(180deg,#071726,#041322);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  .svgWrapper{width:min(72vw,560px);height:min(60vh,560px);display:flex;align-items:center;justify-content:center;transform-style:preserve-3d;perspective:900px}
+  svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 50%}
+  .panel{width:420px;background:var(--panel);border-radius:12px;padding:14px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:8px;align-items:center}
+  label{width:140px;color:#cfe3ff;font-size:13px}
+  input[type="range"]{flex:1}
+  input[type="number"]{width:86px;padding:6px;border-radius:6px;border:none;background:#071022;color:#dbeefe}
+  select,button,input[type="color"]{background:#071022;color:#dbeefe;border-radius:6px;padding:6px;border:none}
+  button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.primary{background:var(--accent);color:#071022;border:none}
+  .hint{font-size:12px;color:var(--muted)}
+  .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .metric{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:6px;font-size:13px}
+  hr{border:none;border-top:1px solid rgba(255,255,255,0.04);margin:8px 0}
+  @media (max-width:880px){.layout{flex-direction:column}.panel{width:100%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Pressure Gauge — Tube (Per‑segment 3D shading)</h3>
+    <div class="layout">
+      <div class="stage">
+        <div class="svgWrapper" id="svgWrapper">
+          <svg id="gauge" viewBox="-220 -120 440 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Pressure gauge">
+            <defs>
+              <filter id="blurShadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="6" result="b"/><feOffset dy="6" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="needleShadow" x="-200%" y="-200%" width="400%" height="400%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.22"/></filter>
+              <radialGradient id="pivotGrad" cx="40%" cy="40%" r="70%"><stop offset="0%" stop-color="#fff" stop-opacity="0.95"/><stop offset="50%" stop-color="#d7dbe2" stop-opacity="0.95"/><stop offset="100%" stop-color="#8f97a0" stop-opacity="0.95"/></radialGradient>
+            </defs>
+
+            <g id="zones"></g>
+            <g id="ticks"></g>
+
+            <g id="needleGroup">
+              <circle id="pivotBack" cx="0" cy="40" r="10" fill="rgba(0,0,0,0.18)"/>
+              <path id="needle" d="" fill="#ffdf6b" stroke="#c57c00" stroke-width="0.8"/>
+              <circle id="pivotCap" cx="0" cy="40" r="6" fill="#ddd"/>
+            </g>
+
+            <g id="readout" transform="translate(0,105)">
+              <rect x="-100" y="-26" width="200" height="34" rx="8" fill="rgba(0,0,0,0.36)"/>
+              <text id="valueText" x="0" y="0" fill="#e6eef8" font-size="20" text-anchor="middle" font-weight="600">0</text>
+              <text id="unitText" x="0" y="18" fill="#9aa7bd" font-size="11" text-anchor="middle">units</text>
+            </g>
+
+            <text id="minLabel" x="-180" y="140" fill="#9aa7bd" font-size="12" text-anchor="middle">min</text>
+            <text id="maxLabel" x="180" y="140" fill="#9aa7bd" font-size="12" text-anchor="middle">max</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel" aria-label="Controls">
+        <div class="row">
+          <label>Source</label>
+          <select id="mode"><option value="sim">Simulated</option><option value="manual">Manual</option></select>
+        </div>
+
+        <div id="manualControls" style="display:none" class="row">
+          <label for="value">Value</label>
+          <input id="value" type="range" min="-100" max="100" value="34"/>
+          <input id="valuen" type="number" value="34" />
+        </div>
+
+        <div class="row">
+          <label for="min">Min</label><input id="min" type="number" value="-20" />
+          <label style="width:64px;text-align:right">Max</label><input id="max" type="number" value="100" />
+        </div>
+
+        <div class="row">
+          <label for="greenEnd">Green end</label><input id="greenEnd" type="number" value="60" />
+          <label style="width:90px;text-align:right">Yellow end</label><input id="yellowEnd" type="number" value="80" />
+        </div>
+
+        <div class="row">
+          <label for="smoothing">Smoothing</label>
+          <input id="smoothing" type="range" min="0" max="1" step="0.02" value="0.18"/>
+          <input id="smoothingn" type="number" step="0.02" value="0.18"/>
+        </div>
+
+        <div class="row controls-grid" style="align-items:center">
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="width:70px">Rotate X</label>
+            <input id="rotX" type="range" min="-85" max="85" value="18"/>
+            <input id="rotXn" type="number" style="width:56px" value="18"/>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="width:70px">Rotate Y</label>
+            <input id="rotY" type="range" min="-180" max="180" value="-12"/>
+            <input id="rotYn" type="number" style="width:56px" value="-12"/>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="width:70px">Rotate Z</label>
+            <input id="rotZ" type="range" min="0" max="360" value="0"/>
+            <input id="rotZn" type="number" style="width:56px" value="0"/>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="width:70px">Zoom</label>
+            <input id="zoom" type="range" min="0.6" max="1.6" step="0.01" value="1"/>
+            <input id="zoomn" type="number" style="width:56px" step="0.01" value="1"/>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <label style="width:140px">Auto-sim</label>
+          <button id="toggleSim">Pause sim</button>
+          <div class="hint">Click gauge to pulse; arrow keys nudge value</div>
+        </div>
+
+        <hr>
+
+        <div class="row">
+          <label style="width:140px">Tube thickness</label>
+          <input id="band" type="range" min="6" max="36" value="18"/>
+          <input id="bandn" type="number" style="width:56px" value="18"/>
+        </div>
+
+        <div class="row">
+          <label style="width:140px">Depth (px)</label>
+          <input id="depth" type="range" min="0" max="40" value="12"/>
+          <input id="depthn" type="number" style="width:56px" value="12"/>
+        </div>
+
+        <div class="row">
+          <label style="width:140px">Extrude steps</label>
+          <input id="steps" type="range" min="4" max="120" value="28"/>
+          <input id="stepsn" type="number" style="width:56px" value="28"/>
+        </div>
+
+        <hr>
+
+        <div style="display:flex;gap:8px">
+          <button id="copySvg">Copy SVG</button>
+          <button id="exportPng">Export PNG</button>
+          <button id="reset" class="primary">Reset</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <div class="metric">value: <span id="mValue">34</span></div>
+          <div class="metric">min: <span id="mMin">-20</span></div>
+          <div class="metric">max: <span id="mMax">100</span></div>
+          <div class="metric">zone: <span id="mZone">GREEN</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // DOM refs
+  const svg = document.getElementById('gauge');
+  const svgWrapper = document.getElementById('svgWrapper');
+  const zonesG = document.getElementById('zones');
+  const ticksG = document.getElementById('ticks');
+  const needlePath = document.getElementById('needle');
+  const valueText = document.getElementById('valueText');
+  const unitText = document.getElementById('unitText');
+  const minLabel = document.getElementById('minLabel');
+  const maxLabel = document.getElementById('maxLabel');
+
+  // UI elements
+  const mode = document.getElementById('mode');
+  const manualControls = document.getElementById('manualControls');
+  const valueRange = document.getElementById('value'), valueNum = document.getElementById('valuen');
+  const minInput = document.getElementById('min'), maxInput = document.getElementById('max');
+  const greenEndInput = document.getElementById('greenEnd'), yellowEndInput = document.getElementById('yellowEnd');
+  const smoothingRange = document.getElementById('smoothing'), smoothingNum = document.getElementById('smoothingn');
+  const toggleSim = document.getElementById('toggleSim');
+
+  const rotX = document.getElementById('rotX'), rotXn = document.getElementById('rotXn');
+  const rotY = document.getElementById('rotY'), rotYn = document.getElementById('rotYn');
+  const rotZ = document.getElementById('rotZ'), rotZn = document.getElementById('rotZn');
+  const zoom = document.getElementById('zoom'), zoomn = document.getElementById('zoomn');
+
+  const band = document.getElementById('band'), bandn = document.getElementById('bandn');
+  const depth = document.getElementById('depth'), depthn = document.getElementById('depthn');
+  const steps = document.getElementById('steps'), stepsn = document.getElementById('stepsn');
+
+  const copySvgBtn = document.getElementById('copySvg'), exportPngBtn = document.getElementById('exportPng'), resetBtn = document.getElementById('reset');
+
+  const mValue = document.getElementById('mValue'), mMin = document.getElementById('mMin'), mMax = document.getElementById('mMax'), mZone = document.getElementById('mZone');
+
+  // geometry and state
+  const startAngle = 135, endAngle = 45, radius = 150;
+  let target = { value: 34, min: -20, max: 100, ts: Date.now(), source: 'sim' };
+  let display = { value: target.value };
+  let simT = 0, simRunning = true;
+
+  // helpers
+  const toRad = d => d * Math.PI / 180;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const hex = (r,g,b)=>('#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''));
+
+  function normalize(v){ const s = Math.hypot(...v)||1; return [v[0]/s, v[1]/s, v[2]/s]; }
+
+  // lighting config (world-space pseudo)
+  let lightDir = normalize([0.45, -0.7, 0.55]);
+  const viewDir = normalize([0,0,1]);
+
+  function valueToAngleDeg(v, minVal, maxVal){
+    if(maxVal === minVal) return (startAngle + ((endAngle - startAngle)/2));
+    const t = clamp((v - minVal) / (maxVal - minVal), 0, 1);
+    let a0 = startAngle, a1 = endAngle;
+    if(a1 <= a0) a1 += 360;
+    return a0 + (a1 - a0) * t;
+  }
+
+  function buildTicks(){
+    while(ticksG.firstChild) ticksG.removeChild(ticksG.firstChild);
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    const ticks = 20;
+    for(let i=0;i<=ticks;i++){
+      const v = minVal + (maxVal - minVal) * i / ticks;
+      const deg = valueToAngleDeg(v, minVal, maxVal);
+      const a = toRad(deg);
+      const rOut = radius + (i%5===0 ? 12 : 6);
+      const rIn = radius - 12;
+      const x1 = Math.cos(a) * rIn, y1 = Math.sin(a) * rIn;
+      const x2 = Math.cos(a) * rOut, y2 = Math.sin(a) * rOut;
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#e6eef8');
+      line.setAttribute('stroke-width', i%5===0 ? 2.2 : 1.2);
+      line.setAttribute('stroke-linecap', 'square');
+      ticksG.appendChild(line);
+      if(i%5===0){
+        const tx = Math.cos(a) * (radius - 30), ty = Math.sin(a) * (radius - 30);
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x', String(tx)); lbl.setAttribute('y', String(ty + 4));
+        lbl.setAttribute('fill', '#cfe3ff'); lbl.setAttribute('font-size', '12'); lbl.setAttribute('text-anchor', 'middle');
+        lbl.textContent = Number.isInteger(v) ? String(Math.round(v)) : v.toFixed(1);
+        ticksG.appendChild(lbl);
+      }
+    }
+  }
+
+  // buildRibbonPathPoints now returns objects with x,y,a,nx,ny,nz and tangential derivative info
+  function buildRibbonPathPoints(a0, a1, r, curvatureZ){
+    const samples = Math.max(32, Math.round(Math.abs(a1 - a0) / (Math.PI*2) * 96));
+    const pts = [];
+    for(let i=0;i<=samples;i++){
+      const t = i / samples;
+      const a = a0 + (a1 - a0) * t;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      const nx = Math.cos(a), ny = Math.sin(a);
+      const dA = (a1 - a0) / Math.max(1, samples);
+      const tangential = Math.abs(r * dA);
+      const nz = curvatureZ + 0.5 * Math.min(0.5, tangential / Math.max(1, r));
+      pts.push({ x, y, a, nx, ny, nz });
+    }
+    return pts;
+  }
+
+  function ptsToPathFromPairs(outerPts, innerPts){
+    let d = '';
+    for(let i=0;i<outerPts.length;i++){
+      const [x,y] = outerPts[i];
+      d += (i===0? 'M ':'L ') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    }
+    for(let i=innerPts.length-1;i>=0;i--){
+      const [x,y] = innerPts[i];
+      d += 'L ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    }
+    d += 'Z';
+    return d;
+  }
+
+  function getRgbFromHex(h){
+    const n = parseInt(h.slice(1),16);
+    return [(n>>16)&255, (n>>8)&255, n&255];
+  }
+
+  function rgbToHex(r,g,b){ return hex(r,g,b); }
+
+  // physically inspired shading: diffuse + Blinn specular + Fresnel
+  function shadeHex(hexColor, normal, shininess = 36, baseAmbient = 0.06, F0 = 0.04, diffuseBoost = 0.92, specBoost = 0.9){
+    const n = normalize(normal);
+    const [r,g,b] = getRgbFromHex(hexColor);
+    const Ld = Math.max(0, n[0]*lightDir[0] + n[1]*lightDir[1] + n[2]*lightDir[2]);
+    const H = normalize([lightDir[0] + viewDir[0], lightDir[1] + viewDir[1], lightDir[2] + viewDir[2]]);
+    const spec = Math.pow(Math.max(0, n[0]*H[0] + n[1]*H[1] + n[2]*H[2]), shininess);
+    const VdotN = clamp(Math.max(0, n[0]*viewDir[0] + n[1]*viewDir[1] + n[2]*viewDir[2]), 0, 1);
+    const fresnel = F0 + (1 - F0) * Math.pow(1 - VdotN, 5);
+    const ambient = baseAmbient;
+    const diffuseFactor = ambient + diffuseBoost * Ld;
+    const specFactor = specBoost * spec * fresnel;
+    const intensity = clamp(diffuseFactor + specFactor, 0, 2.6);
+    const ca = v => Math.max(0, Math.min(255, Math.round(v * intensity)));
+    return rgbToHex(ca(r), ca(g), ca(b));
+  }
+
+  function averageHexColors(hexs){
+    if(!hexs || hexs.length===0) return '#000000';
+    let r=0,g=0,b=0;
+    for(const h of hexs){
+      const [rr,gg,bb] = getRgbFromHex(h);
+      r+=rr; g+=gg; b+=bb;
+    }
+    const n = hexs.length;
+    return rgbToHex(Math.round(r/n), Math.round(g/n), Math.round(b/n));
+  }
+
+  function drawTube(){
+    while(zonesG.firstChild) zonesG.removeChild(zonesG.firstChild);
+
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), minVal, maxVal);
+    const yEnd = clamp(Number(yellowEndInput.value), minVal, maxVal);
+
+    const bandThickness = Number(band.value);
+    const outerR = radius;
+    const innerR = Math.max(6, radius - bandThickness);
+
+    const depthPx = Number(depth.value);
+    const layers = Math.max(2, Math.min(120, Number(steps.value)));
+
+    const pitch = toRad(clamp(Number(rotX.value), -85, 85));
+    const yaw = toRad(Number(rotY.value));
+    const viewFacing = Math.max(0.08, Math.abs(Math.cos(pitch) * Math.cos(yaw)));
+
+    const camX = Math.sin(toRad(Number(rotY.value)));
+    const camY = -Math.sin(toRad(Number(rotX.value)));
+    const perLayerCamX = (camX * depthPx / Math.max(1, layers)) * viewFacing;
+    const perLayerCamY = (camY * depthPx / Math.max(1, layers)) * viewFacing;
+
+    const scaleStep = 0.004 + (depthPx/500)*0.01;
+    const a0 = toRad(valueToAngleDeg(minVal, minVal, maxVal));
+    const a1 = toRad(valueToAngleDeg(maxVal, minVal, maxVal));
+    const ag = toRad(valueToAngleDeg(gEnd, minVal, maxVal));
+    const ay = toRad(valueToAngleDeg(yEnd, minVal, maxVal));
+
+    const curvatureZBase = 0.14 + (Math.abs(pitch)/90)*0.28;
+    const segments = [
+      {a0:a0, a1:ag, color:'#2ecc71'},
+      {a0:ag, a1:ay, color:'#f39c12'},
+      {a0:ay, a1:a1, color:'#e74c3c'}
+    ];
+
+    // layered extrusions (back-to-front)
+    for(let layer = layers-1; layer >= 0; layer--){
+      const idx = layer + 1;
+      const scale = 1 - idx * scaleStep;
+      const oR = outerR * scale;
+      const iR = innerR * scale;
+
+      const camOx = idx * perLayerCamX;
+      const camOy = idx * perLayerCamY;
+
+      const radialInset = idx * (depthPx / Math.max(1, layers)) * 0.25 * viewFacing;
+
+      const t = layer / Math.max(1, layers-1);
+      const layerOpacity = 0.06 + 0.86 * (1 - t);
+
+      for(const seg of segments){
+        if(Math.abs(seg.a1 - seg.a0) < 1e-5) continue;
+        const outerPtsRaw = buildRibbonPathPoints(seg.a0, seg.a1, oR, curvatureZBase);
+        const innerPtsRaw = buildRibbonPathPoints(seg.a0, seg.a1, iR, curvatureZBase);
+
+        const outerPts = outerPtsRaw.map(p=>{
+          const rx = -p.nx * radialInset, ry = -p.ny * radialInset;
+          const z = idx * (depthPx / Math.max(1, layers)) * viewFacing;
+          const px = p.x + rx + camOx, py = p.y + ry + camOy, pz = z;
+          const normal = normalize([p.nx, p.ny, p.nz + 0.02]);
+          const fillColor = shadeHex(seg.color, normal, 30, 0.06, 0.04);
+          return { px, py, pz, normal, fillColor };
+        });
+        const innerPts = innerPtsRaw.map(p=>{
+          const rx = -p.nx * radialInset, ry = -p.ny * radialInset;
+          const z = idx * (depthPx / Math.max(1, layers)) * viewFacing;
+          const px = p.x + rx + camOx, py = p.y + ry + camOy, pz = z;
+          const normal = normalize([-p.nx, -p.ny, p.nz*0.9]);
+          const fillColor = shadeHex(seg.color, normal, 18, 0.04, 0.04);
+          return { px, py, pz, normal, fillColor };
+        });
+
+        const outerPairs = outerPts.map(p=>[p.px,p.py]);
+        const innerPairs = innerPts.map(p=>[p.px,p.py]);
+        const d = ptsToPathFromPairs(outerPairs, innerPairs);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        const avgFill = averageHexColors(outerPts.map(p=>p.fillColor).concat(innerPts.map(p=>p.fillColor)));
+        path.setAttribute('d', d);
+        path.setAttribute('fill', avgFill);
+        path.setAttribute('opacity', String(layerOpacity));
+        path.setAttribute('stroke', 'none');
+        zonesG.appendChild(path);
+      }
+    }
+
+    // top faces (front-most ring)
+    for(const seg of segments){
+      if(Math.abs(seg.a1 - seg.a0) < 1e-5) continue;
+      const outerPtsRaw = buildRibbonPathPoints(seg.a0, seg.a1, outerR, curvatureZBase);
+      const innerPtsRaw = buildRibbonPathPoints(seg.a0, seg.a1, innerR, curvatureZBase);
+      const outerPairs = outerPtsRaw.map(p=>[p.x,p.y]);
+      const innerPairs = innerPtsRaw.map(p=>[p.x,p.y]);
+      const d = ptsToPathFromPairs(outerPairs, innerPairs);
+      const top = document.createElementNS('http://www.w3.org/2000/svg','path');
+
+      const midA = (seg.a0 + seg.a1)/2;
+      const rimNormal = normalize([Math.cos(midA), Math.sin(midA), curvatureZBase*1.6]);
+      const rimColor = shadeHex(seg.color, rimNormal, 48, 0.08, 0.04, 1.0, 1.0);
+      const topNormal = normalize([Math.cos(midA), Math.sin(midA), curvatureZBase*1.1]);
+      const topFill = shadeHex(seg.color, topNormal, 32, 0.04, 0.04, 1.0, 0.6);
+
+      top.setAttribute('d', d);
+      top.setAttribute('fill', topFill);
+      top.setAttribute('stroke', rimColor);
+      top.setAttribute('stroke-width', '0.8');
+      zonesG.appendChild(top);
+    }
+
+    // bevels (outer and inner) to break silhouette and catch highlights
+    const bevelR = 1.8;
+    const outerBevelPairs = buildRibbonPathPoints(a0, a1, outerR + bevelR, curvatureZBase*0.9).map(p=>[p.x,p.y]);
+    const innerBevelPairs = buildRibbonPathPoints(a0, a1, innerR - bevelR, curvatureZBase*0.9).map(p=>[p.x,p.y]);
+    const bevelPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    bevelPath.setAttribute('d', ptsToPathFromPairs(outerBevelPairs, innerBevelPairs));
+    bevelPath.setAttribute('fill', 'rgba(255,255,255,0.02)');
+    bevelPath.setAttribute('stroke', 'rgba(0,0,0,0.22)');
+    bevelPath.setAttribute('stroke-width','0.6');
+    zonesG.appendChild(bevelPath);
+
+    // inner highlight rim
+    const innerHighlight = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const hOuter = buildRibbonPathPoints(a0,a1,outerR-0.5, curvatureZBase).map(p=>[p.x,p.y]);
+    const hInner = buildRibbonPathPoints(a0,a1,innerR+0.5, curvatureZBase).map(p=>[p.x,p.y]);
+    innerHighlight.setAttribute('d', ptsToPathFromPairs(hOuter, hInner));
+    innerHighlight.setAttribute('fill','none');
+    innerHighlight.setAttribute('stroke','rgba(255,255,255,0.06)');
+    innerHighlight.setAttribute('stroke-width','1');
+    zonesG.appendChild(innerHighlight);
+
+    // soft occlusion/shadow under tube
+    const shadowOuter = buildRibbonPathPoints(a0, a1, outerR + 2, curvatureZBase).map(p=>[p.x,p.y]);
+    const shadowInner = buildRibbonPathPoints(a0, a1, innerR - 2, curvatureZBase).map(p=>[p.x,p.y]);
+    const shadowPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    shadowPath.setAttribute('d', ptsToPathFromPairs(shadowOuter, shadowInner));
+    shadowPath.setAttribute('fill','rgba(0,0,0,0.14)');
+    shadowPath.setAttribute('filter','url(#blurShadow)');
+    shadowPath.setAttribute('opacity','0.55');
+    zonesG.appendChild(shadowPath);
+
+    // silhouette stroke that strengthens at grazing angles
+    const silhouette = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const silhouetteD = ptsToPathFromPairs(
+      buildRibbonPathPoints(a0,a1,outerR+0.6,curvatureZBase).map(p=>[p.x,p.y]),
+      buildRibbonPathPoints(a0,a1,innerR-0.6,curvatureZBase).map(p=>[p.x,p.y])
+    );
+    silhouette.setAttribute('d', silhouetteD);
+    silhouette.setAttribute('fill','none');
+    const viewAngleFactor = Math.abs(Math.cos(toRad(Number(rotX.value)))) * Math.abs(Math.cos(toRad(Number(rotY.value))));
+    silhouette.setAttribute('stroke', 'rgba(0,0,0,' + (0.25 + 0.6*(1 - viewAngleFactor)).toFixed(3) + ')');
+    silhouette.setAttribute('stroke-width','1');
+    zonesG.appendChild(silhouette);
+  }
+
+  function drawNeedleClamped(angleDeg){
+    let a0 = startAngle % 360; if(a0 < 0) a0 += 360;
+    let a1 = endAngle % 360; if(a1 < 0) a1 += 360;
+    if(a1 <= a0) a1 += 360;
+    let a = angleDeg;
+    while(a < a0 - 360) a += 360;
+    while(a > a1 + 360) a -= 360;
+    while(a < a0) a += 360;
+    while(a > a1) a -= 360;
+    if(a < a0) a = a0;
+    if(a > a1) a = a1;
+
+    const rad = toRad(a);
+    const len = radius - 28;
+    const tx = Math.cos(rad) * len;
+    const ty = Math.sin(rad) * len;
+
+    const halfWidth = 8;
+    const perp = Math.PI / 2;
+    const lx = Math.cos(rad + perp) * halfWidth;
+    const ly = Math.sin(rad + perp) * halfWidth;
+    const rxp = Math.cos(rad - perp) * halfWidth;
+    const ryp = Math.sin(rad - perp) * halfWidth;
+
+    const baseInset = 12;
+    const bx = Math.cos(rad) * baseInset;
+    const by = Math.sin(rad) * baseInset;
+
+    const leftX = bx + lx, leftY = by + ly;
+    const rightX = bx + rxp, rightY = by + ryp;
+
+    const ng = document.getElementById('needleGroup');
+    Array.from(ng.querySelectorAll('.extrude')).forEach(n=>n.remove());
+
+    const mainD = `M ${leftX.toFixed(2)} ${leftY.toFixed(2)} L ${tx.toFixed(2)} ${ty.toFixed(2)} L ${rightX.toFixed(2)} ${rightY.toFixed(2)} Z`;
+    const layerCount = Math.max(1, Math.min(80, Number(steps.value)));
+    const depthPx = Number(depth.value);
+    const dx = Math.sin(toRad(Number(rotY.value)));
+    const dy = -Math.sin(toRad(clamp(Number(rotX.value), -85, 85)));
+    const perLayerX = dx * (depthPx / Math.max(1, layerCount));
+    const perLayerY = dy * (depthPx / Math.max(1, layerCount));
+    for(let i = layerCount - 1; i >= 0; i--){
+      const ox = (i+1) * perLayerX;
+      const oy = (i+1) * perLayerY;
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d', mainD);
+      p.setAttribute('transform', `translate(${ox.toFixed(2)} ${oy.toFixed(2)})`);
+      const normal = normalize([Math.cos(rad), Math.sin(rad), 0.18]);
+      const layerFill = shadeHex('#c57c00', normal, 32, 0.06, 0.04);
+      const layerStroke = shadeHex('#8f5d00', normal, 18, 0.04, 0.04);
+      p.setAttribute('fill', layerFill);
+      p.setAttribute('stroke', layerStroke);
+      p.setAttribute('stroke-width', '0.6');
+      p.setAttribute('opacity', String(0.06 + 0.72 * (1 - (i/(layerCount-1||1)))));
+      p.classList.add('extrude');
+      ng.insertBefore(p, needlePath);
+    }
+
+    needlePath.setAttribute('d', mainD);
+    if(Number(zoom.value) > 0.98) needlePath.setAttribute('filter','url(#needleShadow)');
+    else needlePath.removeAttribute('filter');
+  }
+
+  function zoneForValue(v){
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), minVal, maxVal);
+    const yEnd = clamp(Number(yellowEndInput.value), minVal, maxVal);
+    if(v <= gEnd) return 'GREEN';
+    if(v <= yEnd) return 'YELLOW';
+    return 'RED';
+  }
+
+  function apply3DTransform(){
+    let x = clamp(Number(rotX.value), -85, 85);
+    rotX.value = x; rotXn.value = x;
+    const rx = x, ry = Number(rotY.value), rz = Number(rotZ.value), z = Number(zoom.value);
+    svgWrapper.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${z})`;
+  }
+
+  function rebuild(){
+    buildTicks();
+    drawTube();
+    const rawAngle = valueToAngleDeg(display.value, Number(minInput.value), Number(maxInput.value));
+    drawNeedleClamped(rawAngle);
+    minLabel.textContent = String(Number(minInput.value));
+    maxLabel.textContent = String(Number(maxInput.value));
+  }
+
+  function smoothStep(displayVal, targetVal, alpha){ return displayVal + (targetVal - displayVal) * alpha; }
+
+  // main animation
+  let lastTs = performance.now();
+  function frame(ts){
+    const dt = Math.min(0.1, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    if(mode.value === 'sim' && simRunning){
+      simT += dt;
+      const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+      const center = (minVal + maxVal) / 2;
+      const span = (maxVal - minVal) / 2;
+      const base = center + Math.sin(simT * 0.6) * span * 0.35;
+      const spike = (Math.sin(simT*2.7) > 0.98) ? (Math.random()*0.3*span) : 0;
+      target.value = clamp(base + spike, minVal, maxVal);
+      target.ts = Date.now();
+    }
+
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    target.value = clamp(Number(target.value), minVal, maxVal);
+
+    const alpha = Number(smoothingRange.value);
+    display.value = smoothStep(display.value, target.value, alpha);
+    display.value = clamp(display.value, minVal, maxVal);
+
+    rebuild();
+
+    valueText.textContent = (display.value).toFixed(1);
+    unitText.textContent = `range ${minVal}..${maxVal}`;
+    mValue.textContent = Number.isInteger(display.value) ? String(Math.round(display.value)) : display.value.toFixed(1);
+    mMin.textContent = String(minVal);
+    mMax.textContent = String(maxVal);
+    mZone.textContent = zoneForValue(display.value);
+
+    requestAnimationFrame(frame);
+  }
+
+  // UI wiring
+  valueRange.addEventListener('input', ()=>{ valueNum.value = valueRange.value; target.value = Number(valueRange.value); target.ts = Date.now(); });
+  valueNum.addEventListener('input', ()=>{ valueRange.value = valueNum.value; target.value = Number(valueNum.value); target.ts = Date.now(); });
+
+  minInput.addEventListener('change', rebuild);
+  maxInput.addEventListener('change', rebuild);
+
+  greenEndInput.addEventListener('change', rebuild);
+  yellowEndInput.addEventListener('change', rebuild);
+
+  smoothingRange.addEventListener('input', ()=>{ smoothingNum.value = smoothingRange.value; });
+  smoothingNum.addEventListener('input', ()=>{ smoothingRange.value = smoothingNum.value; });
+
+  mode.addEventListener('change', ()=>{ if(mode.value === 'manual'){ manualControls.style.display = 'flex'; simRunning = false; toggleSim.textContent='Sim paused'; } else { manualControls.style.display = 'none'; simRunning = true; toggleSim.textContent='Pause sim'; } });
+
+  toggleSim.addEventListener('click', ()=>{ simRunning = !simRunning; toggleSim.textContent = simRunning ? 'Pause sim' : 'Resume sim'; });
+
+  function bind(rng,num,cb,clampRange){
+    rng.addEventListener('input', ()=>{ if(clampRange){ const v = clamp(Number(rng.value), clampRange[0], clampRange[1]); rng.value = v; num.value = v; } else num.value = rng.value; cb && cb(); });
+    num.addEventListener('input', ()=>{ let v = Number(num.value); if(clampRange) v = clamp(v, clampRange[0], clampRange[1]); rng.value = num.value = v; cb && cb(); });
+  }
+  bind(rotX, rotXn, apply3DTransform, [-85,85]);
+  bind(rotY, rotYn, apply3DTransform);
+  bind(rotZ, rotZn, apply3DTransform);
+  bind(zoom, zoomn, apply3DTransform);
+
+  bind(band, bandn, rebuild);
+  bind(depth, depthn, rebuild);
+  bind(steps, stepsn, rebuild);
+
+  window.addEventListener('keydown', (e)=>{
+    const nudge = e.shiftKey ? (Number(maxInput.value)-Number(minInput.value))*0.02 : (Number(maxInput.value)-Number(minInput.value))*0.005;
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    if(e.key === 'ArrowUp'){ target.value = clamp(Number(target.value) + nudge, minVal, maxVal); valueRange.value = target.value; valueNum.value = target.value; }
+    if(e.key === 'ArrowDown'){ target.value = clamp(Number(target.value) - nudge, minVal, maxVal); valueRange.value = target.value; valueNum.value = target.value; }
+  });
+
+  svg.addEventListener('click', (ev)=>{
+    const rect = svg.getBoundingClientRect();
+    const x = ev.clientX - (rect.left + rect.width/2);
+    const impulse = clamp(Math.abs(x)/160 * (Number(maxInput.value)-Number(minInput.value)) * 0.06, 1, (Number(maxInput.value)-Number(minInput.value))*0.4);
+    target.value = clamp(Number(target.value) + impulse, Number(minInput.value), Number(maxInput.value));
+    valueRange.value = target.value; valueNum.value = target.value;
+  });
+
+  if (copySvgBtn) copySvgBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    navigator.clipboard?.writeText(out).then(()=>{ copySvgBtn.textContent='Copied'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); }, ()=>{ copySvgBtn.textContent='Fail'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); });
+  });
+  if (exportPngBtn) exportPngBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    const img = new Image();
+    const svg64 = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out);
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      const w = img.width || 1200, h = img.height || 700;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#031022';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(function(blob){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'gauge.png'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+    };
+    img.src = svg64;
+  });
+  if (resetBtn) resetBtn.addEventListener('click', ()=>{
+    minInput.value = -20; maxInput.value = 100;
+    target.value = 34; valueRange.value = 34; valueNum.value = 34;
+    greenEndInput.value = 60; yellowEndInput.value = 80;
+    smoothingRange.value = 0.18; smoothingNum.value = 0.18;
+    rotX.value = rotXn.value = 18;
+    rotY.value = rotYn.value = -12;
+    rotZ.value = rotZn.value = 0;
+    zoom.value = zoomn.value = 1;
+    band.value = bandn.value = 18;
+    depth.value = depthn.value = 12;
+    steps.value = stepsn.value = 28;
+    apply3DTransform();
+    rebuild();
+  });
+
+  // API
+  window.applyPressure = function(payload){
+    if(!payload || typeof payload !== 'object') return;
+    if('min' in payload){ minInput.value = Number(payload.min); }
+    if('max' in payload){ maxInput.value = Number(payload.max); }
+    if('value' in payload){ target.value = Number(payload.value); valueRange.value = target.value; valueNum.value = target.value; }
+    rebuild();
+  };
+
+  // start
+  apply3DTransform();
+  rebuild();
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>
+```

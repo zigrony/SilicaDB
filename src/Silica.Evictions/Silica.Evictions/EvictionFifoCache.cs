@@ -7,6 +7,7 @@ using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
@@ -16,6 +17,10 @@ namespace Silica.Evictions
     public class EvictionFifoCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
+        static EvictionFifoCache()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
         private readonly AsyncLock _lock = new();
         private readonly int _capacity;
         private readonly Queue<TKey> _queue = new();
@@ -27,6 +32,7 @@ namespace Silica.Evictions
         private IMetricsManager _metrics;
         private readonly string _componentName;
         private bool _metricsRegistered;
+        private readonly bool _verbose;
 
         /// <summary>
         /// How many entries are currently in the cache.
@@ -46,6 +52,7 @@ namespace Silica.Evictions
             _onEvicted = onEvictedAsync ?? throw new EvictionNullOnEvictedException();
             // Metrics init + registration
             _componentName = GetType().Name;
+            _verbose = EvictionDiagnostics.EnableVerbose;
             _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
             try
             {
@@ -79,6 +86,7 @@ namespace Silica.Evictions
             swFactory.Stop();
             try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
             try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
+            if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "miss_build"); } catch { } }
 
             List<(TKey, TValue)> evicted = null;
             using (await _lock.LockAsync().ConfigureAwait(false))
@@ -103,6 +111,13 @@ namespace Silica.Evictions
                         Interlocked.Decrement(ref _count);
                         evicted = new List<(TKey, TValue)> { (oldest, removedVal) };
                         try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.SizeOnly); } catch { }
+                        try
+                        {
+                            EvictionDiagnostics.Emit(_componentName, "evict", "info", "fifo_evict",
+                                null,
+                                new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { TagKeys.Field, EvictionMetrics.Fields.SizeOnly } });
+                        }
+                        catch { }
                     }
                 }
             }
@@ -132,6 +147,14 @@ namespace Silica.Evictions
                 _queue.Clear();
                 Interlocked.Exchange(ref _count, 0);
             }
+
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposing_cache",
+                    null,
+                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { "evicted_items", all.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            }
+            catch { }
 
             foreach (var (k, v) in all)
                 await _onEvicted(k, v).ConfigureAwait(false);

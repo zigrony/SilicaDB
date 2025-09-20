@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Silica — 3D Hovering Sphere with Ground Shadow</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --size: 280;             /* sphere diameter (px) */
+    --bg: #0a1020;           /* page background */
+
+    /* Cool blue sphere palette (like the example) */
+    --blue1: #cfe9ff;        /* highlight */
+    --blue2: #76c0ff;        /* light */
+    --blue3: #2f8cff;        /* mid */
+    --blue4: #0f4fb7;        /* deep */
+    --blue5: #072d6f;        /* terminator */
+    --ao:    rgba(0,0,0,0.55);/* ambient occlusion */
+
+    /* Warm Silica word palette (kept from prior direction) */
+    --warm1: #cc5500;        /* burnt orange */
+    --warm2: #ffb300;        /* amber */
+    --warm3: #ffd54f;        /* golden yellow */
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    font-family: "Segoe UI", Inter, system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    display: grid;
+    place-items: center;
+  }
+
+  .scene {
+    position: relative;
+    width: calc(var(--size) * 1px);
+    /* extra vertical room so the hover shadow shows clearly */
+    padding-bottom: 80px;
+  }
+
+  /* The 3D sphere: layered gradients + specular highlight */
+  .sphere {
+    width: calc(var(--size) * 1px);
+    height: calc(var(--size) * 1px);
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    z-index: 2;
+
+    /* Multi-layer background for believable form:
+       - Base radial: core highlight to deep edge
+       - Subtle bottom-right darkening: ambient/terminator
+       - Peripheral cool bloom: outer glow */
+    background:
+      radial-gradient(circle at 30% 28%, var(--blue1) 0%, var(--blue2) 28%, var(--blue3) 52%, var(--blue4) 78%, var(--blue5) 100%),
+      radial-gradient(circle at 70% 75%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.35) 40%, transparent 65%),
+      radial-gradient(circle at 50% 120%, rgba(46,116,255,0.18), transparent 60%);
+    box-shadow:
+      0 0 36px rgba(46,116,255,0.35); /* soft outer glow */
+  }
+
+  /* Specular highlight (upper-left) */
+  .sphere::before{
+    content:"";
+    position:absolute;
+    top:9%; left:18%;
+    width:56%; height:38%;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.55) 35%, rgba(255,255,255,0.0) 75%);
+    filter: blur(8px);
+    pointer-events:none;
+  }
+
+  /* Inner ambient occlusion at the bottom edge (tightens contact) */
+  .sphere::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:4%;
+    transform: translateX(-50%);
+    width: 86%;
+    height: 30%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.18) 55%, transparent 75%);
+    filter: blur(6px);
+    pointer-events:none;
+    mix-blend-mode: multiply;
+  }
+
+  /* Wordmark and its mirrored reflection inside the sphere */
+  .word, .reflection {
+    font: 900 calc(var(--size) * 0.22px)/1 "Segoe UI", Inter, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: linear-gradient(120deg, var(--warm1), var(--warm2), var(--warm3));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    position: relative;
+    text-align: center;
+  }
+
+  .word { z-index: 3; }
+
+  .reflection{
+    transform: scaleY(-1);
+    margin-top: 8px; /* immediate placement beneath the word */
+    opacity: 0.5;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0));
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0));
+  }
+
+  /* Ground contact shadow to sell the hover */
+  .ground {
+    position: absolute;
+    left: 50%;
+    bottom: 8px; /* distance under sphere -> hover height */
+    transform: translateX(-50%);
+    width: calc(var(--size) * 0.72px);
+    height: calc(var(--size) * 0.18px);
+    border-radius: 50%;
+    /* Core dark contact with soft falloff */
+    background:
+      radial-gradient(ellipse at center,
+        rgba(0,0,0,0.55) 0%,
+        rgba(0,0,0,0.35) 45%,
+        rgba(0,0,0,0.18) 70%,
+        rgba(0,0,0,0.0) 100%);
+    filter: blur(10px);
+    z-index: 1;
+  }
+
+  /* Optional: faint colored spill on the ground around the shadow */
+  .ground::after{
+    content:"";
+    position:absolute;
+    inset:-15% -20%;
+    border-radius:50%;
+    background: radial-gradient(ellipse at center, rgba(46,116,255,0.22), transparent 65%);
+    filter: blur(14px);
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+  <div class="scene" aria-label="3D blue sphere hovering above ground with Silica and mirrored reflection">
+    <div class="sphere">
+      <div class="word">Silica</div>
+      <div class="reflection" aria-hidden="true">Silica</div>
+    </div>
+    <div class="ground" aria-hidden="true"></div>
+  </div>
+</body>
+</html>

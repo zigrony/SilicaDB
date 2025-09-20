@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Documentation</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link id="theme-link" rel="stylesheet" href="css/theme-light.css">
+</head>
+<body>
+  <header>
+    <h1>📘 My Documentation</h1>
+    <button id="theme-toggle">Toggle Theme</button>
+  </header>
+
+  <main>
+    <nav id="sidebar">
+      <ul>
+        <li><a href="#" data-page="intro.md">Introduction</a></li>
+        <li><a href="#" data-page="getting-started.md">Getting Started</a></li>
+        <li><a href="#" data-page="api.md">API Reference</a></li>
+      </ul>
+    </nav>
+    <section id="content">
+      <p>Select a page from the menu.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 My Docs Framework</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="js/markdown-loader.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

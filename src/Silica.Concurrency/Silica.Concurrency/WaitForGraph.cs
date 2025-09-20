@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Silica.Concurrency
 {
-    public class WaitForGraph
+    public sealed class WaitForGraph
     {
         private readonly object _graphLock = new object();
         private readonly Dictionary<long, HashSet<long>> _graph = new Dictionary<long, HashSet<long>>();
@@ -46,6 +46,7 @@ namespace Silica.Concurrency
 
                 // Snapshot keys to safely mutate dictionary entries.
                 long[] keys;
+                int used = 0;
                 {
                     var count = _graph.Keys.Count;
                     keys = new long[count];
@@ -54,10 +55,11 @@ namespace Silica.Concurrency
                     {
                         if (i < keys.Length) { keys[i] = k; i++; } else { break; }
                     }
+                    used = i;
                 }
 
                 // Remove inbound edges and prune empty adjacency sets.
-                for (int i = 0; i < keys.Length; i++)
+                for (int i = 0; i < used; i++)
                 {
                     var from = keys[i];
                     if (_graph.TryGetValue(from, out var set))
@@ -81,6 +83,7 @@ namespace Silica.Concurrency
 
                 // Snapshot keys without LINQ
                 long[] keys;
+                int used = 0;
                 {
                     var count = _graph.Keys.Count;
                     keys = new long[count];
@@ -89,9 +92,10 @@ namespace Silica.Concurrency
                     {
                         if (i < keys.Length) { keys[i] = k; i++; } else { break; }
                     }
+                    used = i;
                 }
 
-                for (int i = 0; i < keys.Length; i++)
+                for (int i = 0; i < used; i++)
                 {
                     var start = keys[i];
                     if (visited.Contains(start)) continue;

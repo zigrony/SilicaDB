@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Silica Logo — corrected sphere with vertical lines + FINAL_REDUCTION control</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    --stage-size: 400px;
+    --orbit-translateZ: 192px;
+    --tagline-color: #000000;
+    --tagline-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  html,body{height:100%;margin:0;}
+  body {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: radial-gradient(circle at center,#00e6b8 0%,#00997a 60%,#003d33 100%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #fff;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  .stage {
+    width: var(--stage-size);
+    height: var(--stage-size);
+    perspective: 1000px;
+    position: relative;
+  }
+
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  svg { width:100%; height:100%; display:block; }
+
+  .front { stroke: rgba(255,255,255,0.9); stroke-width: 1.5; fill:none; }
+  .back { stroke: rgba(102,204,204,0.25); stroke-width:1; fill:none; stroke-dasharray:4 4; }
+
+  .orbit-container {
+    position: absolute;
+    left:50%;
+    top:50%;
+    transform-style: preserve-3d;
+    transform: translate(-50%,-50%) rotateY(-110deg);
+    will-change: transform, opacity;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  .orbit-arm {
+    transform: translateZ(var(--orbit-translateZ));
+    transform-style: preserve-3d;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:200px;height:200px;
+  }
+
+  .arc3d {
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    transform-style: preserve-3d;
+    white-space:nowrap;
+  }
+  .arc3d span{
+    display:inline-block;
+    margin:0 2px;
+    font-weight:700;
+    color:#ff8a33;
+    line-height:1;
+  }
+
+  .tagline {
+    position:absolute;
+    left:50%;
+    transform: translateX(-50%);
+    font-size:18px;
+    white-space:nowrap;
+    opacity:0;
+    z-index:4;
+    color: var(--tagline-color);
+    font-family: var(--tagline-font);
+  }
+  .tagline span { display:inline-block; opacity:0; will-change: transform, opacity; }
+
+  .panel {
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    width: 420px;
+    background: rgba(0,0,0,0.66);
+    color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+  .panel h4 { margin: 0 0 8px 0; font-size:14px; }
+  .row { display:flex; gap:8px; align-items:center; margin:6px 0; }
+  .row label { min-width:108px; }
+  .row input[type="text"], .row select { flex:1; padding:6px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color:#fff; }
+  .row input[type="color"]{ width:44px; height:30px; padding:0; border:0; background:#fff; border-radius:4px;}
+  .row input[type="range"]{ flex:1; }
+  .small { font-size:12px; color:#ddd; }
+  ::placeholder { color: #aaa; opacity: 0.8; }
+  button { cursor:pointer; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="layer" id="backLayer"></div>
+
+    <div class="orbit-container" id="orbitContainer" aria-hidden="true">
+      <div class="orbit-arm" id="orbitArm">
+        <div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;">
+          <div class="arc3d" id="arc3d">
+            <span>S</span><span>i</span><span>l</span><span>i</span><span>c</span><span>a</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="frontLayer"></div>
+    <div class="tagline" id="tagline"></div>
+  </div>
+
+  <div class="panel" id="panel">
+    <h4>Tagline style & scale controls</h4>
+
+    <div class="row">
+      <label for="fontSelect">Font family</label>
+      <select id="fontSelect">
+        <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial">Inter / System</option>
+        <option value="'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial">Segoe UI</option>
+        <option value="'Roboto', system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial">Roboto</option>
+        <option value="'Helvetica Neue', Arial, sans-serif">Helvetica Neue</option>
+        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+        <option value="'Courier New', Courier, monospace">Courier New</option>
+        <option value="custom">Custom...</option>
+      </select>
+    </div>
+
+    <div class="row" id="customRow" style="display:none;">
+      <label for="customFont">Custom family</label>
+      <input id="customFont" type="text" placeholder="e.g. 'GT Sectra', Georgia, serif" />
+    </div>
+
+    <div class="row">
+      <label for="colorPicker">Color</label>
+      <input id="colorPicker" type="color" value="#000000" />
+      <div class="small" style="min-width:70px; text-align:right;">Preview</div>
+    </div>
+
+    <div class="row">
+      <label for="shadowSize">Shadow blur</label>
+      <input id="shadowSize" type="range" min="0" max="40" value="10" />
+      <div class="small" id="shadowSizeLabel">10px</div>
+    </div>
+
+    <div class="row">
+      <label for="shadowOffset">Offset Y</label>
+      <input id="shadowOffset" type="range" min="0" max="30" value="4" />
+      <div class="small" id="shadowOffsetLabel">4px</div>
+    </div>
+
+    <div class="row">
+      <label for="shadowAlpha">Shadow opacity</label>
+      <input id="shadowAlpha" type="range" min="0" max="100" value="65" />
+      <div class="small" id="shadowAlphaLabel">65%</div>
+    </div>
+
+    <div class="row">
+      <label for="finalReduction">Scale multiplier</label>
+      <input id="finalReduction" type="range" min="0.4" max="1.0" step="0.01" value="0.63" />
+      <div class="small" id="finalReductionLabel">0.63</div>
+    </div>
+
+    <div class="row">
+      <label>&nbsp;</label>
+      <button id="applyBtn" style="flex:1;padding:8px;border-radius:6px;border:0;background:#0b84ff;color:#fff;">Apply</button>
+    </div>
+
+    <div class="row">
+      <label>&nbsp;</label>
+      <button id="restartBtn" style="flex:1;padding:8px;border-radius:6px;border:0;background:#22c55e;color:#062e1a;">Restart</button>
+    </div>
+
+    <div class="small">Use Scale multiplier to reduce the autoscaled Silica size. Move slider, then hit Restart to re-run scaling and orbit.</div>
+  </div>
+
+<script>
+/* Elements */
+const stage = document.getElementById('stage');
+const backLayer = document.getElementById('backLayer');
+const frontLayer = document.getElementById('frontLayer');
+const orbitContainer = document.getElementById('orbitContainer');
+const arc3d = document.getElementById('arc3d');
+const orbitArm = document.getElementById('orbitArm');
+const taglineDiv = document.getElementById('tagline');
+
+const fontSelect = document.getElementById('fontSelect');
+const customRow = document.getElementById('customRow');
+const customFont = document.getElementById('customFont');
+const colorPicker = document.getElementById('colorPicker');
+const shadowSize = document.getElementById('shadowSize');
+const shadowOffset = document.getElementById('shadowOffset');
+const shadowAlpha = document.getElementById('shadowAlpha');
+const shadowSizeLabel = document.getElementById('shadowSizeLabel');
+const shadowOffsetLabel = document.getElementById('shadowOffsetLabel');
+const shadowAlphaLabel = document.getElementById('shadowAlphaLabel');
+const applyBtn = document.getElementById('applyBtn');
+const restartBtn = document.getElementById('restartBtn');
+const finalReduction = document.getElementById('finalReduction');
+const finalReductionLabel = document.getElementById('finalReductionLabel');
+
+let intervalId = null;
+let lastVisible = true;
+let orbitAnimation = null;
+
+/* default final reduction value (reads slider) */
+let FINAL_REDUCTION = parseFloat(finalReduction.value);
+
+/* SVG helper */
+const svgNS = "http://www.w3.org/2000/svg";
+
+/* Correct sphere builder: draws latitude and longitude ellipses based on density */
+function buildSphere(density) {
+  const backSVG = document.createElementNS(svgNS,"svg");
+  backSVG.setAttribute("viewBox","0 0 200 200");
+  backSVG.setAttribute("width","100%");
+  backSVG.setAttribute("height","100%");
+
+  const frontSVG = document.createElementNS(svgNS,"svg");
+  frontSVG.setAttribute("viewBox","0 0 200 200");
+  frontSVG.setAttribute("width","100%");
+  frontSVG.setAttribute("height","100%");
+
+  // central circle (front) for measurement + visible ring
+  const circle = document.createElementNS(svgNS,"circle");
+  circle.setAttribute("cx",100); circle.setAttribute("cy",100); circle.setAttribute("r",95);
+  circle.setAttribute("class","front");
+  frontSVG.appendChild(circle);
+
+  // latitudes (horizontal ellipses)
+  for (let i = 1; i < density; i++) {
+    const ry = (95 / density) * i;
+    const latBack = document.createElementNS(svgNS, "ellipse");
+    latBack.setAttribute("cx", 100);
+    latBack.setAttribute("cy", 100);
+    latBack.setAttribute("rx", 95);
+    latBack.setAttribute("ry", ry);
+    latBack.setAttribute("class", "back");
+    backSVG.appendChild(latBack);
+
+    const latFront = latBack.cloneNode();
+    latFront.setAttribute("class", "front");
+    frontSVG.appendChild(latFront);
+  }
+
+  // longitudes (vertical ellipses) — use same density for number of longitudes
+  for (let i = 1; i < density; i++) {
+    const rx = (95 / density) * i;
+    const lonBack = document.createElementNS(svgNS, "ellipse");
+    lonBack.setAttribute("cx", 100);
+    lonBack.setAttribute("cy", 100);
+    lonBack.setAttribute("rx", rx);
+    lonBack.setAttribute("ry", 95);
+    lonBack.setAttribute("class", "back");
+    backSVG.appendChild(lonBack);
+
+    const lonFront = lonBack.cloneNode();
+    lonFront.setAttribute("class", "front");
+    frontSVG.appendChild(lonFront);
+  }
+
+  return { backSVG, frontSVG };
+}
+
+function applyArcDepth(depth){
+  const letters = arc3d.querySelectorAll('span');
+  const mid = (letters.length-1)/2;
+  letters.forEach((s,i)=>{
+    const rel = i-mid;
+    const z = depth - Math.abs(rel)*(depth/mid || 0);
+    s.style.transform = `translateZ(${z}px)`;
+  });
+}
+
+/* slideshow then callback */
+function runSphereCycle(callback){
+  const maxDensity = 8; // higher density to show vertical lines clearly
+  const bins = 6, fade = 700, dwell = 90, arcDepth = 18;
+  applyArcDepth(arcDepth);
+  const densities = [];
+  for (let i=0;i<bins;i++){
+    const t = (bins===1)?0:i/(bins-1);
+    densities.push(Math.round(2 + (maxDensity-2)*t));
+  }
+  const unique = [...new Set(densities)];
+  let index = 0;
+  function showDensity(idx){
+    backLayer.innerHTML=''; frontLayer.innerHTML='';
+    const {backSVG, frontSVG} = buildSphere(unique[idx]);
+    backLayer.appendChild(backSVG);
+    frontLayer.appendChild(frontSVG);
+  }
+  showDensity(0);
+  intervalId = setInterval(()=>{
+    index++;
+    if (index < unique.length) showDensity(index);
+    else { clearInterval(intervalId); callback && callback(); }
+  }, fade + dwell);
+}
+
+/* masking */
+function getDOMMatrix(transform){
+  if (typeof DOMMatrixReadOnly !== 'undefined') return new DOMMatrixReadOnly(transform);
+  if (typeof DOMMatrix !== 'undefined') return new DOMMatrix(transform);
+  return new WebKitCSSMatrix(transform);
+}
+
+function updateVisibility(){
+  const style = getComputedStyle(orbitContainer);
+  const matrix = getDOMMatrix(style.transform);
+  const angle = Math.atan2(matrix.m13, matrix.m11) * (180/Math.PI);
+  const deg = (angle + 360) % 360;
+  if (lastVisible && deg > 100 && deg < 260){ arc3d.style.opacity = 0; lastVisible = false; }
+  else if (!lastVisible && (deg <= 80 || deg >= 280)){ arc3d.style.opacity = 1; lastVisible = true; }
+  requestAnimationFrame(updateVisibility);
+}
+
+/* orbit-in using WAAPI */
+function animateOrbitIn(duration=3600, onFinish){
+  orbitContainer.style.transform = 'translate(-50%,-50%) rotateY(-110deg)';
+  orbitContainer.style.opacity = 0;
+  if (orbitAnimation) orbitAnimation.cancel();
+  orbitAnimation = orbitContainer.animate(
+    [
+      { transform: 'translate(-50%,-50%) rotateY(-110deg)', opacity: 0 },
+      { transform: 'translate(-50%,-50%) rotateY(0deg)', opacity: 1 }
+    ],
+    { duration, easing: 'cubic-bezier(.22,.78,.32,1)', fill:'forwards' }
+  );
+  orbitAnimation.onfinish = () => {
+    orbitContainer.style.transform = 'translate(-50%,-50%) rotateY(0deg)';
+    orbitContainer.style.opacity = 1;
+    onFinish && onFinish();
+  };
+}
+
+/* autoscaler: find font-size so word width ~= targetArcPx; applies FINAL_REDUCTION */
+function scaleSilicaToArc(targetArcPx) {
+  const letters = Array.from(arc3d.querySelectorAll('span'));
+  if (!letters.length) return;
+  const proxy = arc3d.cloneNode(true);
+  proxy.style.position='absolute'; proxy.style.left='-9999px'; proxy.style.top='-9999px';
+  proxy.style.opacity='0'; proxy.style.pointerEvents='none'; document.body.appendChild(proxy);
+
+  let minFS = 8, maxFS = 320, best = minFS;
+  for (let i=0;i<16;i++){
+    const mid = (minFS + maxFS) / 2;
+    proxy.querySelectorAll('span').forEach(s => s.style.fontSize = mid + 'px');
+    const w = proxy.scrollWidth;
+    if (w > targetArcPx) maxFS = mid; else { minFS = mid; best = mid; }
+  }
+
+  best = best * FINAL_REDUCTION; // apply user-controlled final reduction
+  letters.forEach(s => s.style.fontSize = best + 'px');
+  document.body.removeChild(proxy);
+}
+
+/* position tagline baseline under arc */
+function positionTaglineUnderArc(gap = 6){
+  const arcRect = arc3d.getBoundingClientRect();
+  const stageRect = stage.getBoundingClientRect();
+  const bottomRelative = arcRect.bottom - stageRect.top;
+  taglineDiv.style.top = (bottomRelative + gap) + 'px';
+}
+
+/* tagline reveal preserves spaces */
+function showTagline(){
+  const text = "Opensource Enterprise SQL, Power in your hands.";
+  taglineDiv.innerHTML = '';
+  for (let ch of text){
+    const span = document.createElement('span');
+    span.textContent = (ch === ' ') ? '\u00A0' : ch;
+    taglineDiv.appendChild(span);
+  }
+  taglineDiv.style.opacity = 1;
+  const spans = Array.from(taglineDiv.querySelectorAll('span'));
+  spans.forEach((span,i) => {
+    const dx = (Math.random() - 0.5) * 260;
+    const dy = (Math.random() - 0.5) * 100;
+    span.style.transform = `translate(${dx}px,${dy}px)`;
+    setTimeout(()=> {
+      span.style.transition = 'transform 0.8s cubic-bezier(.22,.78,.32,1), opacity 0.6s';
+      span.style.transform = 'translate(0,0)';
+      span.style.opacity = '1';
+    }, 120 + i * 26);
+  });
+}
+
+/* full flow: run wireframe slideshow, autoscale Silica, orbit-in, then tagline placement & reveal */
+function orbitInThenTagline(){
+  const frontCircle = frontLayer.querySelector('circle');
+  let radiusPx = frontCircle ? frontCircle.getBoundingClientRect().width / 2 : stage.clientWidth / 2;
+  const circumference = 2 * Math.PI * radiusPx;
+  const targetArc = circumference * 0.85;
+  scaleSilicaToArc(targetArc); // uses FINAL_REDUCTION
+  animateOrbitIn(3600, () => {
+    positionTaglineUnderArc(8);
+    showTagline();
+  });
+}
+
+/* tagline style updater (color, font-family, shadow) */
+function updateTaglineStyle(){
+  // font
+  let fam = fontSelect.value;
+  if (fam === 'custom') fam = customFont.value.trim() || getComputedStyle(document.documentElement).getPropertyValue('--tagline-font').trim();
+  document.documentElement.style.setProperty('--tagline-font', fam);
+  taglineDiv.style.fontFamily = fam;
+
+  // color
+  const col = colorPicker.value;
+  document.documentElement.style.setProperty('--tagline-color', col);
+  taglineDiv.style.color = col;
+
+  // shadow
+  const blur = parseInt(shadowSize.value, 10);
+  const offsetY = parseInt(shadowOffset.value, 10);
+  const alpha = parseInt(shadowAlpha.value, 10) / 100;
+  shadowSizeLabel.textContent = blur + 'px';
+  shadowOffsetLabel.textContent = offsetY + 'px';
+  shadowAlphaLabel.textContent = Math.round(alpha * 100) + '%';
+  const shadowColor = `rgba(255,255,255,${alpha})`;
+  const shadowValue = `0 ${offsetY}px ${blur}px ${shadowColor}`;
+  const spans = taglineDiv.querySelectorAll('span');
+  spans.forEach(s => s.style.textShadow = shadowValue);
+}
+
+/* UI wiring */
+fontSelect.addEventListener('change', () => { customRow.style.display = fontSelect.value === 'custom' ? 'flex' : 'none'; updateTaglineStyle(); });
+customFont.addEventListener('input', updateTaglineStyle);
+colorPicker.addEventListener('input', updateTaglineStyle);
+shadowSize.addEventListener('input', updateTaglineStyle);
+shadowOffset.addEventListener('input', updateTaglineStyle);
+shadowAlpha.addEventListener('input', updateTaglineStyle);
+
+finalReduction.addEventListener('input', () => {
+  FINAL_REDUCTION = parseFloat(finalReduction.value);
+  finalReductionLabel.textContent = FINAL_REDUCTION.toFixed(2);
+});
+
+applyBtn.addEventListener('click', updateTaglineStyle);
+
+restartBtn.addEventListener('click', () => {
+  clearInterval(intervalId);
+  if (orbitAnimation) orbitAnimation.cancel();
+  taglineDiv.innerHTML = '';
+  arc3d.style.opacity = 1;
+  orbitContainer.style.opacity = 0;
+  orbitContainer.style.transform = 'translate(-50%,-50%) rotateY(-110deg)';
+  // re-run flow (autoscale uses current FINAL_REDUCTION)
+  runSphereCycle(() => orbitInThenTagline());
+});
+
+/* start */
+requestAnimationFrame(updateVisibility);
+runSphereCycle(() => orbitInThenTagline());
+
+/* ensure tagline styles apply to newly created spans */
+const observer = new MutationObserver(() => updateTaglineStyle());
+observer.observe(taglineDiv, { childList: true });
+
+/* init label values */
+shadowSizeLabel.textContent = shadowSize.value + 'px';
+shadowOffsetLabel.textContent = shadowOffset.value + 'px';
+shadowAlphaLabel.textContent = shadowAlpha.value + '%';
+finalReductionLabel.textContent = FINAL_REDUCTION.toFixed(2);
+updateTaglineStyle();
+</script>
+</body>
+</html>

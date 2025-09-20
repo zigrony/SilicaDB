@@ -1,0 +1,14 @@
+{
+  "name": "silica-needle",
+  "version": "0.1.0",
+  "description": "Reusable 3D SVG needle Web Component — value + anchor + rotatable lighting",
+  "type": "module",
+  "scripts": {
+    "start": "npx sirv demo --single --dev"
+  },
+  "author": "Silica",
+  "license": "MIT",
+  "devDependencies": {
+    "sirv-cli": "^2.0.0"
+  }
+}

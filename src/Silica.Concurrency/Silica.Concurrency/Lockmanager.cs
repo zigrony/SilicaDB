@@ -1,12 +1,15 @@
 ﻿using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Concurrency.Metrics;
+using Silica.Concurrency.Diagnostics;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 
 
 namespace Silica.Concurrency
@@ -15,6 +18,7 @@ namespace Silica.Concurrency
     /// Result of a lock acquisition: whether it succeeded, plus a strictly
     /// increasing fencing token to accompany all follow-on operations.
     /// </summary>
+    [DebuggerDisplay("Granted = {Granted}, Token = {FencingToken}")]
     public readonly struct LockGrant
     {
         public bool Granted { get; }
@@ -42,9 +46,29 @@ namespace Silica.Concurrency
     /// Manages async, FIFO-fair shared/exclusive locks per resource,
     /// hooks into the wait-for graph, and records wait times.
     /// </summary>
-    public class LockManager : IDisposable
+    public sealed class LockManager : IDisposable
     {
-        private volatile bool _disposed;
+        // Upper bound for resourceId length to prevent pathological keys and tag blowups.
+        // Chosen conservatively; adjust if you have a documented contract elsewhere.
+        private const int MaxResourceIdLength = 4096;
+        // Upper bound for per-resource fencing token associations to prevent unbounded growth
+        // under long-lived contention with high tx churn. Tuned conservatively.
+        private const int MaxTokensPerResource = 65536;
+        // Static initializer runs once to guarantee exception registration.
+        static LockManager()
+        {
+            try
+            {
+                ConcurrencyExceptions.RegisterAll();
+            }
+            catch
+            {
+                // Never throw from a type initializer; registration is idempotent and safe to ignore on failure.
+            }
+        }
+
+        // _disposed: 0 == not disposed, 1 == disposed. Use Interlocked.Exchange to set.
+        private volatile int _disposed;
         private readonly WaitForGraph _waitForGraph = new WaitForGraph();
         private readonly ConcurrentDictionary<string, ResourceLock> _locks = new ConcurrentDictionary<string, ResourceLock>();
         // Per-resource fencing token state: monotonic counter + tx->token map
@@ -81,11 +105,17 @@ namespace Silica.Concurrency
                 => (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
         }
 
+        private static string ModeToString(LockMode mode)
+        {
+            // Force invariant, low-cardinality representation for traces/metrics.
+            return mode == LockMode.Exclusive ? "exclusive" : "shared";
+        }
+
         public LockManager(
             IMetricsManager metrics,
             ILockRpcClient? rpcClient = null,
             string nodeId = "local",
-            string componentName = "Concurrency",
+            string componentName = "Silica.Concurrency",
             bool strictReleaseTokens = true,
             bool strictAcquireTokens = true)
         {
@@ -96,7 +126,7 @@ namespace Silica.Concurrency
             if (nodeId.Length == 0 || string.IsNullOrWhiteSpace(nodeId)) throw new ArgumentException("nodeId must be non-empty and non-whitespace.", nameof(nodeId));
             _nodeId = nodeId;
             _rpcClient = rpcClient ?? new LocalLockRpcClient(this);
-            var comp = string.IsNullOrWhiteSpace(componentName) ? "Concurrency" : componentName;
+            var comp = string.IsNullOrWhiteSpace(componentName) ? "Silica.Concurrency" : componentName;
             _componentTag = new KeyValuePair<string, object>(TagKeys.Component, comp);
             ConcurrencyMetrics.RegisterAll(_metrics, comp, queueDepthProvider: GetApproxQueueDepth);
             _strictReleaseTokens = strictReleaseTokens;
@@ -108,23 +138,34 @@ namespace Silica.Concurrency
             if (resourceId is null) throw new ArgumentNullException(paramName);
             if (resourceId.Length == 0 || string.IsNullOrWhiteSpace(resourceId))
                 throw new ArgumentException("resourceId must be non-empty and non-whitespace.", paramName);
+            if (resourceId.Length > MaxResourceIdLength)
+                throw new ArgumentOutOfRangeException(paramName, "resourceId length exceeds maximum allowed.");
         }
         private void ThrowIfDisposed()
         {
-            if (_disposed)
+            if (System.Threading.Volatile.Read(ref _disposed) != 0)
             {
-                throw new ObjectDisposedException("LockManager");
+                throw new LockManagerDisposedException();
             }
         }
 
 
         private long GetApproxQueueDepth()
         {
-            if (_disposed) return 0;
+            // If disposed, report 0 deterministically.
+            if (System.Threading.Volatile.Read(ref _disposed) != 0) return 0;
             long total = 0;
+            // Snapshot to avoid transient issues if Dispose is racing.
             foreach (var kv in _locks)
             {
-                total += kv.Value.GetQueueLength();
+                try
+                {
+                    total += kv.Value.GetQueueLength();
+                }
+                catch
+                {
+                    // Defensive: ignore transient failures during concurrent shutdown.
+                }
             }
             return total;
         }
@@ -163,7 +204,7 @@ namespace Silica.Concurrency
             if (timeoutMilliseconds < Timeout.Infinite) throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "timeoutMilliseconds must be >= -1.");
             ConcurrencyMetrics.IncrementAcquireAttempt(_metrics, ConcurrencyMetrics.Fields.Shared);
             TryEmitTrace("AcquireShared", "start",
-                $"attempt_shared node={_nodeId}, resource={resourceId}, tx={transactionId}, timeout_ms={timeoutMilliseconds}",
+                "attempt_shared node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", timeout_ms=" + timeoutMilliseconds.ToString(CultureInfo.InvariantCulture),
                 "acquire_start",
                 transactionId, resourceId);
 
@@ -182,11 +223,24 @@ namespace Silica.Concurrency
             }
             catch (OperationCanceledException)
             {
-                // Record latency for cancellation and emit terminal trace, then rethrow.
-                ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Shared);
-                TryEmitTrace("AcquireShared", "cancelled",
-                    $"acquire_shared_cancelled node={_nodeId}, resource={resourceId}, tx={transactionId}",
-                    "acquire_cancelled",
+                // Cancellation is already recorded and traced in the waiter callback (single source of truth).
+                throw;
+            }
+            catch (ReservationOverflowException)
+            {
+                // Emit outside internal locks to avoid lengthening critical sections.
+                TryEmitTrace("AcquireShared", "error",
+                    "reservation_overflow node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture),
+                    "reservation_overflow",
+                    transactionId, resourceId);
+                throw;
+            }
+            catch (ReentrantHoldOverflowException)
+            {
+                // Emit outside internal locks to avoid lengthening critical sections.
+                TryEmitTrace("AcquireShared", "error",
+                    "holder_count_overflow node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture),
+                    "holder_overflow",
                     transactionId, resourceId);
                 throw;
             }
@@ -196,7 +250,7 @@ namespace Silica.Concurrency
                 // ResourceLock already records wait timeout; avoid double-counting.
                 ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Shared);
                 TryEmitTrace("AcquireShared", "warn",
-                    $"acquire_shared_timeout node={_nodeId}, resource={resourceId}, tx={transactionId}, timeout_ms={timeoutMilliseconds}",
+                    "acquire_shared_timeout node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", timeout_ms=" + timeoutMilliseconds.ToString(CultureInfo.InvariantCulture),
                     "acquire_timeout",
                     transactionId, resourceId);
                 return new LockGrant(false, fencingToken: 0);
@@ -209,7 +263,7 @@ namespace Silica.Concurrency
             ConcurrencyMetrics.IncrementAcquire(_metrics, ConcurrencyMetrics.Fields.Shared);
             ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Shared);
             TryEmitTrace("AcquireShared", "ok",
-                $"granted_shared node={_nodeId}, resource={resourceId}, tx={transactionId}, token={token}",
+                "granted_shared node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + token.ToString(CultureInfo.InvariantCulture),
                 "acquire_granted",
                 transactionId, resourceId);
 
@@ -229,7 +283,7 @@ namespace Silica.Concurrency
             if (timeoutMilliseconds < Timeout.Infinite) throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "timeoutMilliseconds must be >= -1.");
             ConcurrencyMetrics.IncrementAcquireAttempt(_metrics, ConcurrencyMetrics.Fields.Exclusive);
             TryEmitTrace("AcquireExclusive", "start",
-                $"attempt_exclusive node={_nodeId}, resource={resourceId}, tx={transactionId}, timeout_ms={timeoutMilliseconds}",
+                "attempt_exclusive node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", timeout_ms=" + timeoutMilliseconds.ToString(CultureInfo.InvariantCulture),
                 "acquire_start",
                 transactionId, resourceId);
 
@@ -248,11 +302,22 @@ namespace Silica.Concurrency
             }
             catch (OperationCanceledException)
             {
-                // Record latency for cancellation and emit terminal trace, then rethrow.
-                ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Exclusive);
-                TryEmitTrace("AcquireExclusive", "cancelled",
-                    $"acquire_exclusive_cancelled node={_nodeId}, resource={resourceId}, tx={transactionId}",
-                    "acquire_cancelled",
+                // Cancellation is already recorded and traced in the waiter callback (single source of truth).
+                throw;
+            }
+            catch (ReservationOverflowException)
+            {
+                TryEmitTrace("AcquireExclusive", "error",
+                    "reservation_overflow node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture),
+                    "reservation_overflow",
+                    transactionId, resourceId);
+                throw;
+            }
+            catch (ReentrantHoldOverflowException)
+            {
+                TryEmitTrace("AcquireExclusive", "error",
+                    "holder_count_overflow node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture),
+                    "holder_overflow",
                     transactionId, resourceId);
                 throw;
             }
@@ -262,7 +327,7 @@ namespace Silica.Concurrency
                 // ResourceLock already records wait timeout; avoid double-counting.
                 ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Exclusive);
                 TryEmitTrace("AcquireExclusive", "warn",
-                    $"acquire_exclusive_timeout node={_nodeId}, resource={resourceId}, tx={transactionId}, timeout_ms={timeoutMilliseconds}",
+                    "acquire_exclusive_timeout node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", timeout_ms=" + timeoutMilliseconds.ToString(CultureInfo.InvariantCulture),
                     "acquire_timeout",
                     transactionId, resourceId);
                 return new LockGrant(false, fencingToken: 0);
@@ -275,7 +340,7 @@ namespace Silica.Concurrency
             ConcurrencyMetrics.IncrementAcquire(_metrics, ConcurrencyMetrics.Fields.Exclusive);
             ConcurrencyMetrics.RecordAcquireLatency(_metrics, StopwatchUtil.GetElapsedMilliseconds(start), ConcurrencyMetrics.Fields.Exclusive);
             TryEmitTrace("AcquireExclusive", "ok",
-                $"granted_exclusive node={_nodeId}, resource={resourceId}, tx={transactionId}, token={token}",
+                "granted_exclusive node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + token.ToString(CultureInfo.InvariantCulture),
                 "acquire_granted",
                 transactionId, resourceId);
 
@@ -293,118 +358,130 @@ namespace Silica.Concurrency
         {
             if (transactionId <= 0) throw new ArgumentOutOfRangeException(nameof(transactionId), "transactionId must be > 0.");
             ValidateResourceId(resourceId, nameof(resourceId));
-            // Validate token against the per-(resource, txId) association (peek only)
-            long expected = 0;
-            if (!TryPeekToken(resourceId, transactionId, out expected))
-            {
-                // No active token mapping for (resource, tx)
-                // If disposed, treat as best-effort no-op to avoid shutdown fault amplification.
-                if (_disposed)
-                {
-                    TryEmitTrace("Release", "warn",
-                        "post_dispose_missing_token node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString() + ", token=" + fencingToken.ToString() + ", expected=<none>",
-                        "post_dispose_token_missing",
-                        transactionId, resourceId,
-                        allowWhenDisposed: true);
-                    return;
-                }
-                TryEmitTrace("Release", "error",
-                    "missing_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + transactionId.ToString() + ", token=" + fencingToken.ToString() + ", expected=<none>",
-                    "token_missing",
-                    transactionId, resourceId);
-                if (_strictReleaseTokens)
-                {
-                    throw new InvalidOperationException(
-                        "Invalid or stale fencing token for resource '" + resourceId + "'. Expected=<none>, got " + fencingToken.ToString() + ".");
-                }
-                // Best-effort mode: treat as no-op release to prevent fault amplification.
-                return;
-            }
 
-            string releasedMode = "unknown";
-            bool released = false;
-            if (_locks.TryGetValue(resourceId, out var rlock))
+            try
             {
-                // Reject mismatched token before attempting release
-                if (expected != fencingToken)
+                // Validate token against the per-(resource, txId) association (peek only)
+                long expected = 0;
+                if (!TryPeekToken(resourceId, transactionId, out expected))
                 {
-                    if (_disposed)
+                    // No active token mapping for (resource, tx)
+                    // If disposed, treat as best-effort no-op to avoid shutdown fault amplification.
+                    if (System.Threading.Volatile.Read(ref _disposed) != 0)
                     {
                         TryEmitTrace("Release", "warn",
-                            "post_dispose_invalid_token node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString() + ", token=" + fencingToken.ToString() + ", expected=" + expected.ToString(),
-                            "post_dispose_invalid_token",
+                            "post_dispose_missing_token node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture) + ", expected=<none>",
+                            "post_dispose_token_missing",
                             transactionId, resourceId,
                             allowWhenDisposed: true);
                         return;
                     }
                     TryEmitTrace("Release", "error",
-                        "invalid_or_stale_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + transactionId.ToString() + ", token=" + fencingToken.ToString() + ", expected=" + expected.ToString(),
-                        "invalid_token",
+                        "missing_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture) + ", expected=<none>",
+                        "token_missing",
                         transactionId, resourceId);
                     if (_strictReleaseTokens)
                     {
-                        throw new InvalidOperationException(
-                            "Invalid or stale fencing token for resource '" + resourceId + "'. Expected " + expected.ToString() + ", got " + fencingToken.ToString() + ".");
+                        throw new InvalidFencingTokenException(resourceId, expected: 0, provided: fencingToken);
                     }
-                    // Best-effort mode: do not throw; treat as no-op.
+                    // Best-effort mode: treat as no-op release to prevent fault amplification.
                     return;
                 }
-                bool wasHolder = false;
-                released = rlock.ReleaseWithMode(transactionId, out releasedMode, out wasHolder);
-                _waitForGraph.RemoveTransaction(transactionId);
 
-                if (!wasHolder)
+                string releasedMode = ConcurrencyMetrics.Fields.None;
+                bool released = false;
+                if (_locks.TryGetValue(resourceId, out var rlock))
                 {
-                    // A valid token was provided, but this transaction was not a holder of the resource.
-                    // In strict mode, surface the misuse to callers.
-                    TryEmitTrace("Release", _strictReleaseTokens ? "error" : "warn",
-                        "release_not_holder node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString() + ", token=" + fencingToken.ToString(),
-                        "release_not_holder",
-                        transactionId, resourceId);
-                    if (_strictReleaseTokens)
+                    // Reject mismatched token before attempting release
+                    if (expected != fencingToken)
                     {
-                        throw new InvalidOperationException(
-                            "Release called with a valid fencing token, but the transaction is not a holder of resource '" + resourceId + "'.");
+                        if (System.Threading.Volatile.Read(ref _disposed) != 0)
+                        {
+                            TryEmitTrace("Release", "warn",
+                                "post_dispose_invalid_token node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture) + ", expected=" + expected.ToString(CultureInfo.InvariantCulture),
+                                "post_dispose_invalid_token",
+                                transactionId, resourceId,
+                                allowWhenDisposed: true);
+                            return;
+                        }
+                        TryEmitTrace("Release", "error",
+                            "invalid_or_stale_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture) + ", expected=" + expected.ToString(CultureInfo.InvariantCulture),
+                            "invalid_token",
+                            transactionId, resourceId);
+                        if (_strictReleaseTokens)
+                        {
+                            throw new InvalidFencingTokenException(resourceId, expected: expected, provided: fencingToken);
+                        }
+                        // Best-effort mode: do not throw; treat as no-op.
+                        return;
                     }
-                }
+                    bool wasHolder = false;
+                    released = rlock.ReleaseWithMode(transactionId, out releasedMode, out wasHolder);
 
-                if (rlock.IsUnused)
-                {
-                    _locks.TryRemove(resourceId, out _);
-                    // If no tokens remain for this resource, remove state to avoid growth
-                    CleanupResourceTokensIfEmpty(resourceId);
-                }
-            }
-            else
-            {
-                if (_disposed)
-                {
-                    TryEmitTrace("Release", "warn",
-                        $"post_dispose_release_noop node={_nodeId}, resource={resourceId}, tx={transactionId} (no lock found)",
-                        "post_dispose_release_noop",
-                        transactionId, resourceId,
-                        allowWhenDisposed: true);
+                    if (!wasHolder)
+                    {
+                        // Ensure consistent metrics attribution for misuse/no-op
+                        releasedMode = ConcurrencyMetrics.Fields.None;
+                        // A valid token was provided, but this transaction was not a holder of the resource.
+                        // In strict mode, surface the misuse to callers.
+                        TryEmitTrace("Release", _strictReleaseTokens ? "error" : "warn",
+                            "release_not_holder node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture),
+                            "release_not_holder",
+                            transactionId, resourceId);
+                        if (_strictReleaseTokens)
+                        {
+                            throw new ReleaseNotHolderException(resourceId, transactionId);
+                        }
+                    }
+
+                    if (rlock.IsUnused)
+                    {
+                        _locks.TryRemove(resourceId, out _);
+                        // If no tokens remain for this resource, remove state to avoid growth
+                        CleanupResourceTokensIfEmpty(resourceId);
+                    }
                 }
                 else
                 {
-                    TryEmitTrace("Release", "warn",
-                        $"release_noop node={_nodeId}, resource={resourceId}, tx={transactionId} (no lock found)",
-                        "release_noop",
-                        transactionId, resourceId);
+                    if (System.Threading.Volatile.Read(ref _disposed) != 0)
+                    {
+                        TryEmitTrace("Release", "warn",
+                            "post_dispose_release_noop node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + " (no lock found)",
+                            "post_dispose_release_noop",
+                            transactionId, resourceId,
+                            allowWhenDisposed: true);
+                        // No-op after dispose — attribute to "none" for metrics clarity
+                        releasedMode = ConcurrencyMetrics.Fields.None;
+                    }
+                    else
+                    {
+                        TryEmitTrace("Release", "warn",
+                            "release_noop node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + " (no lock found)",
+                            "release_noop",
+                            transactionId, resourceId);
+                        // No lock state available — attribute to "none"
+                        releasedMode = ConcurrencyMetrics.Fields.None;
+                    }
+                    // If strict, this inconsistency must surface: token mapping exists but no lock state.
+                    if (System.Threading.Volatile.Read(ref _disposed) == 0 && _strictReleaseTokens && expected == fencingToken)
+                    {
+                        // Emit a more precise trace before throwing to aid root cause.
+                        TryEmitTrace("Release", "error",
+                            "release_state_inconsistent node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + " (token matched but no lock state)",
+                            "release_state_inconsistent",
+                            transactionId, resourceId);
+                        // The token association exists and matches, but the transaction is not an active holder.
+                        // Surface as a not-holder misuse to align with the canonical contract.
+                        // Metrics attribution already set to "none" above.
+                        throw new ReleaseNotHolderException(resourceId, transactionId);
+                    }
+                    // In lenient mode, prune stale token mappings to avoid leaks when no lock exists.
+                    if (!_strictReleaseTokens && expected == fencingToken)
+                    {
+                        ConsumeToken(resourceId, transactionId);
+                        CleanupResourceTokensIfEmpty(resourceId);
+                    }
                 }
-                // If strict, this inconsistency must surface: token mapping exists but no lock state.
-                if (!_disposed && _strictReleaseTokens && expected == fencingToken)
-                {
-                    throw new InvalidOperationException(
-                        "Release called with a valid fencing token but no in-memory lock state exists for resource '" + resourceId + "'.");
-                }
-                // In lenient mode, prune stale token mappings to avoid leaks when no lock exists.
-                if (!_strictReleaseTokens && expected == fencingToken)
-                {
-                    ConsumeToken(resourceId, transactionId);
-                    CleanupResourceTokensIfEmpty(resourceId);
-                }
-            }
 
             // Consume token only if we actually removed the holder (last reference for this tx on this resource).
             if (released)
@@ -413,15 +490,22 @@ namespace Silica.Concurrency
                 CleanupResourceTokensIfEmpty(resourceId);
             }
 
-            // Metrics + trace (mode-aware if possible)
+            // Metrics + trace (mode-aware if possible; "none" for no-op/misuse)
             ConcurrencyMetrics.IncrementRelease(_metrics, releasedMode);
             TryEmitTrace("Release", released ? "ok" : "warn",
-                $"release node={_nodeId}, resource={resourceId}, tx={transactionId}, token={fencingToken}, mode={releasedMode}",
+                "release node=" + _nodeId + ", resource=" + resourceId + ", tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", token=" + fencingToken.ToString(CultureInfo.InvariantCulture) + ", mode=" + releasedMode,
                 "release",
                 transactionId, resourceId);
 
-            // Note: if not released (e.g., txId wasn’t a holder), the token check still passed,
-            // which indicates a release ordering issue worth tracing by upstream callers.
+                // Note: if not released (e.g., txId wasn’t a holder), the token check still passed,
+                // which indicates a release ordering issue worth tracing by upstream callers.
+            }
+            finally
+            {
+                // Always clear any edges for this transaction from the wait-for graph.
+                // Centralizing here guarantees a single, deterministic removal regardless of early returns.
+                _waitForGraph.RemoveTransaction(transactionId);
+            }
         }
 
         // Public RPC-aligned release API (mirrors Acquire*Async delegation)
@@ -435,11 +519,24 @@ namespace Silica.Concurrency
             ValidateResourceId(resourceId, nameof(resourceId));
             // Release should not be cancelled to avoid leaks. Ignore caller's CT.
             // If the client is local, bypass RPC to preserve strict-mode exception semantics.
-            var local = _rpcClient as LocalLockRpcClient;
-            if (local != null)
+            if (_rpcClient is LocalLockRpcClient)
             {
-                ReleaseLocal(transactionId, resourceId, fencingToken);
-                return Task.CompletedTask;
+                // Surface failures as a faulted Task to keep async contract consistent with remote clients.
+                try
+                {
+                    ReleaseLocal(transactionId, resourceId, fencingToken);
+                    return Task.CompletedTask;
+                }
+                catch (Exception ex)
+                {
+                    var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    try
+                    {
+                        tcs.SetException(ex);
+                    }
+                    catch { }
+                    return tcs.Task;
+                }
             }
             return _rpcClient.ReleaseAsync(_nodeId, transactionId, resourceId, fencingToken, CancellationToken.None);
         }
@@ -476,7 +573,7 @@ namespace Silica.Concurrency
 
             // Trace the attempt with current holders snapshot
             TryEmitTrace("Acquire", "attempt",
-                $"attempt tx={txId}, resource={resourceId}, mode={mode}, timeout_ms={timeoutMs}",
+                "attempt tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId + ", mode=" + ModeToString(mode) + ", timeout_ms=" + timeoutMs.ToString(CultureInfo.InvariantCulture),
                 "acquire_attempt",
                 txId, resourceId);
 
@@ -500,7 +597,7 @@ namespace Silica.Concurrency
                 {
                     _waitForGraph.AddEdge(txId, headWaiterTx);
                     TryEmitTrace("Acquire", "blocked",
-                        $"blocked_by_head_waiter tx={txId}, head_tx={headWaiterTx}, resource={resourceId}, mode={mode}",
+                        "blocked_by_head_waiter tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", head_tx=" + headWaiterTx.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId + ", mode=" + ModeToString(mode),
                         "blocked_by_head_waiter",
                         txId, resourceId);
                 }
@@ -534,39 +631,67 @@ namespace Silica.Concurrency
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
             // Idempotent set first to block new public acquires
-            _disposed = true;
+            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                // already disposed
+                return;
+            }
 
             // Best-effort: drain all locks, cancel queued waiters, and clean tokens for current holders.
             try
             {
-                var holderBuffer = new long[32];
-                foreach (var kv in _locks)
+                // Snapshot keys once; then shutdown+remove in a single pass
+                var lockKeys = new string[_locks.Count];
                 {
-                    var key = kv.Key;
-                    var rlock = kv.Value;
-                    int holderCount = 0;
-                    // Shutdown returns a snapshot of distinct holder txIds
-                    var holders = rlock.Shutdown(out holderCount, holderBuffer);
-                    // Consume tokens for holders of this resource
-                    for (int i = 0; i < holderCount; i++)
+                    int i = 0;
+                    foreach (var kv in _locks)
                     {
-                        var tx = holders[i];
-                        ConsumeToken(key, tx);
+                        if (i < lockKeys.Length) { lockKeys[i] = kv.Key; i++; } else { break; }
                     }
-                    CleanupResourceTokensIfEmpty(key);
                 }
-                // After shutdown, aggressively detach all remaining locks to avoid retention.
-                // Safe with ConcurrentDictionary: removal during enumeration is supported.
-                foreach (var kv in _locks)
+                var holderBuffer = new long[32];
+                for (int i = 0; i < lockKeys.Length; i++)
                 {
-                    _locks.TryRemove(kv.Key, out _);
+                    var key = lockKeys[i];
+                    if (key == null) continue;
+                    if (_locks.TryGetValue(key, out var rlock))
+                    {
+                        int holderCount = 0;
+                        var holders = rlock.Shutdown(out holderCount, holderBuffer);
+                        // Reuse the largest buffer returned so subsequent resources avoid reallocation.
+                        if (!object.ReferenceEquals(holders, holderBuffer))
+                        {
+                            holderBuffer = holders;
+                        }
+                        for (int h = 0; h < holderCount; h++)
+                        {
+                            var tx = holders[h];
+                            ConsumeToken(key, tx);
+                        }
+                        CleanupResourceTokensIfEmpty(key);
+                    }
+                    _locks.TryRemove(key, out _);
                 }
+
                 // Wipe all token states deterministically; we already consumed per-holder tokens.
-                foreach (var kv in _resourceTokens)
+                var tokenKeys = new string[_resourceTokens.Count];
                 {
-                    var rid = kv.Key;
-                    // Try remove without locking outer state to avoid holding locks while mutating dictionary.
+                    int i = 0;
+                    foreach (var kv in _resourceTokens)
+                    {
+                        if (i < tokenKeys.Length) { tokenKeys[i] = kv.Key; i++; } else { break; }
+                    }
+                }
+                for (int i = 0; i < tokenKeys.Length; i++)
+                {
+                    var rid = tokenKeys[i];
                     _resourceTokens.TryRemove(rid, out _);
                 }
                 // Clear the wait-for graph to free memory deterministically
@@ -583,7 +708,7 @@ namespace Silica.Concurrency
         /// </summary>
         public bool IsDisposed
         {
-            get { return _disposed; }
+            get { return System.Threading.Volatile.Read(ref _disposed) != 0; }
         }
 
         /// <summary>
@@ -618,6 +743,8 @@ namespace Silica.Concurrency
 
             // Clean up fencing tokens for this transaction across all resources.
             CleanupTokensForTransaction(transactionId);
+            // Record abort event for ops visibility
+            ConcurrencyMetrics.IncrementAbort(_metrics);
         }
 
         // -----------------------------
@@ -642,8 +769,17 @@ namespace Silica.Concurrency
             {
                 // Try* must not throw; trace and report failure.
                 TryEmitTrace("Acquire", "error",
-                    "try_acquire_shared_upgrade_conflict tx=" + transactionId.ToString() + ", resource=" + resourceId,
+                    "try_acquire_shared_upgrade_conflict tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId,
                     "try_upgrade_conflict",
+                    transactionId, resourceId);
+                return false;
+            }
+            catch (ReentrantHoldOverflowException)
+            {
+                // Try* must not throw; trace and report failure.
+                TryEmitTrace("Acquire", "error",
+                    "try_acquire_shared_holder_overflow tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId,
+                    "try_holder_overflow",
                     transactionId, resourceId);
                 return false;
             }
@@ -676,8 +812,17 @@ namespace Silica.Concurrency
             {
                 // Try* must not throw; trace and report failure.
                 TryEmitTrace("Acquire", "error",
-                    "try_acquire_exclusive_upgrade_conflict tx=" + transactionId.ToString() + ", resource=" + resourceId,
+                    "try_acquire_exclusive_upgrade_conflict tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId,
                     "try_upgrade_conflict",
+                    transactionId, resourceId);
+                return false;
+            }
+            catch (ReentrantHoldOverflowException)
+            {
+                // Try* must not throw; trace and report failure.
+                TryEmitTrace("Acquire", "error",
+                    "try_acquire_exclusive_holder_overflow tx=" + transactionId.ToString(CultureInfo.InvariantCulture) + ", resource=" + resourceId,
+                    "try_holder_overflow",
                     transactionId, resourceId);
                 return false;
             }
@@ -701,10 +846,44 @@ namespace Silica.Concurrency
             // Count of waiters that have been reserved (extracted from queue) but not yet finalized as holders.
             // This prevents immediate acquires from bypassing queued/reserved waiters during the handoff window.
             private int _reservedCount = 0;
+            // Reserved waiters that have been extracted from the main queue but are not yet granted or canceled.
+            // This enables Abort and Shutdown to see and resolve "in flight" reservations deterministically.
+            private readonly LinkedList<Waiter> _reserved = new LinkedList<Waiter>();
+            // Aborted transactions we must not grant to.
+            private readonly HashSet<long> _abortedTx = new HashSet<long>();
+            // Prevent unbounded growth if a resource stays “hot” and never goes idle.
+            private const int MaxAbortedTxCapacity = 1024;
             // Distinct holders with reference counts per tx
             private readonly Dictionary<long, int> _holders = new Dictionary<long, int>();
             private readonly LinkedList<Waiter> _queue = new LinkedList<Waiter>();
             private const string SharedField = ConcurrencyMetrics.Fields.Shared, ExclusiveField = ConcurrencyMetrics.Fields.Exclusive;
+            // Returns true when resource is completely idle (no holders, no queued waiters, and no in-flight reservations).
+            private bool IsCompletelyIdleUnsafe()
+            {
+                // Caller must hold _sync before calling this method.
+                return _holders.Count == 0 && _queue.Count == 0 && _reservedCount == 0;
+            }
+            // ---------- Reserved counter helpers ----------
+            private void IncrementReservedChecked()
+            {
+                // Prevent overflow that would wedge TryAcquireImmediate and upgrades.
+                if (_reservedCount == int.MaxValue)
+                {
+                    throw new ReservationOverflowException(_resourceId, _reservedCount);
+                }
+                _reservedCount = _reservedCount + 1;
+            }
+
+            private void DecrementReservedChecked()
+            {
+                if (_reservedCount == 0)
+                {
+                    // Clamp to zero explicitly in case of future edits
+                    _reservedCount = 0;
+                    return;
+                }
+                _reservedCount = _reservedCount - 1;
+            }
 
             public ResourceLock(LockManager owner, string resourceId)
             {
@@ -713,6 +892,54 @@ namespace Silica.Concurrency
                 if (resourceId.Length == 0) throw new ArgumentException("resourceId must be non-empty.", nameof(resourceId));
                 _resourceId = resourceId;
             }
+            // Caller holds _sync when invoking this. Prunes _abortedTx if it grows beyond a threshold
+            // by removing IDs that have no presence among holders, queued waiters, or reserved waiters.
+            private void PruneAbortedIfLargeUnsafe()
+            {
+                if (_abortedTx.Count <= MaxAbortedTxCapacity) return;
+                // Build a small “present” set from holders, queue, and reserved.
+                // Use HashSet<long> without LINQ; bounded by current state sizes.
+                var present = new HashSet<long>();
+                // Holders
+                foreach (var kv in _holders)
+                {
+                    present.Add(kv.Key);
+                }
+                // Queued waiters
+                var node = _queue.First;
+                while (node != null)
+                {
+                    var next = node.Next;
+                    var w = node.Value;
+                    if (w != null) present.Add(w.TxId);
+                    node = next;
+                }
+                // Reserved waiters
+                var rnode = _reserved.First;
+                while (rnode != null)
+                {
+                    var rnext = rnode.Next;
+                    var rw = rnode.Value;
+                    if (rw != null) present.Add(rw.TxId);
+                    rnode = rnext;
+                }
+                // Now remove any aborted IDs not present anywhere.
+                // Snapshot keys to avoid modifying during enumeration.
+                long[] abortedKeys = new long[_abortedTx.Count];
+                int i = 0;
+                foreach (var id in _abortedTx)
+                {
+                    if (i < abortedKeys.Length) { abortedKeys[i] = id; i++; } else { break; }
+                }
+                for (int j = 0; j < i; j++)
+                {
+                    var tx = abortedKeys[j];
+                    if (!present.Contains(tx))
+                    {
+                        _abortedTx.Remove(tx);
+                    }
+                }
+            }
 
             public IReadOnlyList<long> GetCurrentHolderIds()
             {
@@ -720,15 +947,31 @@ namespace Silica.Concurrency
                 {
                     if (_holders.Count == 0)
                         return Array.Empty<long>();
-                    // Copy keys without LINQ
-                    var arr = new long[_holders.Count];
+                    // Copy keys without LINQ into an exactly sized array.
+                    // Defensive: snapshot count first to allocate.
+                    int count = _holders.Count;
+                    var buffer = new long[count];
                     int i = 0;
                     foreach (var kv in _holders)
                     {
-                        if (i < arr.Length) { arr[i] = kv.Key; i++; }
-                        else { break; }
+                        if (i < buffer.Length)
+                        {
+                            buffer[i] = kv.Key;
+                            i++;
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
-                    return arr;
+                    if (i == buffer.Length)
+                    {
+                        return buffer;
+                    }
+                    // If we saw fewer elements than initially reported (rare), return trimmed array.
+                    var trimmed = new long[i];
+                    for (int j = 0; j < i; j++) trimmed[j] = buffer[j];
+                    return trimmed;
                 }
             }
 
@@ -751,8 +994,16 @@ namespace Silica.Concurrency
                 firstForTx = false;
                 lock (_sync)
                 {
-                    // Do not bypass queued/reserved work; preserve FIFO fairness guarantees.
-                    if (_reservedCount > 0)
+                    // Prevent unbounded growth of aborted markers under churn.
+                    PruneAbortedIfLargeUnsafe();
+                    // If this transaction was aborted, do not grant.
+                    if (_abortedTx.Contains(txId))
+                    {
+                        return false;
+                    }
+                    // Do not bypass queued or reserved work; preserve FIFO fairness guarantees.
+                    // If any waiter is queued or reserved (handoff window), immediate attempts must not cut the line.
+                    if (_reservedCount > 0 || _queue.Count > 0)
                     {
                         return false;
                     }
@@ -797,8 +1048,20 @@ namespace Silica.Concurrency
 
                 lock (_sync)
                 {
+                    // Prevent unbounded growth of aborted markers under churn.
+                    PruneAbortedIfLargeUnsafe();
                     int existingCount = 0;
                     bool alreadyHolder = _holders.TryGetValue(txId, out existingCount) && existingCount > 0;
+                    // If this transaction was aborted, do not grant or enqueue.
+                    if (_abortedTx.Contains(txId))
+                    {
+                        // Treat as not granted without enqueue; caller will record outcome.
+                        _owner.TryEmitTrace("Acquire", "cancelled",
+                            "aborted_tx_rejected_immediate tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(mode) + ", resource=" + _resourceId,
+                            "aborted_tx_rejected",
+                            txId, resourceId: _resourceId);
+                        return new AcquireOutcome(false, false);
+                    }
                     if (IsCompatible(mode, txId))
                     {
                         GrantLock(mode, txId);
@@ -806,7 +1069,7 @@ namespace Silica.Concurrency
                         var modeField = mode == LockMode.Exclusive ? ExclusiveField : SharedField;
                         ConcurrencyMetrics.IncrementAcquireImmediate(_owner._metrics, modeField);
                         _owner.TryEmitTrace("Acquire", "ok",
-                            $"granted_immediate tx={txId}, mode={mode}, resource={_resourceId}",
+                            "granted_immediate tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(mode) + ", resource=" + _resourceId,
                             "granted_immediate",
                             txId, resourceId: _resourceId);
                         // FirstForTx only when we were not a holder before this grant
@@ -818,7 +1081,7 @@ namespace Silica.Concurrency
                     if (mode == LockMode.Exclusive && WouldDeadlockOnUpgrade(txId))
                     {
                         _owner.TryEmitTrace("Acquire", "error",
-                            $"upgrade_blocked tx={txId}, resource={_resourceId}, reason=not_sole_holder",
+                            "upgrade_blocked tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", resource=" + _resourceId + ", reason=not_sole_holder",
                             "upgrade_blocked",
                             txId, resourceId: _resourceId);
                         throw new LockUpgradeIncompatibleException(txId, _resourceId);
@@ -827,7 +1090,7 @@ namespace Silica.Concurrency
                     // metrics + trace for queued waiter
                     _owner.RecordWaitQueued(mode);
                     _owner.TryEmitTrace("Acquire", "blocked",
-                        $"queued tx={txId}, mode={mode}, timeout_ms={timeoutMs}, resource={_resourceId}",
+                        "queued tx=" + txId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(mode) + ", timeout_ms=" + timeoutMs.ToString(CultureInfo.InvariantCulture) + ", resource=" + _resourceId,
                         "wait_queued",
                         txId, resourceId: _resourceId);
 
@@ -884,7 +1147,7 @@ namespace Silica.Concurrency
                             var modeField = w.Mode == LockMode.Exclusive ? ExclusiveField : SharedField;
                             ConcurrencyMetrics.IncrementAcquireCancelled(_owner._metrics, modeField);
                             _owner.TryEmitTrace("Acquire", "cancelled",
-                                $"cancelled tx={w.TxId}, mode={w.Mode}, resource={_resourceId}",
+                                "cancelled tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId,
                                 "wait_cancelled",
                                 w.TxId, resourceId: _resourceId);
                         }
@@ -898,7 +1161,7 @@ namespace Silica.Concurrency
                         {
                             _owner.RecordWaitTimeout(w.Mode);
                             _owner.TryEmitTrace("Acquire", "warn",
-                                $"timeout tx={w.TxId}, mode={w.Mode}, resource={_resourceId}, queue_len_at_enqueue={queueLenAtEnqueue}, pos_at_enqueue={positionAtEnqueue}, queue_len_now={qlenAfter}",
+                                "timeout tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId + ", queue_len_at_enqueue=" + queueLenAtEnqueue.ToString(CultureInfo.InvariantCulture) + ", pos_at_enqueue=" + positionAtEnqueue.ToString(CultureInfo.InvariantCulture) + ", queue_len_now=" + qlenAfter.ToString(CultureInfo.InvariantCulture),
                                 "wait_timeout",
                                 w.TxId, resourceId: _resourceId);
                         }
@@ -916,24 +1179,19 @@ namespace Silica.Concurrency
                     linkedCts.Dispose();
                 }
             }
-            // Keep a single authoritative release path to avoid divergence.
-            public void Release(long txId)
-            {
-                string modeField;
-                bool wasHolder;
-                ReleaseWithMode(txId, out modeField, out wasHolder);
-            }
 
-            // Returns true if txId was removed; sets modeField to "shared"/"exclusive"/"unknown" based on state at removal
+            // Returns true if txId was removed; sets modeField to "shared"/"exclusive"/"none" based on state at removal
             public bool ReleaseWithMode(long txId, out string modeField, out bool wasHolder)
             {
                 List<Waiter> toGrant = null;
-                modeField = "unknown";
+                modeField = ConcurrencyMetrics.Fields.None;
                 bool removed = false;
                 wasHolder = false;
 
                 lock (_sync)
                 {
+                    // Prevent unbounded growth of aborted markers under churn.
+                    PruneAbortedIfLargeUnsafe();
                     int heldCount = 0;
                     if (_holders.TryGetValue(txId, out heldCount) && heldCount > 0)
                     {
@@ -951,6 +1209,11 @@ namespace Silica.Concurrency
                                 _mode = LockMode.Shared;
                             // After removing this holder (possibly last), see who can run next.
                             toGrant = ExtractGrantable();
+                            // If nothing grantable and we're fully idle, drop aborted marker set to prevent growth.
+                            if ((toGrant == null || toGrant.Count == 0) && IsCompletelyIdleUnsafe())
+                            {
+                                _abortedTx.Clear();
+                            }
                         }
                         else
                         {
@@ -958,6 +1221,15 @@ namespace Silica.Concurrency
                             // Even if other shared holders remain, new shared waiters at the head
                             // may be grantable without waiting for full drain.
                             toGrant = ExtractGrantable();
+                        }
+                    }
+                    else
+                    {
+                        // No holder for txId. Use "none" attribution and, if we’re otherwise idle here, clear aborted markers too.
+                        modeField = ConcurrencyMetrics.Fields.None;
+                        if ((toGrant == null || toGrant.Count == 0) && IsCompletelyIdleUnsafe())
+                        {
+                            _abortedTx.Clear();
                         }
                     }
                 }
@@ -969,11 +1241,28 @@ namespace Silica.Concurrency
                     {
                         var w = toGrant[i];
                         // Phase 1: compute FirstForTx and mark Granted under lock
+                        bool abortedAtDecision = false;
                         lock (_sync)
                         {
+                            // Prevent unbounded growth during long grant chains.
+                            PruneAbortedIfLargeUnsafe();
                             if (w.Granted)
                             {
                                 continue;
+                            }
+                            // If this tx was aborted after reservation, cancel instead of granting.
+                            if (_abortedTx.Contains(w.TxId))
+                            {
+                                // Remove from reserved tracking
+                                if (w.ReservedNode != null && w.ReservedNode.List != null)
+                                {
+                                    _reserved.Remove(w.ReservedNode);
+                                    w.ReservedNode = null;
+                                }
+                                w.Reserved = false;
+                                DecrementReservedChecked();
+                                // Mark for cancellation outside lock.
+                                abortedAtDecision = true;
                             }
                             int c2;
                             bool had2 = _holders.TryGetValue(w.TxId, out c2) && c2 > 0;
@@ -982,13 +1271,29 @@ namespace Silica.Concurrency
                             w.Granted = true;
                         }
                         // Phase 2: complete TCS outside lock
+                        // If the tx was aborted, cancel instead of granting.
+                        if (abortedAtDecision)
+                        {
+                            try { w.Tcs.TrySetCanceled(); } catch { }
+                            _owner.TryEmitTrace("Acquire", "cancelled",
+                                "aborted_tx_cancelled_after_reservation tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId,
+                                "aborted_tx_cancelled_after_reservation",
+                                w.TxId, resourceId: _resourceId);
+                            continue;
+                        }
                         var grantedOutcome = new AcquireOutcome(true, w.FirstForTx);
                         if (!w.Tcs.TrySetResult(grantedOutcome))
                         {
-                            // Completion failed (e.g., late cancellation). Undo reservation.
+                            // Completion failed (e.g., late cancellation). Undo reservation and remove from reserved tracking.
                             lock (_sync)
                             {
-                                if (_reservedCount > 0) _reservedCount = _reservedCount - 1;
+                                DecrementReservedChecked();
+                                if (w.ReservedNode != null && w.ReservedNode.List != null)
+                                {
+                                    _reserved.Remove(w.ReservedNode);
+                                    w.ReservedNode = null;
+                                }
+                                w.Reserved = false;
                             }
                             continue;
                         }
@@ -996,17 +1301,31 @@ namespace Silica.Concurrency
                         lock (_sync)
                         {
                             GrantLock(w.Mode, w.TxId);
-                            if (_reservedCount > 0) _reservedCount = _reservedCount - 1;
+                            DecrementReservedChecked();
+                            // Remove from reserved tracking on successful finalize
+                            if (w.ReservedNode != null && w.ReservedNode.List != null)
+                            {
+                                _reserved.Remove(w.ReservedNode);
+                                w.ReservedNode = null;
+                            }
+                            w.Reserved = false;
                         }
                         _owner.TryEmitTrace("Acquire", "ok",
-                            $"granted_after_wait tx={w.TxId}, mode={w.Mode}, resource={_resourceId}",
+                            "granted_after_wait tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId,
                             "granted_after_wait",
                             w.TxId, resourceId: _resourceId);
                     }
                     // After applying these grants, see if more at the head are now grantable
                     lock (_sync)
                     {
+                        // Prevent unbounded growth when idle/near-idle after grant.
+                        PruneAbortedIfLargeUnsafe();
                         toGrant = ExtractGrantable();
+                        // If nothing else is grantable and we’re fully idle now, clear aborted markers.
+                        if ((toGrant == null || toGrant.Count == 0) && IsCompletelyIdleUnsafe())
+                        {
+                            _abortedTx.Clear();
+                        }
                     }
                 }
                 return removed;
@@ -1016,8 +1335,14 @@ namespace Silica.Concurrency
             {
                 get
                 {
+                    // Consider holders, queued waiters, and in-flight reservations.
+                    // Caller expects a single atomic snapshot under _sync.
                     lock (_sync)
-                        return _holders.Count == 0 && _queue.Count == 0;
+                    {
+                        // A resource is unused only when there are no distinct holders,
+                        // no queued waiters, and no reserved (in-flight) waiters.
+                        return _holders.Count == 0 && _queue.Count == 0 && _reservedCount == 0;
+                    }
                 }
             }
 
@@ -1029,6 +1354,7 @@ namespace Silica.Concurrency
             public long[] Shutdown(out int holderCount, long[] reuseBuffer)
             {
                 List<TaskCompletionSource<AcquireOutcome>> toCancel = null;
+                List<TaskCompletionSource<AcquireOutcome>> reservedToCancel = null;
                 long[] holdersSnapshot = reuseBuffer;
                 holderCount = 0;
                 lock (_sync)
@@ -1047,6 +1373,27 @@ namespace Silica.Concurrency
                         _queue.Remove(node);
                         node = next;
                     }
+                    // Cancel all reserved-but-not-granted waiters
+                    var rnode = _reserved.First;
+                    while (rnode != null)
+                    {
+                        var rnext = rnode.Next;
+                        var rw = rnode.Value;
+                        if (!rw.Granted)
+                        {
+                            if (reservedToCancel == null) reservedToCancel = new List<TaskCompletionSource<AcquireOutcome>>();
+                            reservedToCancel.Add(rw.Tcs);
+                        }
+                        _reserved.Remove(rnode);
+                        // Clear reservation flags to keep waiter state consistent.
+                        rw.Reserved = false;
+                        rw.ReservedNode = null;
+                        rnode = rnext;
+                    }
+                    // Reset reserved count conservatively to zero; we've drained the structures.
+                    _reservedCount = 0;
+                    // Resource is being shut down; drop aborted markers to prevent growth across lifetimes.
+                    _abortedTx.Clear();
                     // Snapshot distinct holders
                     if (_holders.Count > 0)
                     {
@@ -1079,7 +1426,14 @@ namespace Silica.Concurrency
                 {
                     for (int i = 0; i < toCancel.Count; i++)
                     {
-                        try { toCancel[i].TrySetException(new ObjectDisposedException("LockManager")); } catch { }
+                        try { toCancel[i].TrySetException(new LockManagerDisposedException()); } catch { }
+                    }
+                }
+                if (reservedToCancel != null)
+                {
+                    for (int i = 0; i < reservedToCancel.Count; i++)
+                    {
+                        try { reservedToCancel[i].TrySetException(new LockManagerDisposedException()); } catch { }
                     }
                 }
                 return holdersSnapshot ?? Array.Empty<long>();
@@ -1087,7 +1441,72 @@ namespace Silica.Concurrency
 
             public int GetQueueLength()
             {
-                lock (_sync) return _queue.Count;
+                // Report queued + reserved (in-flight) to reflect true backlog.
+                // This preserves “approximate” semantics while improving observability for handoff windows.
+                lock (_sync)
+                {
+                    return _queue.Count + _reservedCount;
+                }
+            }
+
+            // Returns a snapshot of active transaction ids for this resource (holders, queued waiters, reserved).
+            // Deduplicates within the method using a HashSet<long>. No LINQ; caller supplies no buffers to keep API tight.
+            internal long[] GetActiveTxIdsSnapshot(out int count)
+            {
+                // Upper bound is holders + queue + reserved; sizes are small and bounded by live contention.
+                // Use a HashSet<long> to deduplicate without LINQ.
+                var seen = new HashSet<long>();
+                lock (_sync)
+                {
+                    // Holders
+                    foreach (var kv in _holders)
+                    {
+                        seen.Add(kv.Key);
+                    }
+                    // Queued waiters
+                    var node = _queue.First;
+                    while (node != null)
+                    {
+                        var next = node.Next;
+                        var w = node.Value;
+                        if (w != null) seen.Add(w.TxId);
+                        node = next;
+                    }
+                    // Reserved waiters
+                    var rnode = _reserved.First;
+                    while (rnode != null)
+                    {
+                        var rnext = rnode.Next;
+                        var rw = rnode.Value;
+                        if (rw != null) seen.Add(rw.TxId);
+                        rnode = rnext;
+                    }
+                }
+                // Copy to a compact array
+                if (seen.Count == 0)
+                {
+                    count = 0;
+                    return Array.Empty<long>();
+                }
+                var arr = new long[seen.Count];
+                int i = 0;
+                foreach (var id in seen)
+                {
+                    if (i < arr.Length)
+                    {
+                        arr[i] = id;
+                        i++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                count = i;
+                if (i == arr.Length) return arr;
+                var trimmed = new long[i];
+                for (int j = 0; j < i; j++) trimmed[j] = arr[j];
+                return trimmed;
             }
 
             /// <summary>
@@ -1098,10 +1517,17 @@ namespace Silica.Concurrency
             {
                 List<Waiter> toGrant = null;
                 List<TaskCompletionSource<AcquireOutcome>> toCancel = null;
+                List<Waiter> reservedToCancel = null;
 
                 // Phase A: mutate state under lock, collect actions
                 lock (_sync)
                 {
+                    // Prevent unbounded growth before/after adding a new aborted marker.
+                    PruneAbortedIfLargeUnsafe();
+                    // Mark as aborted to gate future grants for this tx
+                    _abortedTx.Add(txId);
+                    // Post-add prune in case we crossed capacity.
+                    PruneAbortedIfLargeUnsafe();
                     // Release held lock if present and collect grantable
                     if (_holders.Remove(txId))
                     {
@@ -1126,6 +1552,30 @@ namespace Silica.Concurrency
                         }
                         node = next;
                     }
+
+                    // Also cancel reserved-but-not-granted waiters for this tx
+                    var rnode = _reserved.First;
+                    while (rnode != null)
+                    {
+                        var rnext = rnode.Next;
+                        var rw = rnode.Value;
+                        if (rw.TxId == txId && !rw.Granted)
+                        {
+                            if (reservedToCancel == null) reservedToCancel = new List<Waiter>();
+                            reservedToCancel.Add(rw);
+                            // Remove from reserved tracking and counters under lock
+                            _reserved.Remove(rnode);
+                            DecrementReservedChecked();
+                            rw.Reserved = false;
+                            rw.ReservedNode = null;
+                        }
+                        rnode = rnext;
+                    }
+                    // If no work remains on this resource, clear aborted markers immediately.
+                    if ((toGrant == null || toGrant.Count == 0) && IsCompletelyIdleUnsafe())
+                    {
+                        _abortedTx.Clear();
+                    }
                 }
 
                 // Phase B: cancel queued waiters outside lock
@@ -1138,6 +1588,20 @@ namespace Silica.Concurrency
                     }
                 }
 
+                // Phase B2: cancel reserved waiters outside lock
+                if (reservedToCancel != null)
+                {
+                    for (int i = 0; i < reservedToCancel.Count; i++)
+                    {
+                        var rw = reservedToCancel[i];
+                        try { rw.Tcs.TrySetCanceled(); } catch { }
+                        _owner.TryEmitTrace("Acquire", "cancelled",
+                            "abort_cancelled_reserved tx=" + rw.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(rw.Mode) + ", resource=" + _resourceId,
+                            "abort_cancelled_reserved",
+                            rw.TxId, resourceId: _resourceId);
+                    }
+                }
+
                 // Phase C: perform race-safe grants for extracted waiters
                 while (toGrant != null && toGrant.Count > 0)
                 {
@@ -1145,11 +1609,27 @@ namespace Silica.Concurrency
                     {
                         var w = toGrant[i];
                         // Reserve and compute FirstForTx under lock
+                        bool abortedAtDecision = false;
                         lock (_sync)
                         {
+                            PruneAbortedIfLargeUnsafe();
                             if (w.Granted)
                             {
                                 continue;
+                            }
+                            // If this tx was marked aborted, cancel instead of granting
+                            if (_abortedTx.Contains(w.TxId))
+                            {
+                                // Undo reservation made by ExtractGrantable
+                                DecrementReservedChecked();
+                                // Remove from reserved tracking if present
+                                if (w.ReservedNode != null && w.ReservedNode.List != null)
+                                {
+                                    _reserved.Remove(w.ReservedNode);
+                                    w.ReservedNode = null;
+                                }
+                                // Complete cancel outside lock; skip setting Granted.
+                                abortedAtDecision = true;
                             }
                             int c3;
                             bool had3 = _holders.TryGetValue(w.TxId, out c3) && c3 > 0;
@@ -1157,31 +1637,51 @@ namespace Silica.Concurrency
                             w.Granted = true;
                         }
                         // Complete outside lock
+                        if (abortedAtDecision)
+                        {
+                            try { w.Tcs.TrySetCanceled(); } catch { }
+                            _owner.TryEmitTrace("Acquire", "cancelled",
+                                "aborted_tx_cancelled_after_extract tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId,
+                                "aborted_tx_cancelled_after_extract",
+                                w.TxId, resourceId: _resourceId);
+                            continue;
+                        }
                         var grantedOutcome = new AcquireOutcome(true, w.FirstForTx);
                         if (!w.Tcs.TrySetResult(grantedOutcome))
                         {
                             // Undo reservation if completion failed
-                            lock (_sync)
-                            {
-                                if (_reservedCount > 0) _reservedCount = _reservedCount - 1;
-                            }
+                            lock (_sync) { DecrementReservedChecked(); }
                             continue;
                         }
                         // Finalize state under lock
                         lock (_sync)
                         {
                             GrantLock(w.Mode, w.TxId);
-                            if (_reservedCount > 0) _reservedCount = _reservedCount - 1;
+                            DecrementReservedChecked();
+                            if (w.ReservedNode != null && w.ReservedNode.List != null)
+                            {
+                                _reserved.Remove(w.ReservedNode);
+                                w.ReservedNode = null;
+                            }
                         }
                         _owner.TryEmitTrace("Acquire", "ok",
-                            $"granted_after_wait tx={w.TxId}, mode={w.Mode}, resource={_resourceId}",
+                            "granted_after_wait tx=" + w.TxId.ToString(CultureInfo.InvariantCulture) + ", mode=" + ModeToString(w.Mode) + ", resource=" + _resourceId,
                             "granted_after_wait",
                             w.TxId, resourceId: _resourceId);
                     }
                     // After applying these grants, see if more at the head are now grantable
                     lock (_sync)
                     {
+                        PruneAbortedIfLargeUnsafe();
                         toGrant = ExtractGrantable();
+                    }
+                    // Caller must hold _sync before calling IsCompletelyIdleUnsafe()
+                    lock (_sync)
+                    {
+                        if ((toGrant == null || toGrant.Count == 0) && IsCompletelyIdleUnsafe())
+                        {
+                            _abortedTx.Clear();
+                        }
                     }
                 }
             }
@@ -1191,6 +1691,9 @@ namespace Silica.Concurrency
             {
                 var granted = new List<Waiter>();
                 if (_queue.Count == 0) return granted;
+                // Do not extract/grant when any waiter is already reserved (handoff in progress).
+                // This preserves strict FIFO handoff and prevents shared waiters from slipping in.
+                if (_reservedCount > 0) return granted;
 
                 var head = _queue.First;
                 if (head == null) return granted;
@@ -1198,13 +1701,15 @@ namespace Silica.Concurrency
                 // Exclusive head: only grant when no holders remain.
                 if (head.Value.Mode == LockMode.Exclusive)
                 {
-                    if (_holders.Count == 0)
+                    if (_holders.Count == 0 && _reservedCount == 0)
                     {
                         var w = head.Value;
                         _queue.Remove(head);
                         w.Reserved = true;
                         // Track reservation to block TryAcquireImmediate until finalized
-                        _reservedCount = (_reservedCount == int.MaxValue) ? int.MaxValue : _reservedCount + 1;
+                        IncrementReservedChecked();
+                        // Add to reserved list to make reservation visible to Abort/Shutdown
+                        w.ReservedNode = _reserved.AddLast(w);
                         granted.Add(w);
                     }
                     return granted;
@@ -1214,14 +1719,17 @@ namespace Silica.Concurrency
                 var cur = head;
                 while (cur != null
                        && cur.Value.Mode == LockMode.Shared
-                       && (_holders.Count == 0 || _mode == LockMode.Shared))
+                       && (_holders.Count == 0 || _mode == LockMode.Shared)
+                       && _reservedCount == 0)
                 {
                     var next = cur.Next;
                     var w = cur.Value;
                     _queue.Remove(cur);
                     w.Reserved = true;
                     // Track reservation for each extracted waiter (shared batch)
-                    _reservedCount = (_reservedCount == int.MaxValue) ? int.MaxValue : _reservedCount + 1;
+                    IncrementReservedChecked();
+                    // Add to reserved list to make reservation visible to Abort/Shutdown
+                    w.ReservedNode = _reserved.AddLast(w);
                     granted.Add(w);
                     cur = next;
                 }
@@ -1230,7 +1738,12 @@ namespace Silica.Concurrency
 
             private bool IsCompatible(LockMode req, long txId)
             {
-                if (_holders.Count == 0) return true;
+                // No holders: preserve FIFO fairness — do not bypass queued or reserved work.
+                // Allow immediate compatibility only when there is no queue and no reservations.
+                if (_holders.Count == 0)
+                {
+                    return _queue.Count == 0 && _reservedCount == 0;
+                }
 
                 // Re-entrant cases
                 int countForTx = 0;
@@ -1283,12 +1796,7 @@ namespace Silica.Concurrency
                     // Guard against integer overflow on reentrant holds
                     if (count == int.MaxValue)
                     {
-                        // Trace and fail fast to avoid corrupting reference counts
-                        _owner.TryEmitTrace("Acquire", "error",
-                            "holder_count_overflow tx=" + txId.ToString() + ", resource=" + _resourceId,
-                            "holder_overflow",
-                            txId, resourceId: _resourceId);
-                        throw new InvalidOperationException("Reentrant hold count overflow for tx " + txId.ToString() + " on resource '" + _resourceId + "'.");
+                        throw new ReentrantHoldOverflowException(txId, _resourceId);
                     }
                     _holders[txId] = count + 1;
                 }
@@ -1308,6 +1816,8 @@ namespace Silica.Concurrency
                 public bool Reserved { get; set; }
                 public bool Granted { get; set; }
                 public bool FirstForTx { get; set; }
+                // Node in _reserved list when Reserved == true
+                public LinkedListNode<Waiter> ReservedNode { get; set; }
                 public Waiter(long txId, LockMode mode, TaskCompletionSource<AcquireOutcome> tcs)
                 {
                     TxId = txId;
@@ -1333,32 +1843,83 @@ namespace Silica.Concurrency
 
         private void TryEmitTrace(string operation, string status, string message, string code, long? txId = null, string? resourceId = null, bool allowWhenDisposed = false)
         {
-            if (_disposed && !allowWhenDisposed) return;
+            if (System.Threading.Volatile.Read(ref _disposed) != 0 && !allowWhenDisposed) return;
             if (!DiagnosticsCoreBootstrap.IsStarted) return;
+            // Drop low-signal traces unless verbose: attempt/start/blocked can be very chatty under contention.
+            // Always keep: error, warn, cancelled, ok, and critical codes like "deadlock".
+            // This centralizes volume control without changing call sites.
+            try
+            {
+                bool verbose = Silica.Concurrency.Diagnostics.ConcurrencyDiagnostics.EnableVerbose;
+                bool isLowSignal =
+                    (string.Equals(status, "attempt", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "start", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(status, "blocked", StringComparison.OrdinalIgnoreCase));
+                if (!verbose && isLowSignal)
+                {
+                    // Permit specific critical operations regardless of status if they carry special codes.
+                    // Currently only "deadlock" is treated as critical, which is not low-signal anyway.
+                    return;
+                }
+            }
+            catch { /* never throw */ }
             // Reentrancy latch: tolerate nested calls but never re-enter on the same thread.
             if (System.Threading.Interlocked.CompareExchange(ref _traceReentrancy, 1, 0) != 0) return;
             try
             {
-                string component = (_componentTag.Value as string) ?? "Concurrency";
-                var tags = new Dictionary<string, string>(6, StringComparer.OrdinalIgnoreCase)
+                string component = (_componentTag.Value as string) ?? "Silica.Concurrency";
+                // Slightly larger initial capacity to avoid small rehashes under load
+                var more = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
+                try
                 {
-                    ["code"] = code,
-                    ["node"] = _nodeId
-                };
-                if (txId.HasValue) tags["tx_id"] = txId.Value.ToString();
-                if (!string.IsNullOrEmpty(resourceId)) tags["resource"] = resourceId!;
-                DiagnosticsCoreBootstrap.Instance.Traces.Emit(
-                    component: component,
-                    operation: operation,
-                    status: status,
-                    tags: tags,
-                    message: message
-                );
+                    more["code"] = code ?? string.Empty;
+                }
+                catch { }
+                try
+                {
+                    more["node"] = _nodeId ?? string.Empty;
+                }
+                catch { }
+                // Preserve semantic status as a tag (low cardinality: attempt/blocked/ok/warn/error/cancelled/start)
+                try
+                {
+                    more["status"] = status ?? string.Empty;
+                }
+                catch { }
+                if (txId.HasValue)
+                {
+                    try { more["tx_id"] = txId.Value.ToString(CultureInfo.InvariantCulture); } catch { }
+                }
+                if (!string.IsNullOrEmpty(resourceId))
+                {
+                    try { more["resource"] = resourceId!; } catch { }
+                }
+                // Map status -> canonical level for consistent routing
+                string level = "info";
+                try
+                {
+                    // Normalize known statuses
+                    if (string.Equals(status, "error", StringComparison.OrdinalIgnoreCase))
+                        level = "error";
+                    else if (string.Equals(status, "warn", StringComparison.OrdinalIgnoreCase))
+                        level = "warn";
+                    else if (string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase))
+                        level = "warn";
+                    else if (string.Equals(status, "start", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(status, "attempt", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(status, "blocked", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase))
+                        level = "info";
+                    else if (string.Equals(status, "debug", StringComparison.OrdinalIgnoreCase))
+                        level = "debug";
+                    else
+                        level = "info";
+                }
+                catch { level = "info"; }
+
+                ConcurrencyDiagnostics.Emit(component, operation, level, message, null, more);
             }
-            catch
-            {
-                // never throw
-            }
+            catch { /* never throw */ }
             finally
             {
                 System.Threading.Interlocked.Exchange(ref _traceReentrancy, 0);
@@ -1378,10 +1939,96 @@ namespace Silica.Concurrency
                 {
                     // Emit a trace before throwing so operators can root-cause quickly.
                     TryEmitTrace("FencingToken", "error",
-                        "token_overflow resource='" + resourceId + "', last_issued=" + state.LastIssued.ToString(),
+                        "token_overflow resource='" + resourceId + "', last_issued=" + state.LastIssued.ToString(CultureInfo.InvariantCulture),
                         "token_overflow",
                         null, resourceId);
-                    throw new InvalidOperationException("Fencing token overflow for resource '" + resourceId + "'.");
+                    throw new FencingTokenOverflowException(resourceId, state.LastIssued);
+                }
+                // Prune stale token associations if the map grows pathologically large.
+                // Keep associations that are currently active on this resource (holders/queued/reserved) and the caller tx.
+                // This prevents memory growth under high churn without impacting correctness.
+                if (state.TxTokens.Count >= MaxTokensPerResource)
+                {
+                    try
+                    {
+                        ResourceLock rlock;
+                        long[] active = Array.Empty<long>();
+                        int activeCount = 0;
+                        if (_locks.TryGetValue(resourceId, out rlock) && rlock != null)
+                        {
+                            active = rlock.GetActiveTxIdsSnapshot(out activeCount);
+                        }
+                        // Build a small lookup set for active ids
+                        var activeSet = new HashSet<long>();
+                        for (int i = 0; i < activeCount; i++)
+                        {
+                            activeSet.Add(active[i]);
+                        }
+                        // Snapshot keys to remove outside of the foreach over dictionary
+                        long[] keys = new long[state.TxTokens.Count];
+                        int k = 0;
+                        foreach (var kv in state.TxTokens)
+                        {
+                            if (k < keys.Length)
+                            {
+                                keys[k] = kv.Key;
+                                k++;
+                            }
+                            else { break; }
+                        }
+                        int pruned = 0;
+                        for (int i = 0; i < k && state.TxTokens.Count > MaxTokensPerResource / 2; i++)
+                        {
+                            var id = keys[i];
+                            if (id == txId) continue;
+                            if (!activeSet.Contains(id))
+                            {
+                                if (state.TxTokens.Remove(id))
+                                {
+                                    if (pruned < int.MaxValue) pruned = pruned + 1;
+                                }
+                            }
+                        }
+                        // As a last resort, if still above cap, drop arbitrary non-caller entries to reduce pressure.
+                        if (state.TxTokens.Count > MaxTokensPerResource)
+                        {
+                            int target = MaxTokensPerResource;
+                            // Snapshot keys again to avoid mutating during enumeration
+                            long[] keys2 = new long[state.TxTokens.Count];
+                            int k2 = 0;
+                            foreach (var kv2 in state.TxTokens)
+                            {
+                                if (k2 < keys2.Length)
+                                {
+                                    keys2[k2] = kv2.Key;
+                                    k2++;
+                                }
+                                else { break; }
+                            }
+                            for (int i = 0; i < k2 && state.TxTokens.Count > target; i++)
+                            {
+                                var curId = keys2[i];
+                                if (curId == txId) continue;
+                                if (state.TxTokens.Remove(curId))
+                                {
+                                    if (pruned < int.MaxValue) pruned = pruned + 1;
+                                }
+                            }
+                        }
+                        if (pruned > 0)
+                        {
+                            // Emit a compact metric for ops visibility; low cardinality.
+                            ConcurrencyMetrics.IncrementTokenPruned(_metrics, pruned);
+                            TryEmitTrace("FencingToken", "warn",
+                                "token_pruned resource='" + resourceId + "', pruned=" + pruned.ToString(CultureInfo.InvariantCulture),
+                                "token_pruned",
+                                null, resourceId);
+                        }
+                    }
+                    catch
+                    {
+                        // Never let pruning failures affect correctness of issuance.
+                    }
                 }
                 state.LastIssued = state.LastIssued + 1;
                 var token = state.LastIssued;
@@ -1441,13 +2088,12 @@ namespace Silica.Concurrency
             // Non-first hold but mapping is missing: this indicates an upstream ordering or state bug.
             // Emit a trace and either throw (strict) or re-issue (best-effort) to avoid breaking clients.
             TryEmitTrace("FencingToken", _strictAcquireTokens ? "error" : "warn",
-                "nonfirst_missing_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + txId.ToString(),
+                "nonfirst_missing_token node=" + _nodeId + ", resource='" + resourceId + "', tx=" + txId.ToString(CultureInfo.InvariantCulture),
                 "nonfirst_missing_token",
                 txId, resourceId);
             if (_strictAcquireTokens)
             {
-                throw new InvalidOperationException(
-                    "Missing fencing token mapping for non-first hold on resource '" + resourceId + "', tx " + txId.ToString() + ".");
+                throw new MissingFencingTokenException(resourceId, txId);
             }
             // Best-effort: issue a new token to keep the system running.
             return IssueToken(resourceId, txId);
@@ -1471,20 +2117,26 @@ namespace Silica.Concurrency
         // then prune any empty per-resource token states.
         private void CleanupTokensForTransaction(long txId)
         {
-            foreach (var kv in _resourceTokens)
+            // Snapshot current resource ids to avoid mutating the collection while enumerating.
+            var keys = new string[_resourceTokens.Count];
             {
-                var resourceId = kv.Key;
-                var state = kv.Value;
-                lock (state.Sync)
+                int i = 0;
+                foreach (var kv in _resourceTokens)
                 {
-                    // Remove directly; double-lookup avoided.
-                    state.TxTokens.Remove(txId);
-                    if (state.TxTokens.Count == 0)
+                    if (i < keys.Length) { keys[i] = kv.Key; i++; } else { break; }
+                }
+            }
+            for (int i = 0; i < keys.Length; i++)
+            {
+                var resourceId = keys[i];
+                if (_resourceTokens.TryGetValue(resourceId, out var state))
+                {
+                    lock (state.Sync)
                     {
-                        // Attempt pruning outside the lock to avoid holding during dictionary mutation.
+                        state.TxTokens.Remove(txId);
                     }
                 }
-                // Remove empty state if possible (best effort).
+                // Best-effort prune if now empty.
                 CleanupResourceTokensIfEmpty(resourceId);
             }
         }

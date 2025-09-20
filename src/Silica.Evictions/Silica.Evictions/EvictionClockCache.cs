@@ -7,6 +7,7 @@ using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
@@ -19,6 +20,10 @@ namespace Silica.Evictions
     public class EvictionClockCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
+        static EvictionClockCache()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
         private readonly AsyncLock _lock = new();
         private readonly int _capacity;
         private readonly Func<TKey, ValueTask<TValue>> _factory;
@@ -27,6 +32,7 @@ namespace Silica.Evictions
         private IMetricsManager _metrics;
         private readonly string _componentName;
         private bool _metricsRegistered;
+        private readonly bool _verbose;
 
         private struct Entry
         {
@@ -62,6 +68,7 @@ namespace Silica.Evictions
             _hand = 0;
             // Metrics init + registration
             _componentName = GetType().Name;
+            _verbose = EvictionDiagnostics.EnableVerbose;
             _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
             try
             {
@@ -94,6 +101,7 @@ namespace Silica.Evictions
                     _entries[idx] = e;
                     // hit
                     try { EvictionMetrics.IncrementHit(_metrics); } catch { }
+                    if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "hit"); } catch { } }
                     return e.Value;
                 }
             }
@@ -105,6 +113,7 @@ namespace Silica.Evictions
             try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
             bool recordedMiss = false;
             try { EvictionMetrics.IncrementMiss(_metrics); recordedMiss = true; } catch { }
+            if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "miss_build"); } catch { } }
             (TKey evKey, TValue evValue)? toEvict = null;
 
             using (await _lock.LockAsync().ConfigureAwait(false))
@@ -121,7 +130,7 @@ namespace Silica.Evictions
                         // Optional: leave as-is to avoid double-account; simple approach: do nothing.
                     }
                     try { EvictionMetrics.IncrementHit(_metrics); } catch { }
-
+                    if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "late_hit"); } catch { } }
                     return e.Value;
                 }
 
@@ -173,6 +182,14 @@ namespace Silica.Evictions
                             Interlocked.Increment(ref _count);
                             // eviction due to CLOCK
                             try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Clock); } catch { }
+                            try
+                            {
+                                EvictionDiagnostics.Emit(_componentName, "evict", "info", "clock_evict",
+                                    null,
+                                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { TagKeys.Field, EvictionMetrics.Fields.Clock } });
+                            }
+                            catch { }
+
                             if (cleared > 0) { try { EvictionMetrics.IncrementClockSecondChanceClears(_metrics, cleared); } catch { } }
                             break;
                         }
@@ -216,6 +233,14 @@ namespace Silica.Evictions
                 for (int i = 0; i < _entries.Length; i++)
                     _entries[i] = default;
             }
+
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposing_cache",
+                    null,
+                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { "evicted_items", allItems.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            }
+            catch { }
 
             foreach (var (k, v) in allItems)
                 await _onEvicted(k, v).ConfigureAwait(false);

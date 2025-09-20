@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Silica Needle — Demo</title>
+  <link rel="stylesheet" href="../src/styles/needle.css">
+</head>
+<body>
+  <main class="wrap">
+    <h3>Silica Needle — Demo</h3>
+
+    <section class="stage">
+      <silica-needle id="needle"
+        cx="0" cy="40"
+        value="34" min="0" max="100"
+        length="120" width="12" depth="14" steps="18"
+        color="#ffdf6b" accent="#c57c00"
+        rot-x="6" rot-y="-12" rot-z="0" zoom="1"
+      ></silica-needle>
+    </section>
+
+    <aside class="panel">
+      <label>Value <input id="v" type="range" min="0" max="100" value="34"></label>
+      <label>Anchor X <input id="ax" type="number" value="0"></label>
+      <label>Anchor Y <input id="ay" type="number" value="40"></label>
+
+      <hr>
+
+      <label>Rotate X <input id="rotX" type="range" min="-85" max="85" value="6"></label>
+      <label>Rotate Y <input id="rotY" type="range" min="-180" max="180" value="-12"></label>
+      <label>Rotate Z <input id="rotZ" type="range" min="0" max="360" value="0"></label>
+      <label>Zoom <input id="zoom" type="range" min="0.4" max="2" step="0.01" value="1"></label>
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="apply">Apply Anchor</button>
+        <button id="export">Copy SVG</button>
+      </div>
+      <div class="metric">angle: <span id="angle">—</span></div>
+    </aside>
+  </main>
+
+  <script type="module">
+    import '../src/components/silica-needle.js';
+
+    const needle = document.getElementById('needle');
+    const v = document.getElementById('v');
+    const ax = document.getElementById('ax'), ay = document.getElementById('ay');
+    const apply = document.getElementById('apply'), exportBtn = document.getElementById('export');
+    const angleEl = document.getElementById('angle');
+
+    const rotX = document.getElementById('rotX'), rotY = document.getElementById('rotY'), rotZ = document.getElementById('rotZ'), zoom = document.getElementById('zoom');
+
+    v.addEventListener('input', ()=> needle.setValue(Number(v.value), {animate:true}));
+    apply.addEventListener('click', ()=> needle.setAnchor(Number(ax.value), Number(ay.value)));
+
+    function applyTransforms(){
+      needle.setRotation({ rotX: Number(rotX.value), rotY: Number(rotY.value), rotZ: Number(rotZ.value), zoom: Number(zoom.value) });
+    }
+    rotX.addEventListener('input', applyTransforms);
+    rotY.addEventListener('input', applyTransforms);
+    rotZ.addEventListener('input', applyTransforms);
+    zoom.addEventListener('input', applyTransforms);
+
+    exportBtn.addEventListener('click', async ()=>{
+      const svg = await needle.exportSVG();
+      navigator.clipboard?.writeText(svg).then(()=> { exportBtn.textContent='Copied'; setTimeout(()=>exportBtn.textContent='Copy SVG',900); });
+    });
+
+    needle.addEventListener('needle-input', e=>{
+      angleEl.textContent = e.detail.angle.toFixed(1) + '°';
+    });
+
+    // init
+    applyTransforms();
+  </script>
+</body>
+</html>

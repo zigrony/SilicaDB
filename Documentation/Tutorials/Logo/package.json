@@ -1,0 +1,15 @@
+{
+  "name": "silica-tube-gauge",
+  "version": "0.1.0",
+  "description": "Re-usable SVG tube pressure gauge as Web Components (modular packages)",
+  "type": "module",
+  "scripts": {
+    "start": "npx sirv demo --single --dev",
+    "build": "echo \"No build step required for demo\""
+  },
+  "author": "Silica",
+  "license": "MIT",
+  "devDependencies": {
+    "sirv-cli": "^2.0.0"
+  }
+}

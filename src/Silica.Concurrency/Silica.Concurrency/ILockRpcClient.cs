@@ -1,6 +1,8 @@
-﻿namespace Silica.Concurrency
-{
+﻿using System.Threading;
+using System.Threading.Tasks;
 
+namespace Silica.Concurrency
+{
     public interface ILockRpcClient
     {
         Task<LockGrant> RequestSharedAsync(string nodeId, long txId, string resource, int timeout, CancellationToken ct);

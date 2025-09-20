@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SilicaDB — Abstract Geometry Marks</title>
+<style>
+  :root{
+    --size: 120;            /* base size in px (scaled via slider) */
+    --fg: #00d1ff;          /* primary accent */
+    --fg2:#7b61ff;          /* secondary accent */
+    --ink:#e8f1ff;          /* text on dark */
+    --mut:#a6b3c6;
+    --bg:#0d1117;
+    --card:#0f141c;
+    --grid:#1f2a3a;
+  }
+  .light {
+    --fg: #0066cc;
+    --fg2:#8a5cff;
+    --ink:#0b1220;
+    --mut:#445065;
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --grid:#e7ebf3;
+  }
+
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: var(--ink);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 16px;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0));
+    backdrop-filter: blur(4px);
+    border-bottom: 1px solid color-mix(in oklab, var(--grid) 65%, transparent);
+  }
+
+  .controls { display: flex; gap: 14px; align-items: center; }
+  .controls label { font-size: 12px; color: var(--mut); }
+  .controls input[type="range"] { width: 180px; }
+  .btn {
+    font-size: 12px; color: var(--ink);
+    background: color-mix(in oklab, var(--card) 85%, transparent);
+    border: 1px solid color-mix(in oklab, var(--grid) 65%, transparent);
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  }
+
+  main {
+    padding: 10px 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    align-content: start;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid color-mix(in oklab, var(--grid) 65%, transparent);
+    border-radius: 14px;
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+  }
+  .stage {
+    display: grid; place-items: center;
+    padding: 20px;
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--card) 94%, transparent), transparent);
+    /* checkerboard to preview transparency */
+    --chk: color-mix(in oklab, var(--grid) 25%, transparent);
+    background-image:
+      linear-gradient(45deg, var(--chk) 25%, transparent 25%, transparent 75%, var(--chk) 75%, var(--chk)),
+      linear-gradient(45deg, var(--chk) 25%, transparent 25%, transparent 75%, var(--chk) 75%, var(--chk));
+    background-size: 16px 16px;
+    background-position: 0 0, 8px 8px;
+  }
+  .title { font-size: 14px; color: var(--mut); }
+
+  /* Shared helpers */
+  .mark { width: calc(var(--size) * 1px); height: calc(var(--size) * 1px); position: relative; }
+  .ring { border-radius: 50%; }
+
+  /* 1) Ring + arc (conic gradient slice) */
+  .mark-ring-arc {
+    --thick: calc(var(--size) * 0.12px);
+    --gap: calc(var(--size) * 0.18px);
+    background:
+      radial-gradient(closest-side, transparent calc(100% - var(--thick)), var(--fg) calc(100% - var(--thick) + 1px)),
+      conic-gradient(from -30deg, var(--fg2) 0 60deg, transparent 60deg 360deg);
+    -webkit-mask:
+      radial-gradient(closest-side, transparent calc(100% - var(--thick)), #000 calc(100% - var(--thick) + 1px));
+            mask:
+      radial-gradient(closest-side, transparent calc(100% - var(--thick)), #000 calc(100% - var(--thick) + 1px));
+  }
+  .mark-ring-arc::after {
+    /* small accent node on the ring */
+    content: "";
+    position: absolute; inset: 0;
+    --r: calc(50% - var(--thick) / 2);
+    width: calc(var(--size) * 0.12px); height: calc(var(--size) * 0.12px);
+    background: radial-gradient(circle at 30% 30%, var(--fg), white 35%, var(--fg) 60%);
+    border-radius: 50%;
+    /* position around circumference */
+    left: calc(50% + var(--r) * cos(30deg) - (var(--size) * 0.06px));
+    top:  calc(50% - var(--r) * sin(30deg) - (var(--size) * 0.06px));
+    filter: drop-shadow(0 0 8px color-mix(in oklab, var(--fg) 60%, transparent));
+  }
+
+  /* 2) Hexagon with inner grid (clip-path) */
+  .mark-hex-grid {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    background:
+      linear-gradient(135deg, color-mix(in oklab, var(--fg) 70%, var(--fg2)), color-mix(in oklab, var(--fg2) 70%, var(--fg))),
+      repeating-linear-gradient(0deg, transparent 0 10%, color-mix(in oklab, var(--grid) 80%, transparent) 10% 11%),
+      repeating-linear-gradient(90deg, transparent 0 10%, color-mix(in oklab, var(--grid) 80%, transparent) 10% 11%);
+    background-blend-mode: soft-light, normal, normal;
+    border-radius: 10px;
+    position: relative;
+  }
+  .mark-hex-grid::after {
+    content: "";
+    position: absolute; inset: 10%;
+    border: 2px solid color-mix(in oklab, white 30%, var(--fg2));
+    border-radius: 10px;
+    clip-path: inherit;
+  }
+
+  /* 3) Negative-space S within a circle (masking) */
+  .mark-s-cut { border-radius: 50%;
+    background: linear-gradient(135deg, var(--fg2), var(--fg));
+    /* Create an S-shaped mask using layered gradients */
+    -webkit-mask:
+      radial-gradient(120% 80% at 50% 0%, #000 46%, transparent 47%) top/100% 50% no-repeat,
+      radial-gradient(120% 80% at 50% 100%, #000 46%, transparent 47%) bottom/100% 50% no-repeat;
+            mask:
+      radial-gradient(120% 80% at 50% 0%, #000 46%, transparent 47%) top/100% 50% no-repeat,
+      radial-gradient(120% 80% at 50% 100%, #000 46%, transparent 47%) bottom/100% 50% no-repeat;
+  }
+  .mark-s-cut::after{
+    /* subtle inner highlight ring to add depth */
+    content:"";
+    position:absolute; inset:7%;
+    border-radius:50%;
+    border: 2px solid color-mix(in oklab, white 30%, var(--fg));
+    -webkit-mask: radial-gradient(closest-side, transparent 70%, #000 71%);
+            mask: radial-gradient(closest-side, transparent 70%, #000 71%);
+    opacity: .6;
+  }
+
+  /* 4) Stacked discs (abstract database) */
+  .mark-stacked {
+    --h: calc(var(--size) * 0.62px);
+    height: var(--h);
+    width: calc(var(--size) * 1px);
+    position: relative;
+  }
+  .mark-stacked::before,
+  .mark-stacked::after {
+    content:"";
+    position:absolute; left:0; right:0;
+    border-radius: 50% / 18%;
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--fg) 40%, var(--fg2)), color-mix(in oklab, var(--fg2) 40%, var(--fg)));
+    height: calc(var(--h) * 0.55);
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--fg2) 25%, transparent) inset,
+      0 10px 24px -10px color-mix(in oklab, var(--fg2) 35%, transparent);
+  }
+  .mark-stacked::before { top: 0; }
+  .mark-stacked::after  { bottom: 0; }
+  .mark-stacked .mid {
+    position:absolute; left:0; right:0; top: 50%; transform: translateY(-50%);
+    border-radius: 50% / 18%;
+    height: calc(var(--h) * 0.55);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--fg) 40%, var(--fg2)), color-mix(in oklab, var(--fg2) 40%, var(--fg)));
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--fg2) 25%, transparent) inset,
+      0 10px 24px -10px color-mix(in oklab, var(--fg2) 35%, transparent);
+  }
+
+  /* 5) Grid with highlighted path (structure + query) */
+  .mark-grid-path {
+    --cells: 7;
+    --cell: calc(100% / var(--cells));
+    background:
+      repeating-linear-gradient(0deg, transparent 0 calc(var(--cell) - 1px), var(--grid) calc(var(--cell) - 1px) var(--cell)),
+      repeating-linear-gradient(90deg, transparent 0 calc(var(--cell) - 1px), var(--grid) calc(var(--cell) - 1px) var(--cell));
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .mark-grid-path::after {
+    content:"";
+    position:absolute; inset:0;
+    background:
+      linear-gradient(90deg, transparent 0 10%, color-mix(in oklab, var(--fg) 40%, transparent) 10% 30%, transparent 30% 100%),
+      linear-gradient(0deg, transparent 0 40%, color-mix(in oklab, var(--fg2) 55%, transparent) 40% 60%, transparent 60% 100%),
+      radial-gradient(circle at 70% 40%, color-mix(in oklab, var(--fg) 60%, transparent) 0 12%, transparent 13%);
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 10px color-mix(in oklab, var(--fg) 35%, transparent));
+  }
+
+  /* 6) Triad nodes with chords (network) */
+  .mark-triad {
+    --r: calc(var(--size) * 0.12px);
+    position: relative;
+  }
+  .mark-triad::before,
+  .mark-triad::after {
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 50% 10%, var(--fg) 0 10%, transparent 11%),
+      radial-gradient(circle at 12% 84%, var(--fg2) 0 10%, transparent 11%),
+      radial-gradient(circle at 88% 84%, color-mix(in oklab, var(--fg) 70%, var(--fg2)) 0 10%, transparent 11%),
+      conic-gradient(from 0deg, color-mix(in oklab, var(--fg) 40%, transparent) 0 120deg, transparent 120deg 360deg);
+    -webkit-mask:
+      radial-gradient(circle at 50% 10%, #000 0 10%, transparent 11%),
+      radial-gradient(circle at 12% 84%, #000 0 10%, transparent 11%),
+      radial-gradient(circle at 88% 84%, #000 0 10%, transparent 11%),
+      radial-gradient(closest-side, transparent 60%, #000 61%); /* keep inner area for chords */
+            mask:
+      radial-gradient(circle at 50% 10%, #000 0 10%, transparent 11%),
+      radial-gradient(circle at 12% 84%, #000 0 10%, transparent 11%),
+      radial-gradient(circle at 88% 84%, #000 0 10%, transparent 11%),
+      radial-gradient(closest-side, transparent 60%, #000 61%);
+    mix-blend-mode: screen;
+  }
+  .mark-triad svg {
+    position:absolute; inset:12%;
+    width:76%; height:76%;
+  }
+  .mark-triad path {
+    fill:none; stroke: color-mix(in oklab, var(--fg) 65%, var(--fg2));
+    stroke-width: 6; stroke-linecap: round; opacity: .7;
+  }
+
+  /* Footer */
+  footer {
+    padding: 8px 20px 18px; color: var(--mut); font-size: 12px;
+  }
+</style>
+</head>
+<body class="">
+  <header>
+    <div>
+      <strong>SilicaDB</strong> — Abstract geometry marks
+    </div>
+    <div class="controls">
+      <label for="size">Size</label>
+      <input id="size" type="range" min="64" max="220" step="1" value="120" />
+      <button id="theme" class="btn" aria-pressed="false">Theme: Dark</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-ring-arc ring" title="Ring + arc"></div>
+      </div>
+      <div class="title">Ring + arc (conic slice, accent node)</div>
+    </section>
+
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-hex-grid" title="Hexagon grid"></div>
+      </div>
+      <div class="title">Hexagon with subtle inner grid</div>
+    </section>
+
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-s-cut" title="Negative-space S"></div>
+      </div>
+      <div class="title">Negative‑space “S” inside a circle</div>
+    </section>
+
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-stacked" title="Stacked discs">
+          <div class="mid" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="title">Stacked discs (abstract database)</div>
+    </section>
+
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-grid-path" title="Grid with path"></div>
+      </div>
+      <div class="title">Grid with highlighted path (structure + query)</div>
+    </section>
+
+    <section class="card">
+      <div class="stage">
+        <div class="mark mark-triad" title="Triad network">
+          <!-- SVG chords between three nodes -->
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M50,8 C70,32 80,50 88,84" />
+            <path d="M50,8 C30,32 20,50 12,84" />
+            <path d="M12,84 C40,70 60,70 88,84" />
+          </svg>
+        </div>
+      </div>
+      <div class="title">Triad nodes with smooth chords</div>
+    </section>
+  </main>
+
+  <footer>
+    Notes:
+    • All marks are pure CSS/SVG paths with transparent backgrounds.
+    • Use the Size slider to test scalability.
+    • Toggle Theme to preview on dark/light surfaces.
+  </footer>
+
+<script>
+  // Size control
+  const size = document.getElementById('size');
+  size.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--size', size.value);
+  });
+
+  // Theme toggle
+  const themeBtn = document.getElementById('theme');
+  themeBtn.addEventListener('click', () => {
+    const light = document.body.classList.toggle('light');
+    themeBtn.textContent = 'Theme: ' + (light ? 'Light' : 'Dark');
+    themeBtn.setAttribute('aria-pressed', String(light));
+  });
+</script>
+</body>
+</html>

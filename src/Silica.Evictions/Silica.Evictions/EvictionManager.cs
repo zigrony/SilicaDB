@@ -4,15 +4,22 @@ using System.Threading;
 using System.Threading.Tasks;
 using Silica.Evictions.Interfaces;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
     public sealed class EvictionManager : IDisposable
     {
+        static EvictionManager()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
+
         private readonly TimeSpan _interval;
         private readonly Timer _timer;
         private readonly object _sync = new();
         private readonly List<IEvictionCacheWrapper> _caches = new();
+        private readonly string _componentName = "EvictionManager";
 
         // Non-generic facade so we can store heterogeneous caches
         private interface IEvictionCacheWrapper
@@ -56,6 +63,7 @@ namespace Silica.Evictions
                 }
 
                 _caches.Add(new Wrapper<TKey, TValue>(cache));
+                try { EvictionDiagnostics.Emit(_componentName, "register", "info", "cache_registered"); } catch { }
             }
         }
 
@@ -74,6 +82,7 @@ namespace Silica.Evictions
                     if (ReferenceEquals(_caches[i].InnerCache, cache))
                     {
                         _caches.RemoveAt(i);
+                        try { EvictionDiagnostics.Emit(_componentName, "unregister", "info", "cache_unregistered"); } catch { }
                         break;
                     }
                 }
@@ -91,7 +100,7 @@ namespace Silica.Evictions
             {
                 snapshot = _caches.ToArray();
             }
-
+            try { EvictionDiagnostics.Emit(_componentName, "tick", "debug", "begin"); } catch { }
             foreach (var wrapper in snapshot)
             {
                 try
@@ -101,13 +110,16 @@ namespace Silica.Evictions
                 catch
                 {
                     // swallow any cache-specific errors
+                    try { EvictionDiagnostics.Emit(_componentName, "tick", "warn", "cleanup_error"); } catch { }
                 }
             }
+            try { EvictionDiagnostics.Emit(_componentName, "tick", "debug", "done"); } catch { }
         }
 
         public void Dispose()
         {
             _timer.Dispose();
+            try { EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposed"); } catch { }
         }
     }
 }

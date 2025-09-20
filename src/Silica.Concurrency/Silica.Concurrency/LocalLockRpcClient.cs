@@ -1,4 +1,5 @@
 ﻿// LocalLockRpcClient.cs
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,7 +11,7 @@ namespace Silica.Concurrency
     internal sealed class LocalLockRpcClient : ILockRpcClient
     {
         private readonly LockManager _mgr;
-        public LocalLockRpcClient(LockManager mgr) => _mgr = mgr;
+        public LocalLockRpcClient(LockManager mgr) => _mgr = mgr ?? throw new ArgumentNullException(nameof(mgr));
 
         public Task<LockGrant> RequestSharedAsync(
             string nodeId,
@@ -40,10 +41,24 @@ namespace Silica.Concurrency
             CancellationToken ct)
         {
             // Release is non-cancellable (ignore ct) to avoid leaks.
-            // Important: do NOT swallow exceptions here. In strict mode, invalid/stale
-            // tokens must surface to the caller to preserve contract correctness.
-            _mgr.ReleaseLocal(txId, resource, fencingToken);
-            return Task.CompletedTask;
+            // Surface failures as a faulted Task (async contract consistency).
+            try
+            {
+                _mgr.ReleaseLocal(txId, resource, fencingToken);
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                // Avoid using Task.FromException to keep within base framework surface area
+                // while maintaining no-linq/no-reflection policy.
+                var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                try
+                {
+                    tcs.SetException(ex);
+                }
+                catch { }
+                return tcs.Task;
+            }
         }
     }
 }

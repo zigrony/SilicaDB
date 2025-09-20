@@ -1,0 +1,282 @@
+/* Reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header & Footer */
+header, footer {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 1rem;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+footer {
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  border-bottom: none;
+}
+
+/* Body Layout */
+main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Sidebar */
+nav#sidebar {
+  width: 280px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  padding: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+}
+
+nav#sidebar ul {
+  list-style: none;
+}
+
+nav#sidebar li + li {
+  margin-top: 0.25rem;
+}
+
+nav#sidebar a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+
+nav#sidebar a:hover {
+  background: var(--sidebar-hover);
+  color: var(--color-accent);
+}
+
+nav#sidebar a.active {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+  font-weight: 600;
+  position: relative;
+}
+
+nav#sidebar a.active::before {
+  content: "";
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+/* Content */
+section#content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  background: var(--content-bg);
+  color: var(--content-text);
+}
+
+/* A readable max-width wrapper for markdown content */
+section#content > * {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+/* Headings */
+section#content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+section#content h2 {
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-accent);
+}
+
+section#content h3 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-accent);
+}
+
+/* Paragraphs and text elements */
+section#content p,
+section#content li {
+  margin-bottom: 0.75rem;
+}
+
+section#content a {
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+section#content a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+section#content ul, section#content ol {
+  margin: 0.5rem 0 1rem 1.5rem;
+}
+
+section#content li > ul, section#content li > ol {
+  margin-top: 0.25rem;
+}
+
+/* Horizontal rule */
+section#content hr {
+  border: 0;
+  height: 1px;
+  background: var(--color-border);
+  margin: 2rem 0;
+}
+
+/* Tables */
+section#content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.25rem;
+  font-size: 0.95rem;
+}
+
+section#content th, section#content td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+section#content thead th {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--content-bg));
+}
+
+/* Blockquotes and callouts */
+blockquote,
+.callout {
+  background: var(--callout-bg);
+  border-left: 4px solid var(--callout-border);
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  border-radius: 6px;
+  color: var(--callout-text);
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Callout variants */
+.callout-info {
+  --callout-bg: var(--callout-info-bg);
+  --callout-border: var(--callout-info-border);
+  --callout-text: var(--callout-info-text);
+}
+.callout-success {
+  --callout-bg: var(--callout-success-bg);
+  --callout-border: var(--callout-success-border);
+  --callout-text: var(--callout-success-text);
+}
+.callout-warning {
+  --callout-bg: var(--callout-warning-bg);
+  --callout-border: var(--callout-warning-border);
+  --callout-text: var(--callout-warning-text);
+}
+.callout-danger {
+  --callout-bg: var(--callout-danger-bg);
+  --callout-border: var(--callout-danger-border);
+  --callout-text: var(--callout-danger-text);
+}
+
+/* Inline highlight */
+.highlight {
+  background: var(--color-accent);
+  color: #fff;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+/* Code */
+code {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: "Consolas", ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow: auto;
+  margin: 1rem 0 1.25rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: var(--code-text);
+  display: block;
+}
+
+/* Images */
+section#content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+/* Small screens */
+@media (max-width: 900px) {
+  nav#sidebar {
+    width: 220px;
+  }
+}
+
+@media (max-width: 700px) {
+  main {
+    flex-direction: column;
+  }
+  nav#sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  nav#sidebar a.active::before {
+    display: none;
+  }
+}

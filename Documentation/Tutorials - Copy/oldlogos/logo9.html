@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Silica Logo — Full controls (word + tagline)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    --stage-size: 400px;
+    --orbit-translateZ: 192px;
+    --tagline-color: #000000;
+    --tagline-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    --bg-c1: #00e6b8;
+    --bg-c2: #00997a;
+    --bg-c3: #003d33;
+    --wire-front: rgba(255,255,255,0.9);
+    --wire-back: rgba(102,204,204,0.25);
+  }
+
+  html, body { height: 100%; margin: 0; }
+  body {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: radial-gradient(circle at 50% 50%, var(--bg-c1) 0%, var(--bg-c2) 60%, var(--bg-c3) 100%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #fff;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .stage {
+    width: var(--stage-size);
+    height: var(--stage-size);
+    perspective: 1000px;
+    position: relative;
+  }
+
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  svg { width: 100%; height: 100%; display: block; }
+
+  .front { stroke: var(--wire-front); stroke-width: 1.5; fill:none; }
+  .back  { stroke: var(--wire-back); stroke-width:1; fill:none; stroke-dasharray:4 4; }
+
+  .orbit-container {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-style: preserve-3d;
+    transform: translate(-50%,-50%) rotateY(-110deg);
+    will-change: transform, opacity;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  .orbit-arm {
+    transform: translateZ(var(--orbit-translateZ));
+    transform-style: preserve-3d;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:200px;height:200px;
+  }
+
+  .arc3d {
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    transform-style: preserve-3d;
+    white-space:nowrap;
+  }
+  .arc3d span{
+    display:inline-block;
+    margin:0 2px;
+    font-weight:700;
+    color:#ff8a33;
+    line-height:1;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+  }
+
+  .tagline {
+    position:absolute;
+    left:50%;
+    transform: translateX(-50%);
+    font-size:18px;
+    white-space:nowrap;
+    opacity:0;
+    z-index:4;
+    color: var(--tagline-color);
+    font-family: var(--tagline-font);
+  }
+  .tagline span { display:inline-block; opacity:0; will-change: transform, opacity; }
+
+  /* Controls UI */
+  .fab {
+    position: fixed; right: 12px; bottom: 12px;
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(0,0,0,0.72); color: #eafff8;
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: pointer; z-index: 60;
+  }
+  .panel {
+    position: fixed; right: 12px; bottom: 64px; z-index: 55;
+    width: min(820px, 96vw); max-height: 78vh; overflow: auto;
+    background: rgba(8,18,16,0.94); border-radius: 12px;
+    color: #eafff8; padding: 12px; box-sizing: border-box;
+    display: none;
+  }
+  .panel.open { display: block; }
+
+  .grid {
+    display:grid; grid-template-columns: 1fr 1fr; gap:12px;
+  }
+  h3 { margin:6px 0 8px 0; font-size:13px; color:#c9fff3; }
+  .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
+  .row label { min-width:140px; font-size:13px; color:#dff6ee; }
+  .row input[type="number"], .row input[type="text"], .row select { flex:1; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: #fff; }
+  .row input[type="color"] { width: 46px; height: 30px; padding:0; border-radius:6px; border:0; background:#fff; }
+  .row input[type="range"] { flex:1; }
+  .small { font-size:12px; color:#cfe9e4; }
+  .footer { display:flex; gap:8px; justify-content: space-between; margin-top:12px; align-items:center; }
+  .btn { padding:8px 10px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
+  .btn-primary { background:#0b84ff; color:#fff; }
+  .btn-go { background:#22c55e; color:#062e1a; }
+  .btn-ghost { background: rgba(255,255,255,0.06); color:#eafff8; }
+
+  @media (max-width: 880px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="layer" id="backLayer"></div>
+
+    <div class="orbit-container" id="orbitContainer" aria-hidden="true">
+      <div class="orbit-arm" id="orbitArm">
+        <div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;">
+          <div class="arc3d" id="arc3d" aria-hidden="true">
+            <span>S</span><span>i</span><span>l</span><span>i</span><span>c</span><span>a</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer" id="frontLayer"></div>
+    <div class="tagline" id="tagline" aria-hidden="true"></div>
+  </div>
+
+  <button class="fab" id="fab" title="Controls">⚙️</button>
+
+  <div class="panel" id="panel" role="dialog" aria-hidden="true" aria-labelledby="controlsTitle">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div id="controlsTitle" style="font-weight:800; font-size:15px;">Silica Logo Controls</div>
+      <div style="display:flex;gap:8px;">
+        <button id="closePanel" class="btn-ghost">Close</button>
+      </div>
+    </div>
+
+    <hr style="opacity:.03;margin:8px 0;" />
+
+    <div class="grid">
+      <!-- Left column: core + orbit -->
+      <div>
+        <h3>Wireframe & Orbit</h3>
+        <div class="row"><label for="maxDensity">Max density</label><input id="maxDensity" type="number" value="8" min="2" max="40"></div>
+        <div class="row"><label for="bins">Bins</label><input id="bins" type="number" value="6" min="2" max="40"></div>
+        <div class="row"><label for="fade">Fade (ms)</label><input id="fade" type="number" value="700" min="0"></div>
+        <div class="row"><label for="dwell">Dwell (ms)</label><input id="dwell" type="number" value="90" min="0"></div>
+        <div class="row"><label for="arcDepth">Arc depth (px)</label><input id="arcDepth" type="number" value="18" min="0" max="300"></div>
+        <div class="row"><label for="orbitDur">Orbit duration (ms)</label><input id="orbitDur" type="number" value="3600" min="0"></div>
+        <div class="row"><label for="easing">Easing</label>
+          <select id="easing">
+            <option value="cubic-bezier(.22,.78,.32,1)">Hero</option>
+            <option value="ease">ease</option>
+            <option value="ease-in-out">ease-in-out</option>
+            <option value="linear">linear</option>
+          </select>
+        </div>
+        <div class="row"><label><input id="maskToggle" type="checkbox" checked> Mask when behind</label></div>
+
+        <h3 style="margin-top:12px;">Visuals</h3>
+        <div class="row"><label for="stageSize">Stage size (px)</label><input id="stageSize" type="number" value="400" min="200" max="2000"></div>
+        <div class="row"><label for="orbitZ">Orbit depth (Z)</label><input id="orbitZ" type="number" value="192" min="0" max="2000"></div>
+        <div class="row"><label for="wireFront">Wire front color</label><input id="wireFront" type="color" value="#ffffff"></div>
+        <div class="row"><label for="wireBack">Wire back color</label><input id="wireBack" type="color" value="#66cccc"></div>
+      </div>
+
+      <!-- Right column: Silica word + Tagline + Export + Settings -->
+      <div>
+        <h3>Silica word (wordmark)</h3>
+        <div class="row"><label for="wordText">Text</label><input id="wordText" type="text" value="Silica"></div>
+        <div class="row"><label for="wordFont">Font family</label>
+          <select id="wordFont">
+            <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial">Inter / System</option>
+            <option value="'Segoe UI', system-ui, -apple-system, Roboto, Arial">Segoe UI</option>
+            <option value="'Roboto', system-ui, -apple-system, 'Segoe UI', Arial">Roboto</option>
+            <option value="'Helvetica Neue', Arial, sans-serif">Helvetica Neue</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+        <div class="row" id="wordCustomRow" style="display:none;"><label for="wordCustom">Custom family</label><input id="wordCustom" type="text" placeholder="'GT Sectra', Georgia, serif"></div>
+        <div class="row"><label for="wordColor">Color</label><input id="wordColor" type="color" value="#ff8a33"></div>
+        <div class="row"><label for="wordSize">Base font size (px)</label><input id="wordSize" type="number" value="48" min="8" max="240"></div>
+        <div class="row"><label for="letterGap">Letter gap (px)</label><input id="letterGap" type="number" value="2" min="-8" max="24"></div>
+        <div class="row"><label for="wordShadow">Shadow (x,y,blur,alpha)</label><input id="wordShadow" type="text" value="2,2,0,0.6"></div>
+
+        <h3 style="margin-top:12px;">Tagline</h3>
+        <div class="row"><label for="taglineText">Text</label><input id="taglineText" type="text" value="Opensource Enterprise SQL, Power in your hands."></div>
+        <div class="row"><label for="taglineFont">Font family</label>
+          <select id="taglineFont">
+            <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial">Inter / System</option>
+            <option value="'Segoe UI', system-ui, -apple-system, Roboto, Arial">Segoe UI</option>
+            <option value="'Roboto', system-ui, -apple-system, 'Segoe UI', Arial">Roboto</option>
+            <option value="'Times New Roman', Times, serif">Times</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+        <div class="row" id="taglineCustomRow" style="display:none;"><label for="taglineCustom">Custom family</label><input id="taglineCustom" type="text" placeholder="'GT Sectra', Georgia, serif"></div>
+        <div class="row"><label for="taglineColor">Color</label><input id="taglineColor" type="color" value="#000000"></div>
+        <div class="row"><label for="taglineSize">Font size (px)</label><input id="taglineSize" type="number" value="18" min="8" max="72"></div>
+        <div class="row"><label for="taglineShadow">Glow (offsetY,blur,alpha)</label><input id="taglineShadow" type="text" value="4,10,0.65"></div>
+
+        <h3 style="margin-top:12px;">Export & Settings</h3>
+        <div class="row"><label for="exportFormat">Export format</label>
+          <select id="exportFormat"><option value="png">PNG (alpha)</option><option value="webp">WebP (alpha)</option></select>
+        </div>
+        <div class="row">
+          <label>Export</label>
+          <div style="display:flex;gap:8px;width:100%;">
+            <button id="exportBtn" class="btn-primary" style="flex:1;">Save image</button>
+            <button id="exportPreview" class="btn-ghost" style="width:90px;">Preview</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Settings</label>
+          <div style="display:flex;gap:8px;width:100%;">
+            <button id="saveSettingsBtn" class="btn-ghost" style="flex:1;">Save settings</button>
+            <button id="loadSettingsBtn" class="btn-ghost" style="width:90px;">Load</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="small">Note: settings are saved only when you click Save settings.</div>
+      <div style="display:flex;gap:8px;">
+        <button id="applyBtn" class="btn-ghost">Apply (no save)</button>
+        <button id="rescaleBtn" class="btn-ghost">Rescale word</button>
+        <button id="restartBtn" class="btn-go">Restart</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Elements */
+const panel = document.getElementById('panel');
+const fab = document.getElementById('fab');
+const closePanel = document.getElementById('closePanel');
+
+const backLayer = document.getElementById('backLayer');
+const frontLayer = document.getElementById('frontLayer');
+const orbitContainer = document.getElementById('orbitContainer');
+const orbitArm = document.getElementById('orbitArm');
+const arc3d = document.getElementById('arc3d');
+const taglineDiv = document.getElementById('tagline');
+
+const maxDensityInput = document.getElementById('maxDensity');
+const binsInput = document.getElementById('bins');
+const fadeInput = document.getElementById('fade');
+const dwellInput = document.getElementById('dwell');
+const arcDepthInput = document.getElementById('arcDepth');
+const orbitDurInput = document.getElementById('orbitDur');
+const easingSelect = document.getElementById('easing');
+const maskToggle = document.getElementById('maskToggle');
+
+const stageSizeInput = document.getElementById('stageSize');
+const orbitZInput = document.getElementById('orbitZ');
+const wireFrontInput = document.getElementById('wireFront');
+const wireBackInput = document.getElementById('wireBack');
+
+const wordText = document.getElementById('wordText');
+const wordFont = document.getElementById('wordFont');
+const wordCustomRow = document.getElementById('wordCustomRow');
+const wordCustom = document.getElementById('wordCustom');
+const wordColor = document.getElementById('wordColor');
+const wordSize = document.getElementById('wordSize');
+const letterGap = document.getElementById('letterGap');
+const wordShadow = document.getElementById('wordShadow');
+
+const taglineText = document.getElementById('taglineText');
+const taglineFont = document.getElementById('taglineFont');
+const taglineCustomRow = document.getElementById('taglineCustomRow');
+const taglineCustom = document.getElementById('taglineCustom');
+const taglineColor = document.getElementById('taglineColor');
+const taglineSize = document.getElementById('taglineSize');
+const taglineShadow = document.getElementById('taglineShadow');
+
+const exportBtn = document.getElementById('exportBtn');
+const exportPreview = document.getElementById('exportPreview');
+const exportFormat = document.getElementById('exportFormat');
+
+const applyBtn = document.getElementById('applyBtn');
+const rescaleBtn = document.getElementById('rescaleBtn');
+const restartBtn = document.getElementById('restartBtn');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const loadSettingsBtn = document.getElementById('loadSettingsBtn');
+
+/* Other state */
+const svgNS = "http://www.w3.org/2000/svg";
+let intervalId = null;
+let orbitAnimation = null;
+let lastVisible = true;
+
+/* Utilities */
+function clampInt(v, lo, hi, fallback) {
+  const n = parseInt(v, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(lo, Math.min(hi, n));
+}
+function setCSSVar(name, value) { document.documentElement.style.setProperty(name, value); }
+
+/* Build sphere */
+function buildSphere(density) {
+  const backSVG = document.createElementNS(svgNS, "svg");
+  backSVG.setAttribute("viewBox", "0 0 200 200");
+  backSVG.setAttribute("width", "100%");
+  backSVG.setAttribute("height", "100%");
+
+  const frontSVG = document.createElementNS(svgNS, "svg");
+  frontSVG.setAttribute("viewBox", "0 0 200 200");
+  frontSVG.setAttribute("width", "100%");
+  frontSVG.setAttribute("height", "100%");
+
+  const circle = document.createElementNS(svgNS, "circle");
+  circle.setAttribute("cx", 100); circle.setAttribute("cy", 100); circle.setAttribute("r", 95);
+  circle.setAttribute("class", "front");
+  frontSVG.appendChild(circle);
+
+  for (let i = 1; i < density; i++) {
+    const ry = (95 / density) * i;
+    const latBack = document.createElementNS(svgNS, "ellipse");
+    latBack.setAttribute("cx", 100); latBack.setAttribute("cy", 100);
+    latBack.setAttribute("rx", 95); latBack.setAttribute("ry", ry);
+    latBack.setAttribute("class", "back");
+    backSVG.appendChild(latBack);
+
+    const latFront = latBack.cloneNode();
+    latFront.setAttribute("class", "front");
+    frontSVG.appendChild(latFront);
+  }
+
+  for (let i = 1; i < density; i++) {
+    const rx = (95 / density) * i;
+    const lonBack = document.createElementNS(svgNS, "ellipse");
+    lonBack.setAttribute("cx", 100); lonBack.setAttribute("cy", 100);
+    lonBack.setAttribute("rx", rx); lonBack.setAttribute("ry", 95);
+    lonBack.setAttribute("class", "back");
+    backSVG.appendChild(lonBack);
+
+    const lonFront = lonBack.cloneNode();
+    lonFront.setAttribute("class", "front");
+    frontSVG.appendChild(lonFront);
+  }
+
+  return { backSVG, frontSVG };
+}
+
+/* apply per-letter arc depth */
+function applyArcDepth(depth) {
+  const letters = arc3d.querySelectorAll('span');
+  const mid = (letters.length - 1) / 2;
+  letters.forEach((s, i) => {
+    const rel = i - mid;
+    const z = depth - Math.abs(rel) * (depth / (mid || 1));
+    s.style.transform = `translateZ(${z}px)`;
+  });
+}
+
+/* Masking/hysteresis */
+function getDOMMatrixCompat(transform) {
+  if (typeof DOMMatrixReadOnly !== 'undefined') return new DOMMatrixReadOnly(transform);
+  if (typeof DOMMatrix !== 'undefined') return new DOMMatrix(transform);
+  return new WebKitCSSMatrix(transform);
+}
+function updateVisibility() {
+  if (maskToggle.checked) {
+    const style = getComputedStyle(orbitContainer);
+    const matrix = getDOMMatrixCompat(style.transform);
+    const angle = Math.atan2(matrix.m13, matrix.m11) * (180 / Math.PI);
+    const deg = (angle + 360) % 360;
+    if (lastVisible && deg > 100 && deg < 260) { arc3d.style.opacity = '0'; lastVisible = false; }
+    else if (!lastVisible && (deg <= 80 || deg >= 280)) { arc3d.style.opacity = '1'; lastVisible = true; }
+  } else {
+    arc3d.style.opacity = '1'; lastVisible = true;
+  }
+  requestAnimationFrame(updateVisibility);
+}
+
+/* run spheres slideshow */
+function runSphereCycle(callback) {
+  const maxDensity = clampInt(maxDensityInput.value, 2, 40, 8);
+  const bins = clampInt(binsInput.value, 2, 40, 6);
+  const fade = clampInt(fadeInput.value, 0, 20000, 700);
+  const dwell = clampInt(dwellInput.value, 0, 20000, 90);
+  const arcDepth = clampInt(arcDepthInput.value, 0, 300, 18);
+
+  applyArcDepth(arcDepth);
+
+  const densities = [];
+  for (let i = 0; i < bins; i++) {
+    const t = (bins === 1) ? 0 : i / (bins - 1);
+    densities.push(Math.round(2 + (maxDensity - 2) * t));
+  }
+  const unique = [...new Set(densities)];
+
+  let index = 0;
+  function showDensity(idx) {
+    backLayer.innerHTML = '';
+    frontLayer.innerHTML = '';
+    const { backSVG, frontSVG } = buildSphere(unique[idx]);
+    backLayer.appendChild(backSVG);
+    frontLayer.appendChild(frontSVG);
+  }
+
+  showDensity(index);
+
+  clearInterval(intervalId);
+  intervalId = setInterval(() => {
+    index++;
+    if (index < unique.length) {
+      showDensity(index);
+    } else {
+      clearInterval(intervalId);
+      callback && callback();
+    }
+  }, fade + dwell);
+}
+
+/* orbit animation (tilted arc) */
+function animateOrbitIn(durationOverride, onFinish) {
+  let dur = (typeof durationOverride === 'number') ? durationOverride : parseInt(orbitDurInput.value, 10);
+  if (!Number.isFinite(dur) || Number.isNaN(dur)) dur = 3600;
+  dur = Math.max(0, Math.round(dur));
+
+  const startYaw = -110, endYaw = 0;
+  const startPitch = 16, midPitch = -10, endPitch = 0;
+  const stageSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-size')) || 400;
+  const baseZ = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--orbit-translateZ')) || 192;
+  const zPulse = Math.max(12, Math.round(stageSize * 0.06));
+
+  orbitContainer.style.transform = `translate(-50%,-50%) rotateY(${startYaw}deg)`;
+  orbitContainer.style.opacity = '0';
+  orbitArm.style.transform = `translateZ(${baseZ - zPulse}px) rotateX(${startPitch}deg)`;
+  orbitArm.style.willChange = 'transform';
+  orbitContainer.style.willChange = 'transform, opacity';
+
+  if (orbitAnimation && typeof orbitAnimation.cancel === 'function') {
+    try { orbitAnimation.cancel(); } catch (e) {}
+  } else if (orbitAnimation && orbitAnimation.outer && orbitAnimation.inner) {
+    try { orbitAnimation.outer.cancel(); orbitAnimation.inner.cancel(); } catch (e) {}
+  }
+  orbitAnimation = null;
+
+  if (dur === 0) {
+    orbitContainer.style.transform = `translate(-50%,-50%) rotateY(${endYaw}deg)`;
+    orbitContainer.style.opacity = '1';
+    orbitArm.style.transform = `translateZ(${baseZ}px) rotateX(${endPitch}deg)`;
+    requestAnimationFrame(() => { onFinish && onFinish(); });
+    return;
+  }
+
+  const easing = easingSelect.value || 'cubic-bezier(.22,.78,.32,1)';
+
+  const outer = orbitContainer.animate([
+    { transform: `translate(-50%,-50%) rotateY(${startYaw}deg)`, opacity: 0 },
+    { transform: `translate(-50%,-50%) rotateY(${startYaw * 0.5}deg)`, opacity: 0.6, offset: 0.45 },
+    { transform: `translate(-50%,-50%) rotateY(${endYaw}deg)`, opacity: 1 }
+  ], { duration: dur, easing, fill: 'forwards' });
+
+  const inner = orbitArm.animate([
+    { transform: `translateZ(${baseZ - zPulse}px) rotateX(${startPitch}deg)` },
+    { transform: `translateZ(${baseZ + zPulse}px) rotateX(${midPitch}deg)`, offset: 0.45 },
+    { transform: `translateZ(${baseZ}px) rotateX(${endPitch}deg)` }
+  ], { duration: dur, easing, fill: 'forwards' });
+
+  let completed = 0;
+  const done = () => {
+    completed++;
+    if (completed < 2) return;
+    orbitContainer.style.transform = `translate(-50%,-50%) rotateY(${endYaw}deg)`;
+    orbitContainer.style.opacity = '1';
+    orbitArm.style.transform = `translateZ(${baseZ}px) rotateX(${endPitch}deg)`;
+    onFinish && onFinish();
+  };
+  outer.onfinish = done;
+  inner.onfinish = done;
+
+  orbitAnimation = { outer, inner, cancel() { try { outer.cancel(); } catch(e){} try { inner.cancel(); } catch(e){} } };
+}
+
+/* autoscale "Silica" to arc then reduction */
+function scaleSilicaToArc(finalReduction = 0.63, arcCoverage = 0.85) {
+  const frontCircle = frontLayer.querySelector('circle');
+  const radiusPx = frontCircle ? frontCircle.getBoundingClientRect().width / 2 : stage.clientWidth / 2;
+  const circumference = 2 * Math.PI * radiusPx;
+  const targetArc = circumference * arcCoverage;
+
+  const letters = Array.from(arc3d.querySelectorAll('span'));
+  if (!letters.length) return;
+
+  const proxy = arc3d.cloneNode(true);
+  proxy.style.position = 'absolute'; proxy.style.left = '-9999px'; proxy.style.top = '-9999px';
+  proxy.style.opacity = '0'; proxy.style.pointerEvents = 'none';
+  // set spacing for measurement
+  proxy.querySelectorAll('span').forEach(s => s.style.margin = `0 ${letterGap.value}px`);
+  document.body.appendChild(proxy);
+
+  let minFS = 8, maxFS = 320, best = minFS;
+  for (let i = 0; i < 16; i++) {
+    const mid = (minFS + maxFS) / 2;
+    proxy.querySelectorAll('span').forEach(s => s.style.fontSize = mid + 'px');
+    const w = proxy.scrollWidth;
+    if (w > targetArc) maxFS = mid; else { minFS = mid; best = mid; }
+  }
+
+  best = best * finalReduction;
+  letters.forEach(s => s.style.fontSize = best + 'px');
+  document.body.removeChild(proxy);
+}
+
+/* position tagline & reveal */
+function positionTaglineUnderArc(gap = 6) {
+  const arcRect = arc3d.getBoundingClientRect();
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  taglineDiv.style.top = (arcRect.bottom - stageRect.top + gap) + 'px';
+}
+
+function buildTaglineSpans(text) {
+  taglineDiv.innerHTML = '';
+  for (const ch of text) {
+    const span = document.createElement('span');
+    span.textContent = (ch === ' ') ? '\u00A0' : ch;
+    taglineDiv.appendChild(span);
+  }
+}
+
+function showTagline() {
+  buildTaglineSpans(taglineText.value);
+  taglineDiv.style.opacity = '1';
+  const spans = Array.from(taglineDiv.querySelectorAll('span'));
+  spans.forEach((span, i) => {
+    const dx = (Math.random() - 0.5) * 260;
+    const dy = (Math.random() - 0.5) * 100;
+    span.style.transform = `translate(${dx}px,${dy}px)`;
+    setTimeout(() => {
+      span.style.transition = 'transform 0.8s cubic-bezier(.22,.78,.32,1), opacity 0.6s';
+      span.style.transform = 'translate(0,0)';
+      span.style.opacity = '1';
+    }, 120 + i * 26);
+  });
+}
+
+/* apply Silica word settings to DOM (live, no save) */
+function applyWordSettings() {
+  // build letters from current word text
+  const text = wordText.value || 'Silica';
+  arc3d.innerHTML = '';
+  for (const ch of text) {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    arc3d.appendChild(span);
+  }
+
+  // font family
+  let fam = wordFont.value;
+  if (fam === 'custom') fam = wordCustom.value.trim() || getComputedStyle(document.documentElement).getPropertyValue('--tagline-font').trim();
+  arc3d.querySelectorAll('span').forEach(s => s.style.fontFamily = fam);
+
+  // font size (base) applied as approximate; autoscale will override later
+  const size = clampInt(wordSize.value, 8, 240, 48);
+  arc3d.querySelectorAll('span').forEach(s => s.style.fontSize = size + 'px');
+
+  // color
+  arc3d.querySelectorAll('span').forEach(s => s.style.color = wordColor.value);
+
+  // gap
+  const gap = parseFloat(letterGap.value) || 0;
+  arc3d.querySelectorAll('span').forEach(s => s.style.margin = `0 ${gap}px`);
+
+  // shadow string: "x,y,blur,alpha"
+  const parts = (wordShadow.value || '2,2,0,0.6').split(',').map(p => p.trim());
+  const sx = parseFloat(parts[0]) || 0;
+  const sy = parseFloat(parts[1]) || 0;
+  const blur = parseFloat(parts[2]) || 0;
+  const alpha = parseFloat(parts[3]) || 0;
+  const sh = alpha === 0 ? 'none' : `${sx}px ${sy}px ${blur}px rgba(0,0,0,${alpha})`;
+  arc3d.querySelectorAll('span').forEach(s => s.style.textShadow = sh);
+
+  // apply arc depth in case letters changed
+  applyArcDepth(clampInt(arcDepthInput.value, 0, 500, 18));
+}
+
+/* apply tagline styles */
+function applyTaglineStyle() {
+  buildTaglineSpans(taglineText.value);
+  let fam = taglineFont.value;
+  if (fam === 'custom') fam = taglineCustom.value.trim() || getComputedStyle(document.documentElement).getPropertyValue('--tagline-font').trim();
+  taglineDiv.style.fontFamily = fam;
+  taglineDiv.style.color = taglineColor.value;
+  const size = clampInt(taglineSize.value, 8, 72, 18);
+  taglineDiv.style.fontSize = size + 'px';
+
+  // tagline shadow "offsetY,blur,alpha"
+  const parts = (taglineShadow.value || '4,10,0.65').split(',').map(p => p.trim());
+  const offsetY = parseFloat(parts[0]) || 0;
+  const blur = parseFloat(parts[1]) || 0;
+  const alpha = parseFloat(parts[2]) || 0.65;
+  const glowColor = `rgba(255,255,255,${alpha})`;
+  const shadowValue = `0 ${offsetY}px ${blur}px ${glowColor}`;
+  taglineDiv.querySelectorAll('span').forEach(s => s.style.textShadow = shadowValue);
+}
+
+/* full flow */
+function orbitInThenTagline() {
+  // autoscale to arc, then animate, then reveal tagline
+  scaleSilicaToArc(parseFloat(finalReductionValue()) || 0.63, 0.85);
+  animateOrbitIn(parseInt(orbitDurInput.value, 10) || 3600, () => {
+    positionTaglineUnderArc(8);
+    showTagline();
+  });
+}
+
+/* restart sequence */
+function restartSequence() {
+  clearInterval(intervalId);
+  if (orbitAnimation && typeof orbitAnimation.cancel === 'function') orbitAnimation.cancel();
+  taglineDiv.innerHTML = '';
+  arc3d.style.opacity = '1';
+  orbitContainer.style.opacity = '0';
+  orbitContainer.style.transform = 'translate(-50%,-50%) rotateY(-110deg)';
+  runSphereCycle(() => orbitInThenTagline());
+}
+
+/* export (same approach as earlier) */
+function exportImage(format = 'png') {
+  const s = clampInt(stageSizeInput.value, 200, 2000, 400);
+  const w = s, h = s;
+  const backSVG = backLayer.querySelector('svg');
+  const frontSVG = frontLayer.querySelector('svg');
+
+  const outSVG = document.createElementNS(svgNS, 'svg');
+  outSVG.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  outSVG.setAttribute('width', w);
+  outSVG.setAttribute('height', h);
+  outSVG.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+  const scale = w / 200;
+  function importChildren(srcSvg) {
+    if (!srcSvg) return null;
+    const g = document.createElementNS(svgNS, 'g');
+    g.setAttribute('transform', `scale(${scale})`);
+    Array.from(srcSvg.childNodes).forEach(node => g.appendChild(node.cloneNode(true)));
+    outSVG.appendChild(g);
+    return g;
+  }
+  importChildren(backSVG); importChildren(frontSVG);
+
+  // Add text centered using SVG text (approx)
+  const letters = Array.from(arc3d.querySelectorAll('span')).map(s => s.textContent).join('');
+  const txt = document.createElementNS(svgNS, 'text');
+  txt.setAttribute('x', w / 2); txt.setAttribute('y', h / 2 + 6); txt.setAttribute('text-anchor', 'middle');
+  const computedFS = window.getComputedStyle(arc3d.querySelector('span'))?.fontSize || '48px';
+  txt.setAttribute('font-size', parseFloat(computedFS));
+  txt.setAttribute('font-weight', '700');
+  txt.setAttribute('fill', window.getComputedStyle(arc3d.querySelector('span')).color || '#ff8a33');
+  txt.textContent = letters;
+  outSVG.appendChild(txt);
+
+  const tag = document.createElementNS(svgNS, 'text');
+  tag.setAttribute('x', w / 2); tag.setAttribute('y', Math.round(h * 0.68));
+  tag.setAttribute('text-anchor', 'middle');
+  tag.setAttribute('fill', getComputedStyle(taglineDiv).color || '#000');
+  tag.setAttribute('font-size', parseInt(getComputedStyle(taglineDiv).fontSize, 10) || 16);
+  tag.textContent = taglineText.value;
+  outSVG.appendChild(tag);
+
+  const sxml = new XMLSerializer().serializeToString(outSVG);
+  const svgBlob = new Blob([sxml], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    if (format === 'webp') {
+      canvas.toBlob((blob) => triggerDownload(blob, 'silica-logo.webp'), 'image/webp', 0.92);
+    } else {
+      canvas.toBlob((blob) => triggerDownload(blob, 'silica-logo.png'), 'image/png');
+    }
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('Export failed.'); };
+  img.crossOrigin = 'anonymous';
+  img.src = url;
+}
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { try { document.body.removeChild(a); } catch(e){} URL.revokeObjectURL(a.href); }, 200);
+}
+
+/* persistent settings (explicit save/load) */
+const SETTINGS_KEY = 'silica_controls_explicit_v2';
+function saveSettings() {
+  const data = {
+    // core
+    maxDensity: maxDensityInput.value, bins: binsInput.value, fade: fadeInput.value, dwell: dwellInput.value,
+    arcDepth: arcDepthInput.value, orbitDur: orbitDurInput.value, easing: easingSelect.value, mask: maskToggle.checked,
+    // visuals
+    stageSize: stageSizeInput.value, orbitZ: orbitZInput.value, wireFront: wireFrontInput.value, wireBack: wireBackInput.value,
+    // word
+    wordText: wordText.value, wordFont: wordFont.value, wordCustom: wordCustom.value, wordColor: wordColor.value,
+    wordSize: wordSize.value, letterGap: letterGap.value, wordShadow: wordShadow.value,
+    // tagline
+    taglineText: taglineText.value, taglineFont: taglineFont.value, taglineCustom: taglineCustom.value, taglineColor: taglineColor.value,
+    taglineSize: taglineSize.value, taglineShadow: taglineShadow.value,
+    // export
+    exportFormat: exportFormat.value
+  };
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); alert('Settings saved.'); } catch (e) { alert('Save failed.'); }
+}
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) { alert('No saved settings.'); return; }
+    const d = JSON.parse(raw);
+    if (d.maxDensity != null) maxDensityInput.value = d.maxDensity;
+    if (d.bins != null) binsInput.value = d.bins;
+    if (d.fade != null) fadeInput.value = d.fade;
+    if (d.dwell != null) dwellInput.value = d.dwell;
+    if (d.arcDepth != null) arcDepthInput.value = d.arcDepth;
+    if (d.orbitDur != null) orbitDurInput.value = d.orbitDur;
+    if (d.easing) easingSelect.value = d.easing;
+    if (typeof d.mask === 'boolean') maskToggle.checked = d.mask;
+    if (d.stageSize != null) stageSizeInput.value = d.stageSize;
+    if (d.orbitZ != null) orbitZInput.value = d.orbitZ;
+    if (d.wireFront) wireFrontInput.value = d.wireFront;
+    if (d.wireBack) wireBackInput.value = d.wireBack;
+    if (d.wordText) wordText.value = d.wordText;
+    if (d.wordFont) wordFont.value = d.wordFont;
+    if (d.wordCustom) wordCustom.value = d.wordCustom;
+    if (d.wordColor) wordColor.value = d.wordColor;
+    if (d.wordSize) wordSize.value = d.wordSize;
+    if (d.letterGap) letterGap.value = d.letterGap;
+    if (d.wordShadow) wordShadow.value = d.wordShadow;
+    if (d.taglineText) taglineText.value = d.taglineText;
+    if (d.taglineFont) taglineFont.value = d.taglineFont;
+    if (d.taglineCustom) taglineCustom.value = d.taglineCustom;
+    if (d.taglineColor) taglineColor.value = d.taglineColor;
+    if (d.taglineSize) taglineSize.value = d.taglineSize;
+    if (d.taglineShadow) taglineShadow.value = d.taglineShadow;
+    if (d.exportFormat) exportFormat.value = d.exportFormat;
+    applyVisuals();
+    applyWordSettings();
+    applyTaglineStyle();
+    alert('Settings loaded. Click Apply or Restart to apply.');
+  } catch (e) { alert('Load failed.'); }
+}
+
+/* apply visuals (stage size, orbit z, wire colors) */
+function applyVisuals() {
+  const s = clampInt(stageSizeInput.value, 200, 2000, 400);
+  setCSSVar('--stage-size', s + 'px');
+  const z = clampInt(orbitZInput.value, 0, 2000, 192);
+  setCSSVar('--orbit-translateZ', z + 'px');
+  const wf = wireFrontInput.value || '#ffffff';
+  const wb = wireBackInput.value || '#66cccc';
+  setCSSVar('--wire-front', wf); setCSSVar('--wire-back', wb);
+  document.querySelectorAll('.front').forEach(el => el.setAttribute('stroke', wf));
+  document.querySelectorAll('.back').forEach(el => el.setAttribute('stroke', wb));
+}
+
+/* helper to get final reduction (hardcoded but could be control) */
+function finalReductionValue() { return 0.63; }
+
+/* UI wiring */
+fab.addEventListener('click', () => { panel.classList.toggle('open'); panel.setAttribute('aria-hidden', panel.classList.contains('open') ? 'false' : 'true'); });
+closePanel.addEventListener('click', () => { panel.classList.remove('open'); panel.setAttribute('aria-hidden', 'true'); });
+
+wordFont.addEventListener('change', () => { wordCustomRow.style.display = wordFont.value === 'custom' ? 'block' : 'none'; });
+taglineFont.addEventListener('change', () => { taglineCustomRow.style.display = taglineFont.value === 'custom' ? 'block' : 'none'; });
+
+applyBtn.addEventListener('click', () => { applyVisuals(); applyWordSettings(); applyTaglineStyle(); /* don't save */ });
+rescaleBtn.addEventListener('click', () => { applyWordSettings(); scaleSilicaToArc(finalReductionValue(), 0.85); positionTaglineUnderArc(8); });
+restartBtn.addEventListener('click', () => { applyVisuals(); applyWordSettings(); applyTaglineStyle(); restartSequence(); });
+
+saveSettingsBtn.addEventListener('click', saveSettings);
+loadSettingsBtn.addEventListener('click', loadSettings);
+
+exportBtn.addEventListener('click', () => { exportImage(exportFormat.value || 'png'); });
+exportPreview.addEventListener('click', () => {
+  const s = clampInt(stageSizeInput.value, 200, 2000, 400);
+  const w = s, h = s;
+  const backSVG = backLayer.querySelector('svg');
+  const frontSVG = frontLayer.querySelector('svg');
+  const scale = w / 200;
+  const outSVG = document.createElementNS(svgNS, 'svg');
+  outSVG.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); outSVG.setAttribute('width', w); outSVG.setAttribute('height', h);
+  outSVG.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  if (backSVG) { const g = document.createElementNS(svgNS,'g'); g.setAttribute('transform', `scale(${scale})`); Array.from(backSVG.childNodes).forEach(n => g.appendChild(n.cloneNode(true))); outSVG.appendChild(g); }
+  if (frontSVG) { const g2 = document.createElementNS(svgNS,'g'); g2.setAttribute('transform', `scale(${scale})`); Array.from(frontSVG.childNodes).forEach(n => g2.appendChild(n.cloneNode(true))); outSVG.appendChild(g2); }
+  const letters = Array.from(arc3d.querySelectorAll('span')).map(s => s.textContent).join('');
+  const txt = document.createElementNS(svgNS, 'text'); txt.setAttribute('x', w/2); txt.setAttribute('y', h/2 + 6); txt.setAttribute('text-anchor','middle');
+  txt.setAttribute('font-size', parseInt(getComputedStyle(arc3d.querySelector('span')).fontSize, 10) || 48); txt.setAttribute('font-weight','700');
+  txt.setAttribute('fill', getComputedStyle(arc3d.querySelector('span')).color || '#ff8a33'); txt.textContent = letters;
+  outSVG.appendChild(txt);
+  const tag = document.createElementNS(svgNS, 'text'); tag.setAttribute('x', w/2); tag.setAttribute('y', Math.round(h*0.68)); tag.setAttribute('text-anchor','middle');
+  tag.setAttribute('fill', getComputedStyle(taglineDiv).color || '#000'); tag.setAttribute('font-size', parseInt(getComputedStyle(taglineDiv).fontSize,10)||16); tag.textContent = taglineText.value;
+  outSVG.appendChild(tag);
+  const sxml = new XMLSerializer().serializeToString(outSVG);
+  const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(sxml);
+  window.open(url, '_blank');
+});
+
+/* live small updates */
+arcDepthInput.addEventListener('input', (e) => applyArcDepth(clampInt(e.target.value,0,500,18)));
+wireFrontInput.addEventListener('input', () => { setCSSVar('--wire-front', wireFrontInput.value); document.querySelectorAll('.front').forEach(el => el.setAttribute('stroke', wireFrontInput.value)); });
+wireBackInput.addEventListener('input', () => { setCSSVar('--wire-back', wireBackInput.value); document.querySelectorAll('.back').forEach(el => el.setAttribute('stroke', wireBackInput.value)); });
+stageSizeInput.addEventListener('change', () => { applyVisuals(); restartSequence(); });
+orbitZInput.addEventListener('input', () => { setCSSVar('--orbit-translateZ', clampInt(orbitZInput.value,0,2000,192) + 'px'); });
+
+wordText.addEventListener('input', () => applyWordSettings());
+wordColor.addEventListener('input', () => applyWordSettings());
+wordSize.addEventListener('input', () => applyWordSettings());
+letterGap.addEventListener('input', () => applyWordSettings());
+wordShadow.addEventListener('input', () => applyWordSettings());
+wordFont.addEventListener('change', () => applyWordSettings());
+wordCustom.addEventListener('input', () => applyWordSettings());
+
+taglineText.addEventListener('input', () => applyTaglineStyle());
+taglineFont.addEventListener('change', () => applyTaglineStyle());
+taglineCustom.addEventListener('input', () => applyTaglineStyle());
+taglineColor.addEventListener('input', () => applyTaglineStyle());
+taglineSize.addEventListener('input', () => applyTaglineStyle());
+taglineShadow.addEventListener('input', () => applyTaglineStyle());
+
+/* start behavior */
+requestAnimationFrame(updateVisibility);
+applyVisuals();
+applyWordSettings();
+applyTaglineStyle();
+runSphereCycle(() => orbitInThenTagline());
+
+/* responsive */
+window.addEventListener('resize', () => {
+  clearTimeout(window.__silica_resize);
+  window.__silica_resize = setTimeout(() => {
+    scaleSilicaToArc(finalReductionValue(), 0.85);
+    positionTaglineUnderArc(8);
+  }, 120);
+});
+</script>
+</body>
+</html>

@@ -7,12 +7,17 @@ using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
     public class EvictionTimeCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
+        static EvictionTimeCache()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
         private readonly AsyncLock _lock = new();
         private readonly long _idleTicks;
         private readonly Func<long> _now;
@@ -32,6 +37,7 @@ namespace Silica.Evictions
         private IMetricsManager _metrics;
         private readonly string _componentName;
         private bool _metricsRegistered;
+        private readonly bool _verbose;
 
 
         private sealed class CacheEntry
@@ -70,6 +76,7 @@ namespace Silica.Evictions
             _idleTicks = idleTimeout.Ticks * Stopwatch.Frequency / TimeSpan.TicksPerSecond;
             // Metrics init + registration
             _componentName = GetType().Name;
+            _verbose = EvictionDiagnostics.EnableVerbose;
             _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
             try
             {
@@ -104,6 +111,7 @@ namespace Silica.Evictions
                     _lruList.Remove(node);
                     _lruList.AddFirst(node);
                     try { EvictionMetrics.IncrementHit(_metrics); } catch { }
+                    if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "hit"); } catch { } }
                     return node.Value.Value;
                 }
             }
@@ -114,6 +122,7 @@ namespace Silica.Evictions
             swFactory.Stop();
             try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
             try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
+            if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "miss_build"); } catch { } }
 
             // Phase 3: re-check and insert
             using (await _lock.LockAsync().ConfigureAwait(false))
@@ -142,6 +151,7 @@ namespace Silica.Evictions
 
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
+                if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "cleanup_idle", "begin"); } catch { } }
                 // Evict all expired entries at the tail
                 while (true)
                 {
@@ -162,6 +172,16 @@ namespace Silica.Evictions
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
             swCleanup.Stop();
             try { EvictionMetrics.OnCleanupCompleted(_metrics, swCleanup.Elapsed.TotalMilliseconds); } catch { }
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "cleanup_idle", "info", "done",
+                    null,
+                    new Dictionary<string, string>(2, StringComparer.OrdinalIgnoreCase){
+                        { "evicted", toEvict.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                        { "ms", swCleanup.Elapsed.TotalMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) }
+                    });
+            }
+            catch { }
         }
 
         public async ValueTask DisposeAsync()
@@ -177,6 +197,14 @@ namespace Silica.Evictions
                 _map.Clear();
                 Interlocked.Exchange(ref _count, 0);
             }
+
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposing_cache",
+                    null,
+                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { "evicted_items", allEntries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            }
+            catch { }
 
             foreach (var e in allEntries)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);

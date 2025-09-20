@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SilicaDB — Negative‑space “S” Mark</title>
+<style>
+  :root{
+    --size: 160;         /* change this to scale the mark */
+    --fg: #00d1ff;       /* primary accent */
+    --fg2:#7b61ff;       /* secondary accent */
+    --ink:#e8f1ff;
+    --mut:#a6b3c6;
+    --bg:#0d1117;
+    --grid:#1f2a3a;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, "Helvetica Neue", Arial;
+    color: var(--ink);
+    background: var(--bg);
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 18px; border-bottom: 1px solid #182233;
+    background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0));
+  }
+  .controls { display:flex; align-items:center; gap:12px; color: var(--mut); font-size:12px; }
+  input[type="range"] { width: 220px; }
+
+  main {
+    display:grid; place-items:center; padding: 28px;
+  }
+  .stage {
+    padding: 24px; border-radius: 12px;
+    /* Checkerboard to demonstrate transparency */
+    --chk: #1a2636;
+    background-image:
+      linear-gradient(45deg, var(--chk) 25%, transparent 25%, transparent 75%, var(--chk) 75%, var(--chk)),
+      linear-gradient(45deg, var(--chk) 25%, transparent 25%, transparent 75%, var(--chk) 75%, var(--chk));
+    background-size: 18px 18px;
+    background-position: 0 0, 9px 9px;
+  }
+  .wrap {
+    width: calc(var(--size) * 1px);
+    height: calc(var(--size) * 1px);
+  }
+  .caption {
+    margin-top: 12px; color: var(--mut); font-size: 12px; text-align: center;
+  }
+
+  /* Light theme preview */
+  .light {
+    --ink:#0b1220; --mut:#445065; --bg:#f6f8fb; --grid:#e7ebf3;
+  }
+  .btn {
+    font-size: 12px; color: var(--ink);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <strong>SilicaDB — Negative‑space “S”</strong>
+    <div class="controls">
+      <label for="size">Size</label>
+      <input id="size" type="range" min="64" max="280" step="1" value="160" />
+      <button id="theme" class="btn" aria-pressed="false">Theme: Dark</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="stage">
+      <!-- The mark (transparent background). The “S” is a punched-out stroke via mask. -->
+      <div class="wrap" aria-label="Negative-space S mark">
+        <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-labelledby="title desc">
+          <title id="title">Negative-space S inside a circle</title>
+          <desc id="desc">A circular mark filled with a blue-to-indigo gradient with a clear S-shaped cutout.</desc>
+
+          <!-- Define mask: white = visible, black = transparent (hole). -->
+          <defs>
+            <linearGradient id="fill" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%"  stop-color="var(--fg2)"/>
+              <stop offset="100%" stop-color="var(--fg)"/>
+            </linearGradient>
+
+            <mask id="s-cut" maskUnits="userSpaceOnUse">
+              <!-- Start fully visible with a white circle -->
+              <rect x="0" y="0" width="100" height="100" fill="black"/>
+              <circle cx="50" cy="50" r="48" fill="white"/>
+              <!-- Draw the S as a thick black stroke to punch a hole -->
+              <!-- Tuned for readability at small sizes (rounded, generous thickness). -->
+              <path d="
+                M 70 18
+                C 30 18, 70 42, 35 42
+                C 5 42, 30 82, 30 82
+              " fill="none" stroke="black" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+            </mask>
+
+            <!-- Optional subtle inner ring for depth (used with stroke) -->
+            <radialGradient id="ring" cx="50%" cy="50%" r="50%">
+              <stop offset="70%" stop-color="rgba(255,255,255,0)" />
+              <stop offset="90%" stop-color="rgba(255,255,255,0.25)" />
+              <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+            </radialGradient>
+          </defs>
+
+          <!-- Filled circle with mask to cut out S -->
+          <g mask="url(#s-cut)">
+            <circle cx="50" cy="50" r="48" fill="url(#fill)"/>
+            <circle cx="50" cy="50" r="48" fill="url(#ring)"/>
+          </g>
+
+          <!-- Optional thin outer stroke for crisp edge against busy backgrounds -->
+          <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <div class="caption">Transparent background. The “S” is cut out — whatever is behind shows through.</div>
+    </div>
+  </main>
+
+<script>
+  // Size control
+  const size = document.getElementById('size');
+  size.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--size', size.value);
+  });
+
+  // Theme toggle
+  const themeBtn = document.getElementById('theme');
+  themeBtn.addEventListener('click', () => {
+    const light = document.body.classList.toggle('light');
+    themeBtn.textContent = 'Theme: ' + (light ? 'Light' : 'Dark');
+    themeBtn.setAttribute('aria-pressed', String(light));
+  });
+</script>
+</body>
+</html>

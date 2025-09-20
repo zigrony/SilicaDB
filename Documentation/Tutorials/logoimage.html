@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Silica Logo — Static final frame with tunable pitch/yaw and export</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    --stage-size: 400px;
+    --orbit-translateZ: 192px;
+    --wire-front: #ffffff;
+    --wire-back: #66cccc;
+    --word-color: #ff8a33;
+    --tag-color: #000000;
+    --word-font: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial";
+    --tag-font: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial";
+  }
+
+  html,body { height:100%; margin:0; }
+  body {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: radial-gradient(circle at 50% 50%, #00e6b8 0%, #00997a 60%, #003d33 100%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #fff;
+    height:100vh;
+  }
+
+  .stage {
+    width: var(--stage-size);
+    height: var(--stage-size);
+    position: relative;
+    perspective: 1000px;
+  }
+
+  /* sphereGroup contains back/front layers and is transformable (pitch/yaw) */
+  .sphereGroup {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transform-origin: 50% 50%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .layer { position:absolute; inset:0; pointer-events:none; }
+  svg { width:100%; height:100%; display:block; }
+
+  .front { stroke: var(--wire-front); stroke-width:1.5; fill:none; }
+  .back  { stroke: var(--wire-back); stroke-width:1; fill:none; stroke-dasharray:4 4; }
+
+  /* Word and tag: ensure they render above wires */
+  .word-wrap {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%) translateZ(var(--orbit-translateZ)) rotateY(0deg);
+    transform-style: preserve-3d;
+    pointer-events: auto;
+    text-align: center;
+    white-space: nowrap;
+    z-index: 10; /* above wires */
+  }
+
+  .word {
+    display:inline-block;
+    font-weight:700;
+    color: var(--word-color);
+    font-family: var(--word-font);
+    line-height:1;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.45);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .tagline {
+    display:block;
+    margin-top:10px;
+    color: var(--tag-color);
+    font-family: var(--tag-font);
+    text-shadow: 0 4px 10px rgba(255,255,255,0.60);
+  }
+
+  /* Controls panel */
+  .panel {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    width: 380px;
+    max-height: 84vh;
+    overflow:auto;
+    background: rgba(8,18,16,0.94);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+    font-size:13px;
+    color:#eafff8;
+    z-index: 60;
+  }
+
+  .panel h4 { margin:6px 0 8px 0; font-size:13px; color:#c9fff3; }
+  .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
+  .row label { min-width:130px; opacity:.95; }
+  .row input[type="number"], .row input[type="text"], .row select { flex:1; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color:#fff; }
+  .row input[type="color"] { width:44px; height:30px; padding:0; border-radius:6px; border:0; background:#fff; }
+  .row input[type="range"] { flex:1; }
+  .small { font-size:12px; color:#cfe9e4; }
+  .controls-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+  .btn { padding:8px 10px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
+  .btn-primary { background:#0b84ff; color:#fff; }
+  .btn-go { background:#22c55e; color:#062e1a; }
+  .btn-ghost { background: rgba(255,255,255,0.06); color:#eafff8; }
+
+  @media (max-width:420px) {
+    .panel { width: calc(100% - 24px); left:12px; right:12px; bottom:12px; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="sphereGroup" id="sphereGroup" aria-hidden="false">
+      <div class="layer" id="backLayer"></div>
+      <div class="layer" id="frontLayer"></div>
+    </div>
+
+    <div class="word-wrap" id="wordWrap" aria-hidden="false">
+      <div class="word" id="wordSpan">Silica</div>
+      <div class="tagline" id="taglineSpan">Opensource Enterprise SQL, Power in your hands.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel" role="dialog" aria-label="Controls">
+    <h4>View & wireframe</h4>
+    <div class="row">
+      <label for="yaw">Yaw (deg)</label>
+      <input id="yaw" type="range" min="-60" max="60" step="1" value="-30" />
+      <div style="width:42px;text-align:right" id="yawLabel">-30°</div>
+    </div>
+    <div class="row">
+      <label for="pitch">Pitch (deg)</label>
+      <input id="pitch" type="range" min="-40" max="40" step="1" value="-20" />
+      <div style="width:42px;text-align:right" id="pitchLabel">-20°</div>
+    </div>
+    <div class="row">
+      <label for="wireFront">Front stroke</label>
+      <input id="wireFront" type="color" value="#ffffff" />
+    </div>
+    <div class="row">
+      <label for="wireBack">Back stroke</label>
+      <input id="wireBack" type="color" value="#66cccc" />
+    </div>
+
+    <h4 style="margin-top:10px;">Wordmark</h4>
+    <div class="row"><label for="wordText">Text</label><input id="wordText" type="text" value="Silica" /></div>
+    <div class="row"><label for="wordFont">Font family</label>
+      <select id="wordFont">
+        <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial">Inter / System</option>
+        <option value="'Segoe UI', system-ui, -apple-system, Roboto, Arial">Segoe UI</option>
+        <option value="'Roboto', system-ui, -apple-system, 'Segoe UI', Arial">Roboto</option>
+        <option value="'Helvetica Neue', Arial, sans-serif">Helvetica Neue</option>
+        <option value="Georgia, 'Times New Roman', Times, serif">Georgia</option>
+        <option value="custom">Custom…</option>
+      </select>
+    </div>
+    <div class="row" id="wordCustomRow" style="display:none;"><label for="wordCustom">Custom family</label><input id="wordCustom" type="text" placeholder="'GT Sectra', Georgia, serif" /></div>
+    <div class="row"><label for="wordColor">Color</label><input id="wordColor" type="color" value="#ff8a33" /></div>
+    <div class="row"><label for="wordSize">Size (px)</label><input id="wordSize" type="number" value="48" min="8" max="240" /></div>
+    <div class="row"><label for="wordShadow">Shadow (x,y,blur,alpha)</label><input id="wordShadow" type="text" value="2,2,0,0.6" /></div>
+
+    <h4 style="margin-top:10px;">Tagline</h4>
+    <div class="row"><label for="tagText">Text</label><input id="tagText" type="text" value="Opensource Enterprise SQL, Power in your hands." /></div>
+    <div class="row"><label for="tagFont">Font family</label>
+      <select id="tagFont">
+        <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial">Inter / System</option>
+        <option value="'Segoe UI', system-ui, -apple-system, Roboto, Arial">Segoe UI</option>
+        <option value="'Roboto', system-ui, -apple-system, 'Segoe UI', Arial">Roboto</option>
+        <option value="'Times New Roman', Times, serif">Times</option>
+        <option value="custom">Custom…</option>
+      </select>
+    </div>
+    <div class="row" id="tagCustomRow" style="display:none;"><label for="tagCustom">Custom family</label><input id="tagCustom" type="text" placeholder="'GT Sectra', Georgia, serif" /></div>
+    <div class="row"><label for="tagColor">Color</label><input id="tagColor" type="color" value="#000000" /></div>
+    <div class="row"><label for="tagSize">Size (px)</label><input id="tagSize" type="number" value="18" min="8" max="72" /></div>
+    <div class="row"><label for="tagShadow">Glow (offsetY,blur,alpha)</label><input id="tagShadow" type="text" value="4,10,0.65" /></div>
+
+    <h4 style="margin-top:10px;">Export</h4>
+    <div class="row"><label for="stageSize">Canvas size</label><input id="stageSize" type="number" value="800" min="200" max="4000" /></div>
+    <div class="row"><label for="exportFormat">Format</label><select id="exportFormat"><option value="png">PNG (transparent)</option><option value="webp">WebP (transparent)</option></select></div>
+
+    <div class="controls-footer">
+      <button id="applyBtn" class="btn btn-ghost">Apply</button>
+      <button id="exportPreview" class="btn btn-primary">Preview SVG</button>
+      <button id="exportBtn" class="btn btn-go">Save image</button>
+    </div>
+    <div style="margin-top:8px" class="small">Tilt sphere with Pitch/Yaw. Back wires are drawn separately so back/front color controls work.</div>
+  </div>
+
+<script>
+const svgNS = "http://www.w3.org/2000/svg";
+
+/* DOM references */
+const sphereGroup = document.getElementById('sphereGroup');
+const backLayer = document.getElementById('backLayer');
+const frontLayer = document.getElementById('frontLayer');
+const wordSpan = document.getElementById('wordSpan');
+const taglineSpan = document.getElementById('taglineSpan');
+
+const yaw = document.getElementById('yaw');
+const pitch = document.getElementById('pitch');
+const yawLabel = document.getElementById('yawLabel');
+const pitchLabel = document.getElementById('pitchLabel');
+
+const wireFrontInput = document.getElementById('wireFront');
+const wireBackInput = document.getElementById('wireBack');
+
+const wordText = document.getElementById('wordText');
+const wordFont = document.getElementById('wordFont');
+const wordCustomRow = document.getElementById('wordCustomRow');
+const wordCustom = document.getElementById('wordCustom');
+const wordColor = document.getElementById('wordColor');
+const wordSize = document.getElementById('wordSize');
+const wordShadow = document.getElementById('wordShadow');
+
+const tagText = document.getElementById('tagText');
+const tagFont = document.getElementById('tagFont');
+const tagCustomRow = document.getElementById('tagCustomRow');
+const tagCustom = document.getElementById('tagCustom');
+const tagColor = document.getElementById('tagColor');
+const tagSize = document.getElementById('tagSize');
+const tagShadow = document.getElementById('tagShadow');
+
+const stageSizeInput = document.getElementById('stageSize');
+const exportFormat = document.getElementById('exportFormat');
+
+const applyBtn = document.getElementById('applyBtn');
+const exportBtn = document.getElementById('exportBtn');
+const exportPreview = document.getElementById('exportPreview');
+
+/* default density and initial transform */
+const DEFAULT_DENSITY = 8;
+
+function clampInt(v, lo, hi, fallback) {
+  const n = parseInt(v, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(lo, Math.min(hi, n));
+}
+
+/* Build back-layer (all lat/lon) and front-layer (rim only) */
+function buildSphere(density = DEFAULT_DENSITY) {
+  backLayer.innerHTML = '';
+  frontLayer.innerHTML = '';
+
+  const backSVG = document.createElementNS(svgNS, 'svg');
+  backSVG.setAttribute('viewBox','0 0 200 200');
+  backSVG.setAttribute('width','100%');
+  backSVG.setAttribute('height','100%');
+
+  const frontSVG = document.createElementNS(svgNS, 'svg');
+  frontSVG.setAttribute('viewBox','0 0 200 200');
+  frontSVG.setAttribute('width','100%');
+  frontSVG.setAttribute('height','100%');
+
+  // all latitudes/longitudes in backSVG
+  for (let i=1;i<density;i++){
+    const ry = (95 / density) * i;
+    const lat = document.createElementNS(svgNS,'ellipse');
+    lat.setAttribute('cx','100'); lat.setAttribute('cy','100'); lat.setAttribute('rx','95'); lat.setAttribute('ry',ry.toString());
+    lat.setAttribute('class','back'); lat.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--wire-back').trim() || wireBackInput.value);
+    backSVG.appendChild(lat);
+  }
+  for (let i=1;i<density;i++){
+    const rx = (95 / density) * i;
+    const lon = document.createElementNS(svgNS,'ellipse');
+    lon.setAttribute('cx','100'); lon.setAttribute('cy','100'); lon.setAttribute('rx',rx.toString()); lon.setAttribute('ry','95');
+    lon.setAttribute('class','back'); lon.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--wire-back').trim() || wireBackInput.value);
+    backSVG.appendChild(lon);
+  }
+
+  // front rim only (outer circle)
+  const circle = document.createElementNS(svgNS,'circle');
+  circle.setAttribute('cx','100'); circle.setAttribute('cy','100'); circle.setAttribute('r','95');
+  circle.setAttribute('class','front'); circle.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--wire-front').trim() || wireFrontInput.value);
+  frontSVG.appendChild(circle);
+
+  backLayer.appendChild(backSVG);
+  frontLayer.appendChild(frontSVG);
+}
+
+/* Apply pitch/yaw to sphereGroup */
+function updateViewTransform() {
+  const y = parseFloat(yaw.value);
+  const p = parseFloat(pitch.value);
+  yawLabel.textContent = `${y}°`;
+  pitchLabel.textContent = `${p}°`;
+  // combine yaw and pitch: rotateY then rotateX for intuitive control
+  sphereGroup.style.transform = `rotateY(${y}deg) rotateX(${p}deg)`;
+}
+
+/* Apply wire colors and update existing svgs */
+function applyWireColors() {
+  const wf = wireFrontInput.value || '#ffffff';
+  const wb = wireBackInput.value || '#66cccc';
+  document.documentElement.style.setProperty('--wire-front', wf);
+  document.documentElement.style.setProperty('--wire-back', wb);
+  document.querySelectorAll('.front').forEach(el => el.setAttribute('stroke', wf));
+  document.querySelectorAll('.back').forEach(el => el.setAttribute('stroke', wb));
+}
+
+/* Apply word + tagline styles */
+function applyWordTag() {
+  // Word
+  wordSpan.textContent = wordText.value || 'Silica';
+  let wf = wordFont.value;
+  if (wf === 'custom') wf = wordCustom.value.trim() || getComputedStyle(document.documentElement).getPropertyValue('--word-font').trim();
+  wordSpan.style.fontFamily = wf;
+  document.documentElement.style.setProperty('--word-font', wf);
+  wordSpan.style.color = wordColor.value || '#ff8a33';
+  wordSpan.style.fontSize = (parseInt(wordSize.value,10) || 48) + 'px';
+  // shadow parse
+  const wparts = (wordShadow.value || '2,2,0,0.6').split(',').map(s=>s.trim());
+  const wx = parseFloat(wparts[0])||0, wy = parseFloat(wparts[1])||0, wblur = parseFloat(wparts[2])||0;
+  const walpha = parseFloat(wparts[3]); const walphaSafe = Number.isFinite(walpha) ? walpha : 0.6;
+  wordSpan.style.textShadow = (walphaSafe===0) ? 'none' : `${wx}px ${wy}px ${wblur}px rgba(0,0,0,${walphaSafe})`;
+
+  // Tagline
+  taglineSpan.textContent = tagText.value || '';
+  let tf = tagFont.value;
+  if (tf === 'custom') tf = tagCustom.value.trim() || getComputedStyle(document.documentElement).getPropertyValue('--tag-font').trim();
+  taglineSpan.style.fontFamily = tf;
+  document.documentElement.style.setProperty('--tag-font', tf);
+  taglineSpan.style.color = tagColor.value || '#000';
+  taglineSpan.style.fontSize = (parseInt(tagSize.value,10) || 18) + 'px';
+  const tparts = (tagShadow.value || '4,10,0.65').split(',').map(s=>s.trim());
+  const toff = parseFloat(tparts[0])||0, tblur = parseFloat(tparts[1])||0;
+  const talpha = parseFloat(tparts[2]); const talphaSafe = Number.isFinite(talpha)?talpha:0.65;
+  taglineSpan.style.textShadow = `0 ${toff}px ${tblur}px rgba(255,255,255,${talphaSafe})`;
+}
+
+/* Export: compose SVG and rasterize with transparent background */
+function exportImage(format='png') {
+  const size = Math.max(200, Math.min(4000, parseInt(stageSizeInput.value,10) || 800));
+  const w = size, h = size;
+  const out = document.createElementNS(svgNS,'svg');
+  out.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  out.setAttribute('width', w);
+  out.setAttribute('height', h);
+  out.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const scale = w / 200;
+
+  const backSvg = backLayer.querySelector('svg');
+  if (backSvg) {
+    const g = document.createElementNS(svgNS,'g'); g.setAttribute('transform', `scale(${scale})`);
+    Array.from(backSvg.childNodes).forEach(n => g.appendChild(n.cloneNode(true))); out.appendChild(g);
+  }
+  const frontSvg = frontLayer.querySelector('svg');
+  if (frontSvg) {
+    const g2 = document.createElementNS(svgNS,'g'); g2.setAttribute('transform', `scale(${scale})`);
+    Array.from(frontSvg.childNodes).forEach(n => g2.appendChild(n.cloneNode(true))); out.appendChild(g2);
+  }
+
+  // center text using computed styles (scale to canvas)
+  const cw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-size')) || 400;
+  const wordFS = parseFloat(getComputedStyle(wordSpan).fontSize) || 48;
+  const tagFS = parseFloat(getComputedStyle(taglineSpan).fontSize) || 18;
+
+  const txt = document.createElementNS(svgNS,'text');
+  txt.setAttribute('x', w/2); txt.setAttribute('y', h/2); txt.setAttribute('text-anchor','middle');
+  txt.setAttribute('dominant-baseline','middle'); txt.setAttribute('font-family', getComputedStyle(wordSpan).fontFamily || 'system-ui');
+  txt.setAttribute('font-size', (wordFS * (w / cw)).toString()); txt.setAttribute('font-weight','700');
+  txt.setAttribute('fill', getComputedStyle(wordSpan).color || '#ff8a33'); txt.textContent = wordSpan.textContent;
+  out.appendChild(txt);
+
+  const tagNode = document.createElementNS(svgNS,'text');
+  tagNode.setAttribute('x', w/2); tagNode.setAttribute('y', Math.round(h*0.68)); tagNode.setAttribute('text-anchor','middle');
+  tagNode.setAttribute('font-family', getComputedStyle(taglineSpan).fontFamily || 'system-ui');
+  tagNode.setAttribute('font-size', (tagFS * (w / cw)).toString()); tagNode.setAttribute('fill', getComputedStyle(taglineSpan).color || '#000');
+  tagNode.textContent = taglineSpan.textContent;
+  out.appendChild(tagNode);
+
+  const svgString = new XMLSerializer().serializeToString(out);
+  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+    const mime = (format === 'webp') ? 'image/webp' : 'image/png';
+    canvas.toBlob((outBlob) => {
+      if (!outBlob) { alert('Export failed.'); URL.revokeObjectURL(url); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(outBlob);
+      a.download = `silica-logo.${format === 'webp' ? 'webp' : 'png'}`; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a);}catch{} URL.revokeObjectURL(a.href); }, 200);
+      URL.revokeObjectURL(url);
+    }, mime, 0.92);
+  };
+  img.onerror = () => { alert('Export failed while rendering.'); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+
+/* UI wiring */
+yaw.addEventListener('input', updateViewTransform);
+pitch.addEventListener('input', updateViewTransform);
+
+wireFrontInput.addEventListener('input', applyWireColors);
+wireBackInput.addEventListener('input', applyWireColors);
+
+document.getElementById('wordFont').addEventListener('change', (e)=>{ wordCustomRow.style.display = e.target.value==='custom' ? 'flex' : 'none'; });
+document.getElementById('tagFont').addEventListener('change', (e)=>{ tagCustomRow.style.display = e.target.value==='custom' ? 'flex' : 'none'; });
+
+applyBtn.addEventListener('click', () => {
+  buildSphere(DEFAULT_DENSITY);
+  applyWireColors();
+  applyWordTag();
+  updateViewTransform();
+});
+
+exportBtn.addEventListener('click', ()=>{ exportImage(exportFormat.value || 'png'); });
+exportPreview.addEventListener('click', ()=> {
+  const size = Math.max(200, Math.min(4000, parseInt(stageSizeInput.value,10) || 800));
+  const w = size, h = size;
+  const out = document.createElementNS(svgNS,'svg'); out.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  out.setAttribute('width', w); out.setAttribute('height', h); out.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const scale = w/200;
+  const backSvg = backLayer.querySelector('svg'); if (backSvg) { const g = document.createElementNS(svgNS,'g'); g.setAttribute('transform', `scale(${scale})`); Array.from(backSvg.childNodes).forEach(n=>g.appendChild(n.cloneNode(true))); out.appendChild(g); }
+  const frontSvg = frontLayer.querySelector('svg'); if (frontSvg) { const g2 = document.createElementNS(svgNS,'g'); g2.setAttribute('transform', `scale(${scale})`); Array.from(frontSvg.childNodes).forEach(n=>g2.appendChild(n.cloneNode(true))); out.appendChild(g2); }
+  const txt = document.createElementNS(svgNS,'text'); txt.setAttribute('x', w/2); txt.setAttribute('y', h/2); txt.setAttribute('text-anchor','middle'); txt.setAttribute('dominant-baseline','middle'); txt.setAttribute('font-family', getComputedStyle(wordSpan).fontFamily || 'system-ui'); txt.setAttribute('font-size', parseFloat(getComputedStyle(wordSpan).fontSize) * (w / parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-size') || 400))); txt.setAttribute('font-weight','700'); txt.setAttribute('fill', getComputedStyle(wordSpan).color || '#ff8a33'); txt.textContent = wordSpan.textContent; out.appendChild(txt);
+  const tag = document.createElementNS(svgNS,'text'); tag.setAttribute('x', w/2); tag.setAttribute('y', Math.round(h*0.68)); tag.setAttribute('text-anchor','middle'); tag.setAttribute('fill', getComputedStyle(taglineSpan).color || '#000'); tag.setAttribute('font-size', parseFloat(getComputedStyle(taglineSpan).fontSize) * (w / parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-size') || 400))); tag.textContent = taglineSpan.textContent; out.appendChild(tag);
+  const sxml = new XMLSerializer().serializeToString(out); const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(sxml); window.open(url,'_blank');
+});
+
+/* boot */
+buildSphere(DEFAULT_DENSITY);
+applyWireColors();
+applyWordTag();
+updateViewTransform();
+</script>
+</body>
+</html>

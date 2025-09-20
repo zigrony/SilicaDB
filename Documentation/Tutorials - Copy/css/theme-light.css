@@ -1,0 +1,48 @@
+:root {
+  /* Base palette */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-accent: #0b6dff;
+
+  /* Header/Footer */
+  --header-bg: var(--color-surface);
+  --header-text: var(--color-text);
+
+  /* Sidebar */
+  --sidebar-bg: #f3f4f6;
+  --sidebar-text: var(--color-text);
+  --sidebar-hover: #e7ebf0;
+
+  /* Content */
+  --content-bg: var(--color-bg);
+  --content-text: var(--color-text);
+
+  /* Callouts - base defaults */
+  --callout-bg: #eaf3ff;
+  --callout-border: #b6d4ff;
+  --callout-text: #0b3d91;
+
+  /* Callout variants */
+  --callout-info-bg: #eaf3ff;
+  --callout-info-border: #b6d4ff;
+  --callout-info-text: #0b3d91;
+
+  --callout-success-bg: #e8f7ef;
+  --callout-success-border: #a8e0c1;
+  --callout-success-text: #14532d;
+
+  --callout-warning-bg: #fff7e6;
+  --callout-warning-border: #ffd48a;
+  --callout-warning-text: #7a4b00;
+
+  --callout-danger-bg: #ffecec;
+  --callout-danger-border: #ffb3b3;
+  --callout-danger-text: #7f1d1d;
+
+  /* Code blocks */
+  --code-bg: #f6f8fa;
+  --code-text: #c7254e;
+}

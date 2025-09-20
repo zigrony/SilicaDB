@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wireframe Sphere Slideshow with Depth</title>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at center,
+        #00e6b8 0%,
+        #00997a 60%,
+        #003d33 100%
+      );
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .stage {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 1200ms ease-in-out;
+    }
+    .slide.active {
+      opacity: 1;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+    /* front vs back stroke styles */
+    .front {
+      stroke: white;
+      stroke-opacity: 0.6;
+    }
+    .back {
+      stroke: #66cccc;
+      stroke-opacity: 0.25;
+      stroke-dasharray: 4 4;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+
+  <script>
+    // Utility to build one sphere with given density
+    function buildSphere(density) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("viewBox", "0 0 200 200");
+
+      // outer circle
+      const circle = document.createElementNS(svgNS, "circle");
+      circle.setAttribute("cx", 100);
+      circle.setAttribute("cy", 100);
+      circle.setAttribute("r", 95);
+      circle.setAttribute("fill", "none");
+      circle.setAttribute("class", "front");
+      svg.appendChild(circle);
+
+      // latitudes
+      for (let i = 1; i <= density; i++) {
+        const ry = (95 / density) * i;
+        const front = document.createElementNS(svgNS, "ellipse");
+        front.setAttribute("cx", 100);
+        front.setAttribute("cy", 100);
+        front.setAttribute("rx", 95);
+        front.setAttribute("ry", ry);
+        front.setAttribute("fill", "none");
+        front.setAttribute("class", "front");
+        svg.appendChild(front);
+
+        const back = front.cloneNode();
+        back.setAttribute("class", "back");
+        svg.appendChild(back);
+      }
+
+      // longitudes
+      for (let i = 1; i <= density; i++) {
+        const rx = (95 / density) * i;
+        const front = document.createElementNS(svgNS, "ellipse");
+        front.setAttribute("cx", 100);
+        front.setAttribute("cy", 100);
+        front.setAttribute("rx", rx);
+        front.setAttribute("ry", 95);
+        front.setAttribute("fill", "none");
+        front.setAttribute("class", "front");
+        svg.appendChild(front);
+
+        const back = front.cloneNode();
+        back.setAttribute("class", "back");
+        svg.appendChild(back);
+      }
+
+      return svg;
+    }
+
+    const stage = document.getElementById('stage');
+    const slides = [];
+
+    // Build 10 spheres with increasing density
+    for (let d = 1; d <= 10; d++) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'slide';
+      wrapper.appendChild(buildSphere(d));
+      stage.appendChild(wrapper);
+      slides.push(wrapper);
+    }
+
+    let index = -1;
+    function step() {
+      if (index >= 0) slides[index].classList.remove('active');
+      index = (index + 1) % slides.length;
+      slides[index].classList.add('active');
+    }
+
+    setTimeout(() => {
+      step();
+      setInterval(step, 2800);
+    }, 600);
+  </script>
+</body>
+</html>

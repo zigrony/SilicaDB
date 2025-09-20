@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SVG Parametric Wireframe Sphere</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --panel:#0b1220cc;
+    --accent:#8ab4ff;
+    --muted:#9aa7bd;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{background:linear-gradient(180deg,var(--bg),#071022);color:#e6eef8;display:flex;flex-direction:column;gap:12px;align-items:center;padding:18px;box-sizing:border-box}
+  h3{margin:6px 0 0 0;font-weight:600}
+  .container{display:flex;gap:18px;width:100%;max-width:1200px}
+  .stage{flex:1;min-width:320px;background:linear-gradient(180deg,#07122666,#07102299);border-radius:10px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(2,6,23,.6)}
+  svg{width:min(90vw,700px);height:min(90vh,700px);max-height:640px;display:block}
+  .panel{width:360px;max-width:38%;background:var(--panel);border-radius:10px;padding:14px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:10px;align-items:center}
+  label{font-size:13px;color:#cfe3ff;min-width:86px}
+  input[type="range"]{flex:1}
+  input[type="number"]{width:68px;padding:6px;border-radius:6px;border:none;background:#071022; color:#dbeefe}
+  input[type="color"]{width:46px;height:34px;border-radius:6px;border:1px solid rgba(255,255,255,0.06)}
+  .small{font-size:12px;color:var(--muted)}
+  .controls{display:flex;flex-direction:column;gap:8px}
+  .btns{display:flex;gap:8px;margin-top:8px}
+  button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:7px;cursor:pointer}
+  button.primary{background:var(--accent);color:#071022;border:none}
+  footer{font-size:12px;color:var(--muted);margin-top:6px}
+  @media (max-width:880px){.container{flex-direction:column}.panel{width:100%;max-width:100%}}
+</style>
+</head>
+<body>
+  <h3>SVG Parametric Wireframe Sphere</h3>
+  <div class="container">
+    <div class="stage" id="stage">
+      <svg id="svg" viewBox="-250 -250 500 500" preserveAspectRatio="xMidYMid meet" aria-label="Wireframe sphere">
+        <defs>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="0.6" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="sphereGroup" filter="none"></g>
+      </svg>
+    </div>
+
+    <div class="panel" role="region" aria-label="Controls">
+      <div class="controls">
+        <div class="row">
+          <label for="rx">Rotate X</label>
+          <input id="rx" type="range" min="-180" max="180" value="-20" />
+          <input id="rxn" type="number" min="-180" max="180" value="-20" />
+        </div>
+
+        <div class="row">
+          <label for="ry">Rotate Y</label>
+          <input id="ry" type="range" min="-180" max="180" value="30" />
+          <input id="ryn" type="number" min="-180" max="180" value="30" />
+        </div>
+
+        <div class="row">
+          <label for="rz">Rotate Z</label>
+          <input id="rz" type="range" min="-180" max="180" value="0" />
+          <input id="rzn" type="number" min="-180" max="180" value="0" />
+        </div>
+
+        <div class="row">
+          <label for="density">Density</label>
+          <input id="density" type="range" min="6" max="64" value="24" />
+          <input id="densityn" type="number" min="6" max="64" value="24" />
+        </div>
+
+        <div class="row">
+          <label for="linewidth">Line width</label>
+          <input id="linewidth" type="range" min="0.2" max="3" step="0.1" value="0.9" />
+          <input id="linewidthn" type="number" min="0.2" max="3" step="0.1" value="0.9" />
+        </div>
+
+        <div class="row">
+          <label for="frontColor">Front wire</label>
+          <input id="frontColor" type="color" value="#dbeefe" />
+          <div class="small">visible hemisphere</div>
+        </div>
+
+        <div class="row">
+          <label for="backColor">Back wire</label>
+          <input id="backColor" type="color" value="#2a6b9e" />
+          <div class="small">hidden hemisphere</div>
+        </div>
+
+        <div class="row">
+          <label for="showPoles">Poles</label>
+          <input id="showPoles" type="checkbox" checked />
+          <div class="small">draw polar meridians</div>
+        </div>
+
+        <div class="btns">
+          <button id="reset">Reset</button>
+          <button id="toggleAnim">Pause orbit</button>
+          <button class="primary" id="exportSVG">Copy SVG markup</button>
+        </div>
+
+      </div>
+
+      <footer>Rotate X/Y/Z to change the axes. Back-wire color is applied to segments whose projected Z is behind the sphere to create a 3D look.</footer>
+    </div>
+  </div>
+
+<script>
+/* Parametric wireframe sphere generator (SVG)
+   - sphere is sampled as latitude and longitude circles
+   - each polyline segment is sorted by its average camera-space Z to split front vs back
+   - rotations are applied in order X, Y, Z (angles in degrees)
+*/
+(() => {
+  const svg = document.getElementById('svg');
+  const group = document.getElementById('sphereGroup');
+
+  // controls
+  const rx = document.getElementById('rx'), ry = document.getElementById('ry'), rz = document.getElementById('rz');
+  const rxn = document.getElementById('rxn'), ryn = document.getElementById('ryn'), rzn = document.getElementById('rzn');
+  const density = document.getElementById('density'), densityn = document.getElementById('densityn');
+  const linewidth = document.getElementById('linewidth'), linewidthn = document.getElementById('linewidthn');
+  const frontColor = document.getElementById('frontColor'), backColor = document.getElementById('backColor');
+  const showPoles = document.getElementById('showPoles');
+  const reset = document.getElementById('reset'), toggleAnim = document.getElementById('toggleAnim');
+  const exportSVG = document.getElementById('exportSVG');
+
+  // sync ranges with numeric inputs
+  function wireSync(range, num){
+    range.addEventListener('input', ()=>{ num.value = range.value; scheduleDraw(); });
+    num.addEventListener('input', ()=>{ range.value = num.value; scheduleDraw(); });
+  }
+  wireSync(rx, rxn); wireSync(ry, ryn); wireSync(rz, rzn);
+  wireSync(density, densityn); wireSync(linewidth, linewidthn);
+
+  const state = {
+    rX: parseFloat(rx.value),
+    rY: parseFloat(ry.value),
+    rZ: parseFloat(rz.value),
+    density: parseInt(density.value,10),
+    lineWidth: parseFloat(linewidth.value),
+    frontColor: frontColor.value,
+    backColor: backColor.value,
+    showPoles: showPoles.checked,
+    autoRotate: true
+  };
+
+  // event listeners update state
+  [rx,ry,rz,density,linewidth,frontColor,backColor,showPoles].forEach(el=>{
+    el.addEventListener('input', ()=> {
+      state.rX = parseFloat(rx.value);
+      state.rY = parseFloat(ry.value);
+      state.rZ = parseFloat(rz.value);
+      state.density = parseInt(density.value,10);
+      state.lineWidth = parseFloat(linewidth.value);
+      state.frontColor = frontColor.value;
+      state.backColor = backColor.value;
+      state.showPoles = showPoles.checked;
+      scheduleDraw();
+    });
+  });
+
+  reset.addEventListener('click', ()=>{
+    rx.value = -20; ry.value = 30; rz.value = 0;
+    rxn.value = -20; ryn.value = 30; rzn.value = 0;
+    density.value = 24; densityn.value = 24;
+    linewidth.value = 0.9; linewidthn.value = 0.9;
+    frontColor.value = '#dbeefe'; backColor.value = '#2a6b9e';
+    showPoles.checked = true;
+    state.autoRotate = true;
+    toggleAnim.textContent = 'Pause orbit';
+    state.rX = -20; state.rY = 30; state.rZ = 0;
+    scheduleDraw();
+  });
+
+  toggleAnim.addEventListener('click', ()=>{
+    state.autoRotate = !state.autoRotate;
+    toggleAnim.textContent = state.autoRotate ? 'Pause orbit' : 'Resume orbit';
+  });
+
+  exportSVG.addEventListener('click', ()=>{
+    // copy current innerSVG of <svg> to clipboard
+    const serializer = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    clone.removeAttribute('style');
+    const out = serializer.serializeToString(clone);
+    navigator.clipboard?.writeText(out).then(()=> {
+      exportSVG.textContent = 'Copied!';
+      setTimeout(()=> exportSVG.textContent = 'Copy SVG markup', 900);
+    }, ()=> {
+      exportSVG.textContent = 'Copy failed';
+      setTimeout(()=> exportSVG.textContent = 'Copy SVG markup', 900);
+    });
+  });
+
+  // small scheduler to avoid redrawing too frequently while dragging
+  let pending = false;
+  function scheduleDraw(){ if(!pending){ pending = true; requestAnimationFrame(()=>{ pending=false; drawSphere(); }); } }
+
+  // math helpers
+  const deg = Math.PI / 180;
+  function matMulVec(m, v){
+    return [
+      m[0]*v[0] + m[1]*v[1] + m[2]*v[2],
+      m[3]*v[0] + m[4]*v[1] + m[5]*v[2],
+      m[6]*v[0] + m[7]*v[1] + m[8]*v[2]
+    ];
+  }
+  function rotX(a){
+    const c=Math.cos(a), s=Math.sin(a);
+    return [1,0,0, 0,c,-s, 0,s,c];
+  }
+  function rotY(a){
+    const c=Math.cos(a), s=Math.sin(a);
+    return [c,0,s, 0,1,0, -s,0,c];
+  }
+  function rotZ(a){
+    const c=Math.cos(a), s=Math.sin(a);
+    return [c,-s,0, s,c,0, 0,0,1];
+  }
+  function matMul(a,b){ // 3x3 * 3x3
+    const r = new Array(9);
+    r[0]=a[0]*b[0]+a[1]*b[3]+a[2]*b[6];
+    r[1]=a[0]*b[1]+a[1]*b[4]+a[2]*b[7];
+    r[2]=a[0]*b[2]+a[1]*b[5]+a[2]*b[8];
+    r[3]=a[3]*b[0]+a[4]*b[3]+a[5]*b[6];
+    r[4]=a[3]*b[1]+a[4]*b[4]+a[5]*b[7];
+    r[5]=a[3]*b[2]+a[4]*b[5]+a[5]*b[8];
+    r[6]=a[6]*b[0]+a[7]*b[3]+a[8]*b[6];
+    r[7]=a[6]*b[1]+a[7]*b[4]+a[8]*b[7];
+    r[8]=a[6]*b[2]+a[7]*b[5]+a[8]*b[8];
+    return r;
+  }
+
+  // build points on unit sphere
+  function buildSphereSamples(density){
+    // density controls number of meridians and parallels
+    const meridians = density;            // longitudes
+    const parallels = Math.max(4, Math.floor(density/2)); // latitudes
+    const samples = {meridians:[], parallels:[]};
+
+    // meridians: circles for each longitude (theta), vary latitude phi from -pi/2..pi/2
+    for(let i=0;i<meridians;i++){
+      const theta = (i/meridians) * Math.PI * 2;
+      const pts = [];
+      for(let j=0;j<=parallels;j++){
+        const phi = -Math.PI/2 + (j/parallels) * Math.PI; // -90..90
+        const x = Math.cos(phi) * Math.cos(theta);
+        const y = Math.cos(phi) * Math.sin(theta);
+        const z = Math.sin(phi);
+        pts.push([x,y,z]);
+      }
+      samples.meridians.push(pts);
+    }
+
+    // parallels: circles for each latitude (phi), vary longitude theta 0..2pi
+    for(let p=1;p<parallels;p++){ // skip poles duplicates
+      const phi = -Math.PI/2 + (p/parallels) * Math.PI;
+      const r = Math.cos(phi);
+      const z = Math.sin(phi);
+      const pts = [];
+      const segs = meridians*2;
+      for(let i=0;i<=segs;i++){
+        const theta = (i/segs) * Math.PI * 2;
+        const x = r * Math.cos(theta);
+        const y = r * Math.sin(theta);
+        pts.push([x,y,z]);
+      }
+      samples.parallels.push(pts);
+    }
+
+    // poles as small meridian-like arcs if desired
+    return samples;
+  }
+
+  // project 3D points to SVG 2D (simple orthographic projection with soft perspective hint)
+  function project(pt, scale=200){
+    // viewing along +Z, we project x,y and optionally scale slightly by z for perspective feel
+    const [x,y,z] = pt;
+    const perspective = 1 + (z * 0.08); // small depth scale to suggest perspective
+    return {x: x * scale * perspective, y: -y * scale * perspective, z};
+  }
+
+  // draw the sphere
+  let lastDensity = null;
+  function drawSphere(){
+    // update state from inputs
+    state.rX = parseFloat(rx.value);
+    state.rY = parseFloat(ry.value);
+    state.rZ = parseFloat(rz.value);
+    state.density = parseInt(density.value,10);
+    state.lineWidth = parseFloat(linewidth.value);
+    state.frontColor = frontColor.value;
+    state.backColor = backColor.value;
+    state.showPoles = showPoles.checked;
+
+    // optionally auto-rotate a touch
+    if(state.autoRotate){
+      state.rY = (state.rY + 0.12) % 360;
+      ry.value = state.rY; ryn.value = state.rY.toFixed(1);
+    }
+
+    // rotation matrix
+    const mx = rotX(state.rX*deg);
+    const my = rotY(state.rY*deg);
+    const mz = rotZ(state.rZ*deg);
+    const mxy = matMul(my,mx); // apply X then Y then Z -> v' = mz * (my * (mx * v))
+    const m = matMul(mz,mxy);
+
+    // rebuild samples if density changed
+    const samples = buildSphereSamples(state.density);
+
+    // clear group
+    while(group.firstChild) group.removeChild(group.firstChild);
+
+    const strokeW = Math.max(0.2, state.lineWidth);
+    const frontLis = [], backLis = [];
+
+    // helper to transform lists of 3D points -> path points with sort key (avg z)
+    function projectAndClassify(list){
+      const pts2 = list.map(p => matMulVec(m,p));
+      const proj = pts2.map(p => project(p));
+      const avgZ = pts2.reduce((s,p)=>s+p[2],0) / pts2.length;
+      return {proj, avgZ};
+    }
+
+    // collect lines: meridians
+    samples.meridians.forEach(arc=>{
+      const {proj, avgZ} = projectAndClassify(arc);
+      // split into visible/front segments: break polyline where sign of z changes
+      // We'll create a single polyline but choose color by avgZ: simple and effective
+      if(avgZ >= 0) frontLis.push({proj, avgZ});
+      else backLis.push({proj, avgZ});
+    });
+
+    // parallels
+    samples.parallels.forEach(circle=>{
+      const {proj, avgZ} = projectAndClassify(circle);
+      if(avgZ >= 0) frontLis.push({proj, avgZ});
+      else backLis.push({proj, avgZ});
+    });
+
+    // optional pole meridians: add few meridians at top/bottom to enhance poles
+    if(state.showPoles){
+      const poles = 6;
+      for(let i=0;i<poles;i++){
+        const theta = (i/poles)*Math.PI*2;
+        const pts = [];
+        for(let j=0;j<=16;j++){
+          const phi = -Math.PI/2 + (j/16)*Math.PI;
+          pts.push([Math.cos(phi)*Math.cos(theta), Math.cos(phi)*Math.sin(theta), Math.sin(phi)]);
+        }
+        const {proj, avgZ} = projectAndClassify(pts);
+        if(avgZ >= 0) frontLis.push({proj,avgZ}); else backLis.push({proj,avgZ});
+      }
+    }
+
+    // draw back list first with backColor and reduced opacity
+    backLis.sort((a,b)=>a.avgZ - b.avgZ); // farthest first
+    for(const item of backLis){
+      const d = item.proj.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      poly.setAttribute('points', d);
+      poly.setAttribute('fill','none');
+      poly.setAttribute('stroke', state.backColor);
+      poly.setAttribute('stroke-width', strokeW);
+      poly.setAttribute('stroke-linecap','round');
+      poly.setAttribute('stroke-linejoin','round');
+      poly.setAttribute('opacity','0.85');
+      group.appendChild(poly);
+    }
+
+    // draw front list on top
+    frontLis.sort((a,b)=>b.avgZ - a.avgZ); // nearest first
+    for(const item of frontLis){
+      const d = item.proj.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      poly.setAttribute('points', d);
+      poly.setAttribute('fill','none');
+      poly.setAttribute('stroke', state.frontColor);
+      poly.setAttribute('stroke-width', strokeW);
+      poly.setAttribute('stroke-linecap','round');
+      poly.setAttribute('stroke-linejoin','round');
+      poly.setAttribute('opacity','1');
+      group.appendChild(poly);
+    }
+
+    // subtle rim highlight to help silhouette
+    const rim = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    rim.setAttribute('cx','0'); rim.setAttribute('cy','0'); rim.setAttribute('r', 201);
+    rim.setAttribute('fill','none'); rim.setAttribute('stroke', 'rgba(255,255,255,0.02)');
+    rim.setAttribute('stroke-width','6'); rim.setAttribute('pointer-events','none');
+    group.appendChild(rim);
+  }
+
+  // initial draw and animation loop
+  drawSphere();
+  function animate(){
+    scheduleDraw();
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

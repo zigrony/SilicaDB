@@ -25,7 +25,41 @@
 
         public override string ToString()
         {
-            return $"{Kind} \"{Value}\" (Line {Line}, Col {Column})";
+            // Produce a stable, single-line, invariant representation for diagnostics.
+            // Escape control characters that would break logs and cap length for readability.
+            string v = Value ?? string.Empty;
+            var sb = new System.Text.StringBuilder(v.Length > 96 ? 96 : v.Length + 8);
+            int max = 80; // cap display length
+            int count = 0;
+            for (int i = 0; i < v.Length; i++)
+            {
+                if (count >= max) { sb.Append("..."); break; }
+                char ch = v[i];
+                if (ch == '\r') { sb.Append("\\r"); count += 2; continue; }
+                if (ch == '\n') { sb.Append("\\n"); count += 2; continue; }
+                if (ch == '\t') { sb.Append("\\t"); count += 2; continue; }
+                if (ch == '\"') { sb.Append("\\\""); count += 2; continue; }
+                if (ch == '\\') { sb.Append("\\\\"); count += 2; continue; }
+                // Keep printables; replace other control chars with hex escape
+                if (ch < ' ')
+                {
+                    // \xHH (2 hex digits)
+                    int hi = (ch >> 4) & 0xF;
+                    int lo = ch & 0xF;
+                    sb.Append("\\x");
+                    sb.Append((char)(hi < 10 ? ('0' + hi) : ('A' + (hi - 10))));
+                    sb.Append((char)(lo < 10 ? ('0' + lo) : ('A' + (lo - 10))));
+                    count += 4;
+                    continue;
+                }
+                sb.Append(ch);
+                count++;
+            }
+            string disp = sb.ToString();
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0} \"{1}\" (Line {2}, Col {3})",
+                Kind, disp, Line, Column);
         }
 
         public bool Equals(Token? other)

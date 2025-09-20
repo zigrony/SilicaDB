@@ -94,7 +94,13 @@ foreach ($project in $ProjectList) {
     $writer = [System.IO.StreamWriter]::new($fullDst, $false, [System.Text.Encoding]::UTF8)
 
     # Skip files containing 'Tests' in the path
-    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" |
+	#
+	# Get all projectrelated files.
+	# Get-ChildItem -Path "$fullSrc\*" -Recurse -File -Include *.cs,*.csproj,*.sln,*.config,*.resx,*.xaml,*.json,*.xml,*.user,*.props,*.targets,*.cshtml |
+	#
+	#Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Where-Object { $_.Name -notlike '*.GlobalUsings.g.cs' -and $_.FullName -notmatch '[\\/]\bobj\b[\\/]'}
+
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Where-Object { $_.Name -notlike '*.GlobalUsings.g.cs' -and $_.FullName -notmatch '[\\/]\bobj\b[\\/]'} |
              Where-Object { $_.FullName -notmatch "Tests" } |
              Sort-Object FullName
 

@@ -1,0 +1,14 @@
+{
+  "name": "silica-needle-three",
+  "version": "0.1.0",
+  "description": "Gauge needle rendered with three.js as a Web Component",
+  "type": "module",
+  "scripts": {
+    "start": "npx sirv demo --single --dev"
+  },
+  "author": "Silica",
+  "license": "MIT",
+  "devDependencies": {
+    "sirv-cli": "^2.0.0"
+  }
+}

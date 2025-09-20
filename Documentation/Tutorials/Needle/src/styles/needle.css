@@ -1,0 +1,11 @@
+:root{ --bg:#071226; --panel:#0b1b2bcc; --muted:#9aa7bd }
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#061425,#031022);color:#e6eef8}
+.wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.layout{display:flex;gap:16px;width:100%;max-width:1200px}
+.stage{flex:1;min-width:320px;background:linear-gradient(180deg,#071726,#041322);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.gaugeStack{position:relative;width:420px;height:420px}
+.gaugeStack svg.gaugeSvg{position:absolute;inset:0;width:100%;height:100%}
+silica-needle-three{position:absolute;inset:0;width:100%;height:100%;display:block}
+.panel{width:420px;background:var(--panel);border-radius:12px;padding:14px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+label{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.metric{margin-top:8px;color:#cfe3ff}

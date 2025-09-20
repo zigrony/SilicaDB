@@ -1,0 +1,23 @@
+:root{
+  --bg:#071226; --panel:#071226cc; --accent:#58a6ff; --muted:#9aa7bd;
+}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#071226,#041020);color:#e6eef8}
+.wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+h3{margin:0;font-weight:600}
+.layout{display:flex;gap:14px;width:100%;max-width:1200px}
+.stage{flex:1;min-width:320px;background:linear-gradient(180deg,#061326,#041022);border-radius:10px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(2,6,23,.6)}
+svg{width:min(80vw,640px);height:min(60vh,640px)}
+.panel{width:380px;background:var(--panel);border-radius:10px;padding:12px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;align-items:center}
+label{width:120px;color:#cfe3ff;font-size:13px}
+input[type="range"]{flex:1}
+input[type="number"]{width:72px;padding:6px;border-radius:6px;border:none;background:#071022;color:#dbeefe}
+select,button,input[type="color"]{background:#071022;color:#dbeefe;border-radius:6px;padding:6px;border:none}
+button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:7px;cursor:pointer}
+.metrics{display:flex;gap:8px;flex-wrap:wrap}
+.metric{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:6px;font-size:13px}
+footer{font-size:12px;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+.hidden{display:none}
+.compact .panel{width:220px}
+.compact svg{width:120px;height:120px}

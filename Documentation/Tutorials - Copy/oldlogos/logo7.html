@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sphere Slideshow with Adjustable Arc Silica</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(circle at center,
+      #00e6b8 0%,
+      #00997a 60%,
+      #003d33 100%
+    );
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  .stage {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    perspective: 1000px;
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--fade-ms, 900ms) ease-in-out;
+  }
+  .slide.active { opacity: 1; }
+  svg { width: 100%; height: 100%; }
+  .front { stroke: white; stroke-opacity: 0.6; fill: none; }
+  .back { stroke: #66cccc; stroke-opacity: 0.25; stroke-dasharray: 4 4; fill: none; }
+
+  /* Orbiting Silica letters */
+  .orbit-container {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform-style: preserve-3d;
+    transform: translate(-50%, -50%);
+    animation: fullOrbit 10s linear infinite;
+  }
+  .arc3d {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    transform-style: preserve-3d;
+  }
+  .arc3d span {
+    display: inline-block;
+    font-size: 40px;
+    font-weight: bold;
+    color: #cc5500;
+    text-shadow: 2px 2px 0px black;
+    margin: 0 1px;
+    transform-origin: center center;
+  }
+
+  @keyframes fullOrbit {
+    0%   { transform: translate(-50%, -50%) rotateY(0deg); }
+    100% { transform: translate(-50%, -50%) rotateY(360deg); }
+  }
+
+  /* Controls */
+  .controls {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .controls label { display: block; margin: 4px 0; }
+  .controls input { width: 100px; }
+  .controls button { margin-top: 6px; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+
+  <!-- Orbiting curved letters -->
+  <div class="orbit-container">
+    <div class="arc3d" id="arc3d">
+      <span>S</span><span>i</span><span>l</span><span>i</span><span>c</span><span>a</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>Max Density: <input type="number" id="maxDensity" value="10" min="2" max="20"></label>
+    <label>Bins: <input type="number" id="bins" value="8" min="2" max="20"></label>
+    <label>Crossfade (ms): <input type="number" id="fade" value="900"></label>
+    <label>Dwell (ms): <input type="number" id="dwell" value="1200"></label>
+    <label>Arc Offset (deg): <input type="number" id="arcOffset" value="20" min="0" max="60"></label>
+    <button id="restart">Restart</button>
+  </div>
+
+<script>
+const stage = document.getElementById('stage');
+const arc3d = document.getElementById('arc3d');
+const svgNS = "http://www.w3.org/2000/svg";
+
+let slides = [], intervalId = null;
+
+function buildSphere(density) {
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 200 200");
+
+  const gBack = document.createElementNS(svgNS, "g");
+  const gFront = document.createElementNS(svgNS, "g");
+
+  const circle = document.createElementNS(svgNS, "circle");
+  circle.setAttribute("cx", 100);
+  circle.setAttribute("cy", 100);
+  circle.setAttribute("r", 95);
+  circle.setAttribute("class", "front");
+  gFront.appendChild(circle);
+
+  for (let i = 1; i < density; i++) {
+    const ry = (95 / density) * i;
+    const lat = document.createElementNS(svgNS, "ellipse");
+    lat.setAttribute("cx", 100);
+    lat.setAttribute("cy", 100);
+    lat.setAttribute("rx", 95);
+    lat.setAttribute("ry", ry);
+    lat.setAttribute("class", "back");
+    gBack.appendChild(lat);
+
+    const latFront = lat.cloneNode();
+    latFront.setAttribute("class", "front");
+    gFront.appendChild(latFront);
+  }
+
+  for (let i = 1; i < density; i++) {
+    const rx = (95 / density) * i;
+    const lon = document.createElementNS(svgNS, "ellipse");
+    lon.setAttribute("cx", 100);
+    lon.setAttribute("cy", 100);
+    lon.setAttribute("rx", rx);
+    lon.setAttribute("ry", 95);
+    lon.setAttribute("class", "back");
+    gBack.appendChild(lon);
+
+    const lonFront = lon.cloneNode();
+    lonFront.setAttribute("class", "front");
+    gFront.appendChild(lonFront);
+  }
+
+  svg.appendChild(gBack);
+  svg.appendChild(gFront);
+  return svg;
+}
+
+function quantizedDensities(bins, minD, maxD) {
+  const out = [];
+  for (let i = 0; i < bins; i++) {
+    const t = (bins === 1) ? 0 : i / (bins - 1);
+    const d = Math.round(minD + (maxD - minD) * t);
+    out.push(d);
+  }
+  return [...new Set(out)];
+}
+
+function applyArcOffset(offsetDeg) {
+  const letters = arc3d.querySelectorAll('span');
+  const mid = (letters.length - 1) / 2;
+  letters.forEach((span, idx) => {
+    const rel = idx - mid;
+    const angle = rel * (offsetDeg / mid);
+    span.style.transform = `rotateX(${angle}deg) translateZ(${110 - Math.abs(angle)}px)`;
+  });
+}
+
+function startShow() {
+  stage.innerHTML = '';
+  if (intervalId) clearInterval(intervalId);
+
+  const maxDensity = parseInt(document.getElementById('maxDensity').value, 10);
+  const bins = parseInt(document.getElementById('bins').value, 10);
+  const fade = parseInt(document.getElementById('fade').value, 10);
+  const dwell = parseInt(document.getElementById('dwell').value, 10);
+  const arcOffset = parseInt(document.getElementById('arcOffset').value, 10);
+
+  document.documentElement.style.setProperty('--fade-ms', fade + 'ms');
+  applyArcOffset(arcOffset);
+
+  const densities = quantizedDensities(bins, 2, maxDensity);
+  slides = densities.map(d => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide';
+    wrapper.appendChild(buildSphere(d));
+    stage.appendChild(wrapper);
+    return wrapper;
+  });
+
+  let index = -1;
+  function show(idx) {
+    if (index >= 0) slides[index].classList.remove('active');
+    index = idx;
+    slides[index].classList.add('active');
+  }
+
+  let i = 0;
+  show(i);
+  intervalId = setInterval(() => {
+    i = (i + 1) % slides.length;
+    show(i);
+  }, fade + dwell);
+}
+
+document.getElementById('restart').addEventListener('click', startShow);
+document.getElementById('arcOffset').addEventListener('input', e => {
+  applyArcOffset(parseInt(e.target.value, 10));
+});
+
+startShow();
+</script>
+</body>
+</html>

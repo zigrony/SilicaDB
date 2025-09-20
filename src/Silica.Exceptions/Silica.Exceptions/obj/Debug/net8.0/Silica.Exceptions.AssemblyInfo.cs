@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Exceptions")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1ec446591fadfbb511fbd88b5c900736b074fe2a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+829e512351b3718f61854031632a074bd0cfa3e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Exceptions")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Exceptions")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

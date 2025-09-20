@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SilicaDB — Swoopy Database Background</title>
+<style>
+  :root {
+    --bg-0: #0a0f1a;      /* deep navy */
+    --bg-1: #0f1e33;      /* slate */
+    --acc-0: #00d1ff;     /* cyan */
+    --acc-1: #7df9ff;     /* ice */
+    --acc-2: #7b61ff;     /* indigo */
+    --grid: #1b2b44;      /* grid lines */
+    --panel: rgba(10,15,26,0.7);
+    --text: #e8f1ff;
+    --muted: #a6b3c6;
+  }
+
+  .theme-alt {
+    --bg-0: #0d1017;
+    --bg-1: #151b23;
+    --acc-0: #2ee6a6;
+    --acc-1: #7cfcc3;
+    --acc-2: #5f9bff;
+    --grid: #202735;
+    --panel: rgba(13,16,23,0.72);
+    --text: #f0f6ff;
+    --muted: #9aa7b5;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: radial-gradient(1200px 800px at 70% 30%, var(--bg-1), var(--bg-0));
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+  }
+
+  #wrap {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  canvas#bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+  }
+
+  .vignette {
+    position: absolute;
+    inset: -10%;
+    pointer-events: none;
+    background:
+      radial-gradient(80% 60% at 50% 50%, transparent 50%, rgba(0,0,0,0.25) 100%);
+    mix-blend-mode: multiply;
+    z-index: 2;
+  }
+
+  .center-brand {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    z-index: 3;
+    user-select: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 24px rgba(0, 209, 255, 0.45);
+  }
+
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, var(--acc-1), var(--acc-0));
+    box-shadow: 0 0 12px rgba(0,209,255,0.5), inset 0 0 6px rgba(255,255,255,0.6);
+  }
+
+  .brand {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .panel {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    z-index: 4;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px 8px;
+    align-items: center;
+  }
+  .panel label {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .panel input[type="range"] { width: 180px; }
+  .panel button, .panel select {
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .panel button:hover, .panel select:hover { border-color: rgba(255,255,255,0.2); }
+  .panel .full { grid-column: 1 / -1; }
+
+  .hint {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 3;
+    color: var(--muted);
+    font-size: 12px;
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="bg"></canvas>
+    <div class="vignette"></div>
+
+    <div class="center-brand" id="brand">
+      <div class="badge">
+        <div class="dot"></div>
+        <div class="brand">SilicaDB</div>
+      </div>
+    </div>
+
+    <div class="panel" aria-label="Controls">
+      <label for="theme">Theme</label>
+      <select id="theme">
+        <option value="default" selected>Deep Cyan</option>
+        <option value="alt">Teal Indigo</option>
+      </select>
+
+      <label for="density">Density</label>
+      <input id="density" type="range" min="0" max="1" step="0.01" value="0.7" />
+
+      <label for="motion">Motion</label>
+      <input id="motion" type="range" min="0" max="1" step="0.01" value="0.65" />
+
+      <label for="focus">Focus rings</label>
+      <input id="focus" type="range" min="0" max="1" step="0.01" value="0.55" />
+
+      <button id="toggleBrand" class="full" title="Show/Hide center brand">Toggle Brand</button>
+      <button id="export">Export PNG</button>
+    </div>
+
+    <div class="hint">Tip: Export saves the full scene (background, grid, arcs, nodes, brand) at high resolution.</div>
+  </div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+  // Controls
+  const densityEl = document.getElementById('density');
+  const motionEl = document.getElementById('motion');
+  const focusEl = document.getElementById('focus');
+  const themeEl = document.getElementById('theme');
+  const toggleBrand = document.getElementById('toggleBrand');
+  const brandEl = document.getElementById('brand');
+  const exportBtn = document.getElementById('export');
+
+  // State
+  let W = 0, H = 0, T0 = performance.now();
+  let nodes = [];
+  let arcs = [];
+  let gridFlow = 0;
+
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function resize() {
+    const { clientWidth: w, clientHeight: h } = canvas;
+    W = w; H = h;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seed();
+  }
+
+  function rand(a=0, b=1) { return a + Math.random()*(b-a); }
+  function choice(arr){ return arr[(Math.random()*arr.length)|0]; }
+
+  function seed() {
+    nodes = [];
+    arcs = [];
+    const density = parseFloat(densityEl.value); // 0..1
+    const baseCount = Math.round(50 + density * 150);
+    const arcCount = Math.round(8 + density * 24);
+
+    const cx = W*0.55, cy = H*0.48;
+    const maxR = Math.min(W, H) * 0.55;
+    for (let i=0; i<baseCount; i++){
+      const t = i / baseCount;
+      const r = Math.sqrt(t) * maxR * (0.65 + rand(-0.08, 0.08));
+      const ang = t * 8.0 + rand(-0.25, 0.25);
+      const x = cx + Math.cos(ang)*r + rand(-30, 30);
+      const y = cy + Math.sin(ang)*r + rand(-30, 30);
+      const z = rand(0.2, 1.0);
+      nodes.push({
+        x, y, z,
+        vx: rand(-0.2,0.2), vy: rand(-0.2,0.2),
+        glow: rand(0.3,1),
+      });
+    }
+
+    for (let i=0; i<arcCount; i++){
+      const y = cy + (i - arcCount/2) * (Math.min(18, H*0.02));
+      const w = Math.min(W*0.7, 900) * rand(0.6, 1.0);
+      const h = Math.min(H*0.25, 240) * rand(0.45, 0.85);
+      const skew = rand(-0.25, 0.25);
+      const hue = choice([0, 1]);
+      arcs.push({ y, w, h, skew, hue, alpha: rand(0.04, 0.12) });
+    }
+  }
+
+  // Background painted into canvas so exports include it
+  function drawBackground(context, t) {
+    const bg0 = cssVar('--bg-0', '#0a0f1a');
+    const bg1 = cssVar('--bg-1', '#0f1e33');
+    const acc0 = cssVar('--acc-0', '#00d1ff');
+    const acc2 = cssVar('--acc-2', '#7b61ff');
+
+    // Base fill
+    const base = context.createLinearGradient(0, 0, 0, H);
+    base.addColorStop(0, bg1);
+    base.addColorStop(1, bg0);
+    context.fillStyle = base;
+    context.fillRect(0, 0, W, H);
+
+    // Soft radial accents
+    const g1 = context.createRadialGradient(W*0.25, H*0.75, 0, W*0.25, H*0.75, Math.max(W, H)*0.8);
+    g1.addColorStop(0, hexToRgba(acc2, 0.08));
+    g1.addColorStop(1, hexToRgba(acc2, 0.0));
+    context.fillStyle = g1;
+    context.fillRect(0, 0, W, H);
+
+    const g2 = context.createRadialGradient(W*0.85, H*0.2, 0, W*0.85, H*0.2, Math.max(W, H)*0.9);
+    g2.addColorStop(0, hexToRgba(acc0, 0.10));
+    g2.addColorStop(1, hexToRgba(acc0, 0.0));
+    context.fillStyle = g2;
+    context.fillRect(0, 0, W, H);
+
+    // Faint top glow
+    const g3 = context.createLinearGradient(0, 0, 0, H*0.25);
+    g3.addColorStop(0, 'rgba(255,255,255,0.05)');
+    g3.addColorStop(1, 'rgba(255,255,255,0.00)');
+    context.fillStyle = g3;
+    context.fillRect(0, 0, W, H*0.25);
+  }
+
+  function drawGrid(context, t) {
+    const gridColor = cssVar('--grid', '#1b2b44');
+    context.save();
+    context.globalAlpha = 0.8;
+    context.strokeStyle = gridColor;
+    context.lineWidth = 1;
+
+    const spacing = 40;
+    const offset = (t*0.06 + gridFlow) % spacing;
+
+    for (let x = -W; x <= W*2; x += spacing) {
+      context.beginPath();
+      context.moveTo(x + offset, 0);
+      context.lineTo(x + offset + W*0.06, H);
+      context.stroke();
+    }
+
+    for (let y = -H; y <= H*2; y += spacing) {
+      context.beginPath();
+      context.moveTo(0, y + offset);
+      context.lineTo(W, y + offset + H*0.04);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawArcs(context, t) {
+    const acc0 = cssVar('--acc-0', '#00d1ff');
+    const acc2 = cssVar('--acc-2', '#7b61ff');
+
+    arcs.forEach((a, i) => {
+      const phase = Math.sin(t*0.0008 + i*0.7);
+      const wob = phase * 8 * parseFloat(motionEl.value);
+      const cx = W*0.52 + a.skew * 100;
+      const x0 = cx - a.w/2, x1 = cx + a.w/2;
+      const y = a.y + wob;
+
+      const grad = context.createLinearGradient(x0, y-a.h, x1, y+a.h);
+      const edge = a.hue ? acc0 : acc2;
+      grad.addColorStop(0, `rgba(255,255,255,0.00)`);
+      grad.addColorStop(0.5, hexToRgba(edge, 0.13));
+      grad.addColorStop(1, `rgba(255,255,255,0.00)`);
+
+      context.save();
+      context.globalAlpha = a.alpha;
+      context.lineWidth = 1.5;
+      context.strokeStyle = grad;
+
+      context.beginPath();
+      context.moveTo(x0, y);
+      context.bezierCurveTo(
+        cx - a.w*0.25, y - a.h,
+        cx + a.w*0.25, y - a.h,
+        x1, y
+      );
+      context.stroke();
+
+      context.globalAlpha *= 0.7;
+      context.beginPath();
+      context.moveTo(x0, y+4);
+      context.bezierCurveTo(
+        cx - a.w*0.25, y + a.h*0.7,
+        cx + a.w*0.25, y + a.h*0.7,
+        x1, y+4
+      );
+      context.stroke();
+
+      context.restore();
+    });
+  }
+
+  function drawConnections(context, t) {
+    const mot = parseFloat(motionEl.value);
+    const focus = parseFloat(focusEl.value);
+
+    context.save();
+    context.lineWidth = 1;
+    for (let i=0; i<nodes.length; i++) {
+      const a = nodes[i];
+      for (let j=i+1; j<i+5 && j<nodes.length; j++) {
+        const b = nodes[(i + j) % nodes.length];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 > 140*140) continue;
+
+        const alpha = 0.03 + 0.08 * (1 - Math.min(1, d2/(140*140))) * a.z;
+        context.globalAlpha = alpha * 0.9;
+        const g = context.createLinearGradient(a.x, a.y, b.x, b.y);
+        g.addColorStop(0, 'rgba(255,255,255,0.0)');
+        g.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+        g.addColorStop(1, 'rgba(255,255,255,0.0)');
+        context.strokeStyle = g;
+
+        context.beginPath();
+        const mx = (a.x + b.x)/2 + Math.sin(t*0.001 + i)*8*mot;
+        const my = (a.y + b.y)/2 + Math.cos(t*0.0012 + j)*8*mot;
+        context.moveTo(a.x, a.y);
+        context.quadraticCurveTo(mx, my, b.x, b.y);
+        context.stroke();
+
+        if (((i + j) % 9) === 0) {
+          const p = (t*0.0005 + i*0.07) % 1;
+          const qx = a.x + (b.x - a.x) * p;
+          const qy = a.y + (b.y - a.y) * p;
+          context.globalAlpha = alpha * 1.2;
+          const r = 1 + 3*focus;
+          const grad = context.createRadialGradient(qx, qy, 0, qx, qy, r*4);
+          grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+          grad.addColorStop(1, 'rgba(255,255,255,0.0)');
+          context.fillStyle = grad;
+          context.beginPath();
+          context.arc(qx, qy, r*4, 0, Math.PI*2);
+          context.fill();
+        }
+      }
+    }
+    context.restore();
+  }
+
+  function drawNodes(context, t) {
+    const mot = parseFloat(motionEl.value);
+    const focus = parseFloat(focusEl.value);
+    context.save();
+    for (const n of nodes) {
+      n.x += n.vx * mot * 0.2;
+      n.y += n.vy * mot * 0.2;
+
+      const margin = 40;
+      if (n.x < -margin) n.x = W + margin;
+      if (n.x > W + margin) n.x = -margin;
+      if (n.y < -margin) n.y = H + margin;
+      if (n.y > H + margin) n.y = -margin;
+
+      const glow = 3 + 8 * n.glow * focus;
+      const r = 1 + 1.5 * n.z;
+
+      const grad = context.createRadialGradient(n.x, n.y, 0, n.x, n.y, glow);
+      grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.0)');
+      context.globalAlpha = 0.25 + 0.35*n.z;
+      context.fillStyle = grad;
+      context.beginPath();
+      context.arc(n.x, n.y, glow, 0, Math.PI*2);
+      context.fill();
+
+      context.globalAlpha = 0.9;
+      context.fillStyle = 'rgba(255,255,255,0.85)';
+      context.beginPath();
+      context.arc(n.x, n.y, r, 0, Math.PI*2);
+      context.fill();
+    }
+    context.restore();
+  }
+
+  // Canvas-rendered brand for exports (live brand is DOM)
+  function drawBrand(context) {
+    const pillW = 220, pillH = 42, r = 21;
+    const x = (W - pillW)/2, y = (H - pillH)/2;
+
+    const g = context.createLinearGradient(0, y, 0, y+pillH);
+    g.addColorStop(0, 'rgba(255,255,255,0.10)');
+    g.addColorStop(1, 'rgba(255,255,255,0.03)');
+
+    context.save();
+    context.fillStyle = g;
+    context.strokeStyle = 'rgba(255,255,255,0.15)';
+    context.lineWidth = 1;
+    roundRect(context, x, y, pillW, pillH, r);
+    context.fill(); context.stroke();
+
+    const acc0 = cssVar('--acc-0', '#00d1ff');
+    const acc1 = cssVar('--acc-1', '#7df9ff');
+    const dotG = context.createRadialGradient(x+28, y+pillH/2, 2, x+28, y+pillH/2, 10);
+    dotG.addColorStop(0, acc1);
+    dotG.addColorStop(1, acc0);
+    context.fillStyle = dotG;
+    context.beginPath();
+    context.arc(x+28, y+pillH/2, 6, 0, Math.PI*2);
+    context.fill();
+
+    context.fillStyle = cssVar('--text', '#e8f1ff');
+    context.font = '700 14px "Inter", Segoe UI, system-ui, sans-serif';
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillText('SilicaDB', x+44, y+pillH/2);
+    context.restore();
+  }
+
+  function frame(t) {
+    const dt = t - T0; T0 = t;
+    gridFlow += dt * 0.02 * parseFloat(motionEl.value);
+
+    ctx.clearRect(0, 0, W, H);
+
+    drawBackground(ctx, t);
+    drawGrid(ctx, t);
+    drawArcs(ctx, t);
+    drawConnections(ctx, t);
+    drawNodes(ctx, t);
+
+    requestAnimationFrame(frame);
+  }
+
+  themeEl.addEventListener('change', () => {
+    if (themeEl.value === 'alt') {
+      document.documentElement.classList.add('theme-alt');
+    } else {
+      document.documentElement.classList.remove('theme-alt');
+    }
+    seed();
+  });
+
+  toggleBrand.addEventListener('click', () => {
+    brandEl.style.display = brandEl.style.display === 'none' ? '' : 'none';
+  });
+
+  exportBtn.addEventListener('click', () => {
+    const exportScale = 2; // Increase for higher res
+    const temp = document.createElement('canvas');
+    temp.width = Math.floor(W * exportScale);
+    temp.height = Math.floor(H * exportScale);
+    const tctx = temp.getContext('2d');
+    tctx.setTransform(exportScale, 0, 0, exportScale, 0, 0);
+
+    const now = performance.now();
+    drawBackground(tctx, now);
+    drawGrid(tctx, now);
+    drawArcs(tctx, now);
+    drawConnections(tctx, now);
+    drawNodes(tctx, now);
+
+    if (brandEl.style.display !== 'none') {
+      drawBrand(tctx);
+    }
+
+    const link = document.createElement('a');
+    link.download = 'silicadb-background.png';
+    link.href = temp.toDataURL('image/png');
+    link.click();
+  });
+
+  function roundRect(c, x, y, w, h, r) {
+    const rr = Math.min(r, w/2, h/2);
+    c.beginPath();
+    c.moveTo(x+rr, y);
+    c.arcTo(x+w, y, x+w, y+h, rr);
+    c.arcTo(x+w, y+h, x, y+h, rr);
+    c.arcTo(x, y+h, x, y, rr);
+    c.arcTo(x, y, x+w, y, rr);
+    c.closePath();
+  }
+
+  function hexToRgba(hex, a) {
+    // Accepts #RGB, #RRGGBB
+    let h = hex.replace('#','');
+    if (h.length === 3) {
+      h = h.split('').map(ch => ch+ch).join('');
+    }
+    const r = parseInt(h.substring(0,2), 16);
+    const g = parseInt(h.substring(2,4), 16);
+    const b = parseInt(h.substring(4,6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

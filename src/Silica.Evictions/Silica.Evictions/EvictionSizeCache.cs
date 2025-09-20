@@ -8,6 +8,7 @@ using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
@@ -17,6 +18,10 @@ namespace Silica.Evictions
     public class EvictionSizeCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
+        static EvictionSizeCache()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
         private readonly AsyncLock _lock = new();
         private readonly int _capacity;
         private readonly Dictionary<TKey, LinkedListNode<CacheEntry>> _map;
@@ -33,6 +38,7 @@ namespace Silica.Evictions
         private IMetricsManager _metrics;
         private readonly string _componentName;
         private bool _metricsRegistered;
+        private readonly bool _verbose;
 
         private sealed class CacheEntry
         {
@@ -60,6 +66,7 @@ namespace Silica.Evictions
             _lruList = new LinkedList<CacheEntry>();
             // Metrics init + registration
             _componentName = GetType().Name;
+            _verbose = EvictionDiagnostics.EnableVerbose;
             _metrics = DiagnosticsCoreBootstrap.IsStarted ? DiagnosticsCoreBootstrap.Instance.Metrics : new NoOpMetricsManager();
             try
             {
@@ -89,6 +96,7 @@ namespace Silica.Evictions
                     _lruList.Remove(node);
                     _lruList.AddFirst(node);
                     try { EvictionMetrics.IncrementHit(_metrics); } catch { }
+                    if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "hit"); } catch { } }
                     return node.Value.Value;
                 }
             }
@@ -99,6 +107,7 @@ namespace Silica.Evictions
             swFactory.Stop();
             try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
             try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
+            if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "miss_build"); } catch { } }
 
             // Phase 3: insert & maybe evict
             List<CacheEntry>? toEvict = null;
@@ -125,6 +134,13 @@ namespace Silica.Evictions
                     Interlocked.Decrement(ref _count);
                     toEvict.Add(tail.Value);
                     try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.SizeOnly); } catch { }
+                    try
+                    {
+                        EvictionDiagnostics.Emit(_componentName, "evict", "info", "size_evict",
+                            null,
+                            new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { TagKeys.Field, EvictionMetrics.Fields.SizeOnly } });
+                    }
+                    catch { }
                 }
             }
 
@@ -155,6 +171,14 @@ namespace Silica.Evictions
                 _map.Clear();
                 Interlocked.Exchange(ref _count, 0);
             }
+
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposing_cache",
+                    null,
+                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { "evicted_items", allEntries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            }
+            catch { }
 
             foreach (var e in allEntries)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);

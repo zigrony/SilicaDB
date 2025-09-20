@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Axisymmetric Spinning Top — Demo</title>
+<style>
+  :root{
+    --bg:#061226; --panel:#071226cc; --muted:#9aa7bd; --accent:#65a7ff;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#041018,#071226);color:#e6eef8}
+  .wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  h3{margin:0;font-weight:600}
+  .layout{display:flex;gap:14px;width:100%;max-width:1100px}
+  .stage{flex:1;min-width:320px;background:linear-gradient(180deg,#071a2a,#041020);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(0,0,0,.6)}
+  svg{width:min(78vw,640px);height:min(62vh,640px);display:block}
+  .panel{width:360px;background:var(--panel);border-radius:12px;padding:12px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:8px;align-items:center}
+  label{width:120px;color:#cfe3ff;font-size:13px}
+  input[type="range"]{flex:1}
+  input[type="number"]{width:72px;padding:6px;border-radius:6px;border:none;background:#071022;color:#dbeefe}
+  button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.primary{background:var(--accent);color:#071022;border:none}
+  .hint{font-size:12px;color:var(--muted)}
+  footer{font-size:12px;color:var(--muted)}
+  @media (max-width:880px){.layout{flex-direction:column}.panel{width:100%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Axisymmetric Spinning Top</h3>
+    <div class="layout">
+      <div class="stage">
+        <svg id="svg" viewBox="-220 -220 440 440" preserveAspectRatio="xMidYMid meet" aria-label="Axisymmetric spinning top">
+          <defs>
+            <linearGradient id="metal" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#f8fafb" stop-opacity="0.95"/>
+              <stop offset="45%" stop-color="#ccd3db" stop-opacity="0.98"/>
+              <stop offset="100%" stop-color="#9aa4b0" stop-opacity="0.95"/>
+            </linearGradient>
+            <radialGradient id="spec" cx="30%" cy="30%" r="70%">
+              <stop offset="0%" stop-color="#fff" stop-opacity="0.9"/>
+              <stop offset="40%" stop-color="#fff" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" /></filter>
+          </defs>
+
+          <!-- ground shadow -->
+          <ellipse id="shadow" cx="0" cy="160" rx="110" ry="22" fill="rgba(0,0,0,0.32)" filter="url(#soft)"></ellipse>
+
+          <!-- top container: precession (rotate about vertical) -->
+          <g id="precessionGroup" transform="">
+            <!-- tilt pivot: translate then tilt around local X -->
+            <g id="tiltGroup" transform="">
+              <!-- spin group: rotates about symmetry axis of top -->
+              <g id="spinGroup" transform="">
+                <!-- top body (stacked ellipses make axisymmetric cone/rounded form) -->
+                <g id="body"></g>
+                <!-- tip -->
+                <path id="tip" d="" fill="#2e2e2e" />
+                <!-- highlights -->
+                <g id="glints"></g>
+              </g>
+            </g>
+          </g>
+
+          <!-- small indicator: axis point -->
+          <circle id="contact" cx="0" cy="188" r="3" fill="#111" stroke="rgba(255,255,255,0.06)" />
+        </svg>
+      </div>
+
+      <div class="panel" aria-label="Controls">
+        <div class="row"><label for="rpm">Spin RPM</label><input id="rpm" type="range" min="0" max="8000" value="2100"/><input id="rpmn" type="number" min="0" max="8000" value="2100"/></div>
+        <div class="row"><label for="tilt">Tilt °</label><input id="tilt" type="range" min="0" max="40" value="10"/><input id="tiltn" type="number" min="0" max="40" value="10"/></div>
+        <div class="row"><label for="precess">Precession °/s</label><input id="precess" type="range" min="0" max="180" value="18"/><input id="precessn" type="number" min="0" max="180" value="18"/></div>
+        <div class="row"><label for="nutation">Nutation Hz</label><input id="nutation" type="range" min="0" max="6" step="0.01" value="0.6"/><input id="nutationn" type="number" min="0" max="6" step="0.01" value="0.6"/></div>
+        <div class="row"><label for="zoom">Zoom</label><input id="zoom" type="range" min="0.6" max="1.8" step="0.01" value="1"/><input id="zoomn" type="number" min="0.6" max="1.8" step="0.01" value="1"/></div>
+
+        <div class="row"><label for="material">Material tint</label><input id="material" type="color" value="#bfc7ce" /></div>
+
+        <div class="row" style="margin-top:8px">
+          <button id="impulse">Click impulse</button>
+          <button id="pause" class="primary">Pause</button>
+          <button id="reset">Reset</button>
+        </div>
+
+        <div style="flex:1"></div>
+        <footer class="hint">Classic axisymmetric top: spin about symmetry axis, fixed tilt cone, precession of tilt, optional nutation wobble. Click top to give a spin impulse.</footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+ Axisymmetric spinning top demo
+ - Kinematic model (approximate):
+   * spinAngle: rotation about top axis (deg)
+   * precessionAngle: rotation of tilt axis about vertical (deg)
+   * tilt: cone angle (deg) fixed by control (can be slowly damped)
+   * nutation: small oscillation of tilt angle at specified frequency (Hz)
+ - Click or Impulse increases RPM; pause toggles animation.
+ - Geometry: stacked ellipses approximate an axisymmetric body (cone/rounded cone).
+*/
+
+(function(){
+  // DOM refs
+  const svg = document.getElementById('svg');
+  const body = document.getElementById('body');
+  const tip = document.getElementById('tip');
+  const glints = document.getElementById('glints');
+  const precessionGroup = document.getElementById('precessionGroup');
+  const tiltGroup = document.getElementById('tiltGroup');
+  const spinGroup = document.getElementById('spinGroup');
+  const shadow = document.getElementById('shadow');
+
+  const rpm = document.getElementById('rpm'), rpmn = document.getElementById('rpmn');
+  const tilt = document.getElementById('tilt'), tiltn = document.getElementById('tiltn');
+  const precess = document.getElementById('precess'), precessn = document.getElementById('precessn');
+  const nutation = document.getElementById('nutation'), nutationn = document.getElementById('nutationn');
+  const zoom = document.getElementById('zoom'), zoomn = document.getElementById('zoomn');
+  const material = document.getElementById('material');
+  const impulseBtn = document.getElementById('impulse'), pauseBtn = document.getElementById('pause'), resetBtn = document.getElementById('reset');
+
+  // sync helper
+  function sync(range, num){
+    range.addEventListener('input', ()=>{ num.value = range.value; readUI(); });
+    num.addEventListener('input', ()=>{ range.value = num.value; readUI(); });
+  }
+  sync(rpm, rpmn); sync(tilt, tiltn); sync(precess, precessn); sync(nutation, nutationn); sync(zoom, zoomn);
+
+  // state (controls are authoritative targets)
+  const state = {
+    rpm: Number(rpm.value),
+    tiltDeg: Number(tilt.value),
+    precessionDegPerSec: Number(precess.value),
+    nutationHz: Number(nutation.value),
+    zoom: Number(zoom.value),
+    materialTint: material.value,
+    running: true
+  };
+
+  material.addEventListener('input', ()=>{ state.materialTint = material.value; updateMaterial(); });
+
+  // display (smoothed) and dynamic variables
+  const display = { tiltDeg: state.tiltDeg, zoom: state.zoom };
+  let spinAngle = 0;           // degrees, rotates fast by rpm
+  let precessionAngle = 0;     // degrees, slow rotation of tilt axis
+  let nutationPhase = 0;       // for small oscillatory change in tilt
+  let lastTs = performance.now();
+
+  // build the axisymmetric body once
+  function buildBody(){
+    while(body.firstChild) body.removeChild(body.firstChild);
+    while(glints.firstChild) glints.removeChild(glints.firstChild);
+    const layers = 20;
+    const height = 170;
+    const maxR = 56;
+    for(let i=0;i<=layers;i++){
+      const t = i / layers;
+      // profile: rounded cone -> radius falls with t, shape adjustable
+      const r = maxR * Math.pow(1 - t, 0.95) * (0.55 + 0.45*(1 - t));
+      const y = - (t * height) + 18;
+      const el = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+      el.setAttribute('cx', '0');
+      el.setAttribute('cy', String(y));
+      el.setAttribute('rx', String(Math.max(0.8, r)));
+      el.setAttribute('ry', String(Math.max(0.6, r*0.32)));
+      el.setAttribute('fill', 'url(#metal)');
+      el.setAttribute('stroke', 'rgba(0,0,0,0.08)');
+      el.setAttribute('stroke-width', '0.6');
+      el.setAttribute('opacity', String(0.96 - t*0.5));
+      body.appendChild(el);
+    }
+    // tip path
+    tip.setAttribute('d', 'M0,186 L6,152 L2,148 L0,150 L-2,148 L-6,152 Z');
+    tip.setAttribute('fill', '#2f3134');
+    tip.setAttribute('filter','url(#soft)');
+
+    // simple specular glints
+    for(let i=0;i<3;i++){
+      const g = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+      g.setAttribute('cx', String(-22 + i*18));
+      g.setAttribute('cy', String(-36 + i*6));
+      g.setAttribute('rx', String(26));
+      g.setAttribute('ry', String(7 + i*2));
+      g.setAttribute('fill', 'url(#spec)');
+      g.setAttribute('opacity', String(0.7 - i*0.22));
+      glints.appendChild(g);
+    }
+  }
+
+  function updateMaterial(){
+    // tint the metal gradient by slightly mixing with chosen tint
+    const tint = hexToRgb(state.materialTint);
+    const metalGrad = svg.querySelector('#metal');
+    if(!metalGrad) return;
+    while(metalGrad.firstChild) metalGrad.removeChild(metalGrad.firstChild);
+    const stops = [
+      {off:'0%', color: blend('#f8fafb', tint, 0.06)},
+      {off:'45%', color: blend('#ccd3db', tint, 0.06)},
+      {off:'100%', color: blend('#9aa4b0', tint, 0.04)}
+    ];
+    for(const s of stops){
+      const stop = document.createElementNS('http://www.w3.org/2000/svg','stop');
+      stop.setAttribute('offset', s.off);
+      stop.setAttribute('stop-color', s.color);
+      metalGrad.appendChild(stop);
+    }
+  }
+
+  function hexToRgb(hex){
+    const h = hex.replace('#','');
+    return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
+  }
+  function blend(baseHex, tintRgb, amount){
+    const b = hexToRgb(baseHex);
+    const r = Math.round(b.r*(1-amount) + tintRgb.r*amount);
+    const g = Math.round(b.g*(1-amount) + tintRgb.g*amount);
+    const bl = Math.round(b.b*(1-amount) + tintRgb.b*amount);
+    return `rgb(${r},${g},${bl})`;
+  }
+
+  // read UI into state
+  function readUI(){
+    state.rpm = Number(rpm.value);
+    state.tiltDeg = Number(tilt.value);
+    state.precessionDegPerSec = Number(precess.value);
+    state.nutationHz = Number(nutation.value);
+    state.zoom = Number(zoom.value);
+  }
+
+  // apply transforms each frame
+  function renderFrame(dt){
+    // update spin angle
+    if(state.running){
+      // rpm -> deg/sec = rpm * 6
+      spinAngle += (state.rpm * 6) * dt;
+      spinAngle %= 360;
+      // precession rotates tilt axis
+      precessionAngle += state.precessionDegPerSec * dt;
+      precessionAngle %= 360;
+      // nutation advances phase
+      nutationPhase += state.nutationHz * 2 * Math.PI * dt;
+    }
+    // nutation offset: small tilt oscillation around tiltDeg
+    const nutationAmp = Math.min(2.8, state.tiltDeg * 0.12); // degrees amplitude
+    const nutationOffset = Math.sin(nutationPhase) * nutationAmp;
+
+    // display tilt with light smoothing
+    display.tiltDeg += (state.tiltDeg + nutationOffset - display.tiltDeg) * 0.18;
+    display.zoom += (state.zoom - display.zoom) * 0.18;
+
+    // Compose SVG transforms:
+    // 1) precessionGroup rotates about center by precessionAngle
+    precessionGroup.setAttribute('transform', `rotate(${precessionAngle}) scale(${display.zoom})`);
+
+    // 2) tiltGroup translates pivot downward slightly to approximate offset, then rotate to tilt about local X
+    // we emulate 3D tilt by rotating spinGroup and shifting Y; tilt applied in 2D as rotation, combined with slight scale for perspective
+    tiltGroup.setAttribute('transform', `translate(0,0) rotate(${display.tiltDeg})`);
+
+    // 3) spinGroup rotates fast about local axis (visual spin), and we counter-rotate some glints for effect if desired
+    spinGroup.setAttribute('transform', `rotate(${spinAngle})`);
+
+    // Shadow adapts with tilt
+    const sScale = 1 + Math.abs(Math.sin(display.tiltDeg * Math.PI/180)) * 0.18;
+    const sRy = 22 * sScale;
+    const sRx = 110 * sScale;
+    const sCy = 160 + Math.abs(display.tiltDeg) * 1.6;
+    shadow.setAttribute('rx', String(sRx));
+    shadow.setAttribute('ry', String(sRy));
+    shadow.setAttribute('cy', String(sCy));
+    shadow.setAttribute('fill', `rgba(0,0,0,${0.32 + (Math.min(1, state.rpm/8000))*0.18})`);
+  }
+
+  // impulses and interactions
+  svg.addEventListener('click', (ev)=>{
+    // clicking gives a small spin impulse depending on horizontal offset
+    if(!state.running) return;
+    const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const local = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const impulse = Math.min(1200, Math.abs(local.x) / 120 * 900); // up to ~900 RPM
+    state.rpm = Math.min(8000, state.rpm + impulse);
+    rpm.value = Math.round(state.rpm); rpmn.value = Math.round(state.rpm);
+  });
+
+  impulseBtn.addEventListener('click', ()=>{ state.rpm = Math.min(8000, state.rpm + 800); rpm.value = state.rpm; rpmn.value = state.rpm; });
+  pauseBtn.addEventListener('click', ()=>{ state.running = !state.running; pauseBtn.textContent = state.running ? 'Pause' : 'Resume'; });
+  resetBtn.addEventListener('click', ()=>{
+    state.rpm = 2100; state.tiltDeg = 10; state.precessionDegPerSec = 18; state.nutationHz = 0.6; state.zoom = 1;
+    rpm.value = state.rpm; rpmn.value = state.rpm;
+    tilt.value = state.tiltDeg; tiltn.value = state.tiltDeg;
+    precess.value = state.precessionDegPerSec; precessn.value = state.precessionDegPerSec;
+    nutation.value = state.nutationHz; nutationn.value = state.nutationHz;
+    zoom.value = state.zoom; zoomn.value = state.zoom;
+    material.value = '#bfc7ce'; state.materialTint = material.value;
+    updateMaterial();
+  });
+
+  // UI binding for material initial
+  updateMaterial();
+
+  // initial build
+  buildBody();
+
+  // animation loop
+  function loop(ts){
+    const now = ts || performance.now();
+    const dt = Math.min(0.05, (now - lastTs) / 1000);
+    lastTs = now;
+    readUI();
+    renderFrame(dt);
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

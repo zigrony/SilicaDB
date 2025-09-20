@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Silica Tutorial: Document Importer (Part 1 - Exceptions)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- External styles and script -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <script defer src="js/script.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Silica Tutorial: Document Importer</h1>
+    <div class="subtitle">Part 1 — Exceptions as Contracts</div>
+    <button id="theme-toggle" aria-label="Toggle theme">Toggle Theme</button>
+  </header>
+
+  <div class="container">
+    <nav class="sidebar" aria-label="Tutorial navigation">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="introduction.html">Introduction</a></li>
+        <li><a class="active" href="exceptions.html">Part 1: Exceptions</a></li>
+        <li><a href="metrics.html">Part 2: Metrics &amp; Tracing</a></li>
+        <li><a href="versioning.html">Part 3: Versioning</a></li>
+      </ul>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">On this page</div>
+        <ul>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#prereqs">Prerequisites</a></li>
+          <li><a href="#create-project">1. Create the project</a></li>
+          <li><a href="#add-references">2. Add references</a></li>
+          <li><a href="#folders">3. Project structure</a></li>
+          <li><a href="#exceptions">4. Define exceptions</a></li>
+          <li><a href="#importer">5. Implement importer</a></li>
+          <li><a href="#handle">6. Handle exceptions</a></li>
+          <li><a href="#diagnostics">7. Integrate diagnostics</a></li>
+          <li><a href="#test">8. Test scenarios</a></li>
+          <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="content">
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>
+          In Part 1, you’ll implement typed exceptions for a simple subsystem called
+          <strong>Document Importer</strong>. You’ll learn how to define custom exceptions with a stable
+          <code>code</code>, a <code>FailureCategory</code>, and a reserved <code>exceptionId</code>, then throw and catch them in a
+          clean, auditable way. We’ll also show how to stamp exception identity into your diagnostics
+          so failures are visible and searchable.
+        </p>
+        <div class="card">
+          <strong>Goal:</strong> Build an importer that reads a document and extracts basic metadata.
+          When the input is invalid, it fails fast with clear, typed exceptions — no generic errors.
+        </div>
+      </section>
+
+      <section id="prereqs">
+        <h2>Prerequisites</h2>
+        <ul>
+          <li>Visual Studio 2022 or later (Community/Professional/Enterprise)</li>
+          <li>.NET 6+ SDK installed</li>
+          <li>Access to Silica libraries (e.g., <code>Silica.Exceptions</code>, optional <code>Silica.DiagnosticsCore</code>)</li>
+        </ul>
+      </section>
+
+      <section id="create-project">
+        <h2>1. Create the project in Visual Studio</h2>
+        <ol>
+          <li>Open Visual Studio, click <strong>Create a new project</strong>.</li>
+          <li>Select <strong>Console App</strong> (C#). Click <strong>Next</strong>.</li>
+          <li>Name it <strong>DocumentImporter</strong>. Choose a location and solution name. Click <strong>Create</strong>.</li>
+          <li>Target <strong>.NET 8.0</strong> (or .NET 6+) if prompted.</li>
+        </ol>
+        <p>
+          You can also choose a <strong>Class Library</strong> if you prefer, and add a separate console app later for
+          running demos.
+        </p>
+      </section>
+
+      <section id="add-references">
+        <h2>2. Add references</h2>
+        <h3>Option A: NuGet packages</h3>
+        <ol>
+          <li>Right‑click the project ➜ <strong>Manage NuGet Packages…</strong></li>
+          <li>Browse and install:
+            <ul>
+              <li><code>Silica.Exceptions</code> (required)</li>
+              <li><code>Silica.DiagnosticsCore</code> (optional in Part 1, useful for Step 7)</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Option B: Local DLLs</h3>
+        <ol>
+          <li>Right‑click <strong>Dependencies</strong> ➜ <strong>Add Project Reference…</strong> or <strong>Add Reference…</strong></li>
+          <li>Browse to your Silica build output and add:
+            <ul>
+              <li><code>Silica.Exceptions.dll</code></li>
+              <li><code>Silica.DiagnosticsCore.dll</code> (optional)</li>
+            </ul>
+          </li>
+        </ol>
+        <div class="card">
+          <strong>Why these references?</strong> <code>Silica.Exceptions</code> gives you the <code>SilicaException</code> base class and
+          <code>FailureCategory</code> taxonomy. <code>Silica.DiagnosticsCore</code> provides a structured way to emit
+          diagnostics; we’ll use it to stamp exception codes and IDs into traces.
+        </div>
+      </section>
+
+      <section id="folders">
+        <h2>3. Create folders for structure</h2>
+        <ol>
+          <li>Right‑click the project ➜ <strong>Add ▸ New Folder</strong> ➜ name it <strong>Exceptions</strong>.</li>
+          <li>Add folders <strong>Services</strong> and <strong>Diagnostics</strong> as well.</li>
+        </ol>
+        <p>
+          This mirrors how we separate exception contracts, service logic, and diagnostics scaffolding.
+        </p>
+      </section>
+
+      <section id="exceptions">
+        <h2>4. Define typed exceptions</h2>
+        <p>
+          Create three exception classes under <strong>Exceptions/</strong>, each inheriting from
+          <code>SilicaException</code> with a stable <code>code</code>, a <code>FailureCategory</code>, and a reserved
+          <code>exceptionId</code> in a range dedicated to this subsystem (example: 5100–5199 for Document Importer).
+        </p>
+
+        <h3>4.1 UnsupportedFormatException</h3>
+        <pre><code>using Silica.Exceptions;
+
+namespace DocumentImporter.Exceptions;
+
+public sealed class UnsupportedFormatException : SilicaException
+{
+    public string Extension { get; }
+
+    public UnsupportedFormatException(string extension)
+        : base(
+            code: "DOC_IMPORT.UNSUPPORTED_FORMAT",
+            message: $"Unsupported document format: '{extension}'.",
+            category: FailureCategory.Validation,
+            exceptionId: 5101)
+    {
+        Extension = extension ?? string.Empty;
+    }
+}
+</code></pre>
+
+        <h3>4.2 DocumentEmptyException</h3>
+        <pre><code>using Silica.Exceptions;
+
+namespace DocumentImporter.Exceptions;
+
+public sealed class DocumentEmptyException : SilicaException
+{
+    public string PathValue { get; }
+
+    public DocumentEmptyException(string path)
+        : base(
+            code: "DOC_IMPORT.EMPTY_DOCUMENT",
+            message: $"Document '{path}' is empty.",
+            category: FailureCategory.Validation,
+            exceptionId: 5102)
+    {
+        PathValue = path ?? string.Empty;
+    }
+}
+</code></pre>
+
+        <h3>4.3 MetadataExtractionException</h3>
+        <pre><code>using Silica.Exceptions;
+
+namespace DocumentImporter.Exceptions;
+
+public sealed class MetadataExtractionException : SilicaException
+{
+    public string Reason { get; }
+
+    public MetadataExtractionException(string reason)
+        : base(
+            code: "DOC_IMPORT.EXTRACTION_FAILED",
+            message: $"Metadata extraction failed: {reason}.",
+            category: FailureCategory.IO,
+            exceptionId: 5103)
+    {
+        Reason = reason ?? string.Empty;
+    }
+}
+</code></pre>
+
+        <div class="card">
+          <strong>Developer notes:</strong>
+          <ul>
+            <li><strong>Stable codes</strong> (e.g., <code>DOC_IMPORT.EMPTY_DOCUMENT</code>) feed dashboards and alerts. Don’t change them once published.</li>
+            <li><strong>ID ranges</strong> avoid collisions across subsystems. Reserve a block (e.g., 5100–5199) and document it.</li>
+            <li><strong>Categories</strong> (Validation, IO, Lifecycle, Corruption, Security, etc.) allow coarse-grained alerting by class of failure.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="importer">
+        <h2>5. Implement a minimal importer</h2>
+        <p>
+          Create <strong>Services/DocumentImporter.cs</strong>. The importer validates the file extension, reads the content,
+          and performs a trivial “metadata extraction” (line counting) to keep the focus on exception flow.
+        </p>
+        <pre><code>using System.Globalization;
+using DocumentImporter.Exceptions;
+
+namespace DocumentImporter.Services;
+
+public sealed class DocumentImporterService
+{
+    private static readonly HashSet&lt;string&gt; SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".txt", ".md"
+    };
+
+    public ImportResult Import(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Path must be provided.", nameof(path));
+
+        // 1) Validate extension
+        var ext = Path.GetExtension(path) ?? string.Empty;
+        if (!SupportedExtensions.Contains(ext))
+            throw new UnsupportedFormatException(ext);
+
+        // 2) Load content
+        string content;
+        try
+        {
+            content = File.ReadAllText(path);
+        }
+        catch (Exception e)
+        {
+            // Wrap raw IO failure as typed extraction failure for clarity
+            throw new MetadataExtractionException($"IO failure reading '{path}': {e.Message}");
+        }
+
+        if (string.IsNullOrWhiteSpace(content))
+            throw new DocumentEmptyException(path);
+
+        // 3) "Extract" metadata (line count as a stand-in)
+        try
+        {
+            int lines = 1;
+            for (int i = 0; i &lt; content.Length; i++)
+                if (content[i] == '\n') lines++;
+
+            return new ImportResult(path, ext, content.Length, lines);
+        }
+        catch (Exception e)
+        {
+            throw new MetadataExtractionException($"Unexpected parse error: {e.Message}");
+        }
+    }
+}
+
+public readonly record struct ImportResult(
+    string Path,
+    string Extension,
+    int SizeBytes,
+    int LineCount);
+</code></pre>
+        <div class="card">
+          <strong>Design choices:</strong>
+          <ul>
+            <li>We <em>wrap</em> low-level IO exceptions so callers always see a consistent exception taxonomy.</li>
+            <li>We fail fast on unsupported formats and empty content with precise exceptions.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="handle">
+        <h2>6. Throw and catch: the calling code</h2>
+        <p>
+          Update <strong>Program.cs</strong> to call the importer and handle the exceptions explicitly.
+          This is where your app decides what to do — retry, log, surface to user, etc.
+        </p>
+        <pre><code>using DocumentImporter.Exceptions;
+using DocumentImporter.Services;
+
+Console.WriteLine("Document Importer — Exceptions Demo");
+var importer = new DocumentImporterService();
+
+// Try changing the path to test different scenarios
+var path = args.Length &gt; 0 ? args[0] : "sample.txt";
+
+try
+{
+    var result = importer.Import(path);
+    Console.WriteLine($"Imported: {result.Path}");
+    Console.WriteLine($"  ext: {result.Extension}");
+    Console.WriteLine($"  size: {result.SizeBytes} bytes");
+    Console.WriteLine($"  lines: {result.LineCount}");
+}
+catch (UnsupportedFormatException ex)
+{
+    Console.Error.WriteLine($"[Unsupported] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+catch (DocumentEmptyException ex)
+{
+    Console.Error.WriteLine($"[Empty] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+catch (MetadataExtractionException ex)
+{
+    Console.Error.WriteLine($"[Extraction] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[Unexpected] {ex.GetType().Name}: {ex.Message}");
+}
+</code></pre>
+        <div class="card">
+          <strong>Why explicit catches?</strong> This makes the app’s behavior for each failure mode crystal clear.
+          It’s also the easiest way to keep your logs and diagnostics consistent and searchable.
+        </div>
+      </section>
+
+      <section id="diagnostics">
+        <h2>7. Integrate exception identity into diagnostics</h2>
+        <p>
+          Even in an “exceptions-first” tutorial, it’s worth stamping <code>code</code> and <code>exceptionId</code> into your diagnostic
+          events. If your host bootstraps <code>Silica.DiagnosticsCore</code>, add a tiny wrapper so you can emit structured events.
+        </p>
+
+        <h3>7.1 Diagnostics wrapper</h3>
+        <p>Create <strong>Diagnostics/ImporterDiagnostics.cs</strong>:</p>
+        <pre><code>using Silica.Exceptions;
+using Silica.DiagnosticsCore;
+
+namespace DocumentImporter.Diagnostics;
+
+public static class ImporterDiagnostics
+{
+    private const string Component = "DocumentImporter";
+
+    public static void EmitError(string operation, string message, Exception ex, string? path = null)
+    {
+        if (!DiagnosticsCoreBootstrap.IsStarted) return;
+
+        var tags = new Dictionary&lt;string, string&gt;
+        {
+            ["component"] = Component,
+            ["operation"] = operation
+        };
+        if (ex is SilicaException se)
+        {
+            tags["error.code"] = se.Code ?? "";
+            tags["exception.id"] = se.ExceptionId.ToString();
+            tags["category"] = se.Category.ToString();
+        }
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            // Avoid default tags with high cardinality; ad-hoc tags are OK for error context
+            tags["path"] = path!;
+        }
+
+        try
+        {
+            DiagnosticsCoreBootstrap.Instance.Traces.Emit(
+                Component, operation, "error", tags, message, ex);
+        }
+        catch { /* diagnostics must not crash the app */ }
+    }
+}
+</code></pre>
+
+        <h3>7.2 Call diagnostics in your handlers</h3>
+        <pre><code>using DocumentImporter.Diagnostics;
+// ...
+catch (DocumentEmptyException ex)
+{
+    ImporterDiagnostics.EmitError("import", "empty_document", ex, path);
+    Console.Error.WriteLine($"[Empty] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+catch (UnsupportedFormatException ex)
+{
+    ImporterDiagnostics.EmitError("import", "unsupported_format", ex, path);
+    Console.Error.WriteLine($"[Unsupported] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+catch (MetadataExtractionException ex)
+{
+    ImporterDiagnostics.EmitError("import", "extraction_failed", ex, path);
+    Console.Error.WriteLine($"[Extraction] {ex.Code} ({ex.ExceptionId}): {ex.Message}");
+}
+</code></pre>
+
+        <div class="card">
+          <strong>Key practices:</strong>
+          <ul>
+            <li>Guard diagnostics behind the bootstrap check so your code is safe if diagnostics aren’t initialized.</li>
+            <li>Stamp <code>error.code</code> and <code>exception.id</code> to make events searchable and alertable.</li>
+            <li>Keep high-cardinality values (like full file paths) out of <em>default</em> tags; ad-hoc per-event tags are acceptable for errors.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="test">
+        <h2>8. Test scenarios</h2>
+        <ol>
+          <li><strong>Unsupported format:</strong> Pass a file like <code>document.pdf</code>. Expect <code>UnsupportedFormatException</code>.</li>
+          <li><strong>Empty document:</strong> Create an empty <code>sample.txt</code>. Expect <code>DocumentEmptyException</code>.</li>
+          <li><strong>Extraction failure:</strong> Temporarily throw in the extraction block or point to an unreadable file. Expect <code>MetadataExtractionException</code>.</li>
+          <li><strong>Happy path:</strong> Use a valid, non-empty <code>.txt</code> file. See metadata output and no exceptions.</li>
+        </ol>
+
+        <h3>Running from Visual Studio</h3>
+        <ol>
+          <li>Right‑click the project ➜ <strong>Debug</strong> ➜ <strong>Project Properties</strong> ➜ <strong>Debug</strong>.</li>
+          <li>Set <strong>Application arguments</strong> to your test file path (e.g., <code>sample.txt</code>).</li>
+          <li>Press <strong>F5</strong> to run with debugging.</li>
+        </ol>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li><strong>Type or namespace not found:</strong> Ensure <code>Silica.Exceptions</code> is referenced and <code>using Silica.Exceptions;</code> is present.</li>
+          <li><strong>Diagnostics not emitting:</strong> Your host must bootstrap <code>DiagnosticsCore</code>. In Part 2 we’ll wire metrics/tracing end‑to‑end.</li>
+          <li><strong>Unhandled exception:</strong> Verify explicit <code>catch</code> blocks for each typed exception.</li>
+          <li><strong>File not found:</strong> Check project working directory or pass an absolute path via debug arguments.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What’s next</h2>
+        <p>
+          In Part 2, you’ll add Silica metrics and richer tracing around this same importer:
+          latency histograms, success/failure counters, and detailed lifecycle events (begin/parse/store/done).
+          You’ll keep the exception contracts from Part 1 and make them observable at scale.
+        </p>
+        <p><a href="metrics.html">Continue to Part 2: Metrics &amp; Tracing →</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Silica developer onboarding · Part 1: Exceptions</p>
+  </footer>
+</body>
+</html>

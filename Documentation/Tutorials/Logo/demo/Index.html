@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Silica Tube Gauge — Demo</title>
+  <link rel="stylesheet" href="../src/styles/gauge.css">
+</head>
+<body>
+  <div class="wrap">
+    <h3>Pressure Gauge — Tube (Component Demo)</h3>
+    <div class="layout">
+      <div class="stage">
+        <silica-tube-gauge id="g" value="34" min="-20" max="100"></silica-tube-gauge>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <label>Source</label>
+          <select id="mode"><option value="sim">Simulated</option><option value="manual">Manual</option></select>
+        </div>
+
+        <div id="manualControls" style="display:none" class="row">
+          <label for="value">Value</label>
+          <input id="value" type="range" min="-100" max="100" value="34"/>
+          <input id="valuen" type="number" value="34" />
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="copySvg">Copy SVG</button>
+          <button id="exportPng">Export PNG</button>
+          <button id="reset" class="primary">Reset</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <div class="metric">value: <span id="mValue">34</span></div>
+          <div class="metric">min: <span id="mMin">-20</span></div>
+          <div class="metric">max: <span id="mMax">100</span></div>
+          <div class="metric">zone: <span id="mZone">GREEN</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import '../src/components/silica-tube-gauge.js';
+
+    const g = document.getElementById('g');
+    const mode = document.getElementById('mode');
+    const manualControls = document.getElementById('manualControls');
+    const valueRange = document.getElementById('value'), valueNum = document.getElementById('valuen');
+    const copySvgBtn = document.getElementById('copySvg'), exportPngBtn = document.getElementById('exportPng'), resetBtn = document.getElementById('reset');
+    const mValue = document.getElementById('mValue'), mMin = document.getElementById('mMin'), mMax = document.getElementById('mMax'), mZone = document.getElementById('mZone');
+
+    mode.addEventListener('change', ()=>{
+      if(mode.value === 'manual'){ manualControls.style.display = 'flex'; g.pause(); } else { manualControls.style.display = 'none'; g.start(); }
+    });
+
+    valueRange.addEventListener('input', ()=>{ valueNum.value = valueRange.value; g.setValue(Number(valueRange.value)); });
+    valueNum.addEventListener('input', ()=>{ valueRange.value = valueNum.value; g.setValue(Number(valueNum.value)); });
+
+    copySvgBtn.addEventListener('click', async ()=>{
+      const svg = await g.exportSVG();
+      navigator.clipboard?.writeText(svg).then(()=>{ copySvgBtn.textContent='Copied'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); });
+    });
+
+    exportPngBtn.addEventListener('click', async ()=>{
+      const blob = await g.exportPNG(1600,900);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'gauge.png'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    resetBtn.addEventListener('click', ()=>{ g.reset(); });
+
+    g.addEventListener('gauge-input', (e)=>{ mValue.textContent = e.detail.value.toFixed(1); mZone.textContent = e.detail.zone; });
+    g.addEventListener('gauge-ready', ()=>{ mMin.textContent = g.min; mMax.textContent = g.max; });
+  </script>
+</body>
+</html>

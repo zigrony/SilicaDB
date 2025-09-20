@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Configurable Sphere Slideshow</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(circle at center,
+      #00e6b8 0%,
+      #00997a 60%,
+      #003d33 100%
+    );
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  .stage {
+    position: relative;
+    width: 200px;
+    height: 200px;
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--fade-ms, 900ms) ease-in-out;
+  }
+  .slide.active { opacity: 1; }
+  svg { width: 100%; height: 100%; }
+  .front { stroke: white; stroke-opacity: 0.6; fill: none; }
+  .back { stroke: #66cccc; stroke-opacity: 0.25; stroke-dasharray: 4 4; fill: none; }
+
+  .silica {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #cc5500;
+    text-shadow: 3px 3px 0px black;
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateY(0deg) translateX(300px);
+    top: 50%; left: 50%;
+    white-space: nowrap;
+  }
+  @keyframes orbitIn {
+    0%   { opacity: 0; transform: translate(-50%, -50%) rotateY(0deg) translateX(300px); }
+    30%  { opacity: 1; }
+    100% { opacity: 1; transform: translate(-50%, -50%) rotateY(360deg) translateX(0px); }
+  }
+  .silica.animate { animation: orbitIn 3s ease-out forwards; }
+
+  /* Control panel */
+  .controls {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .controls label { display: block; margin: 4px 0; }
+  .controls input { width: 100px; }
+  .controls button { margin-top: 6px; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+  <div class="silica" id="silica">Silica</div>
+
+  <div class="controls">
+    <label>Max Density: <input type="number" id="maxDensity" value="10" min="2" max="20"></label>
+    <label>Bins: <input type="number" id="bins" value="8" min="2" max="20"></label>
+    <label>Crossfade (ms): <input type="number" id="fade" value="900"></label>
+    <label>Dwell (ms): <input type="number" id="dwell" value="1200"></label>
+    <button id="restart">Restart</button>
+  </div>
+
+<script>
+const stage = document.getElementById('stage');
+const silica = document.getElementById('silica');
+const svgNS = "http://www.w3.org/2000/svg";
+
+let slides = [], intervalId = null;
+
+function buildSphere(density) {
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 200 200");
+
+  const circle = document.createElementNS(svgNS, "circle");
+  circle.setAttribute("cx", 100);
+  circle.setAttribute("cy", 100);
+  circle.setAttribute("r", 95);
+  circle.setAttribute("class", "front");
+  svg.appendChild(circle);
+
+  for (let i = 1; i < density; i++) {
+    const ry = (95 / density) * i;
+    const latFront = document.createElementNS(svgNS, "ellipse");
+    latFront.setAttribute("cx", 100);
+    latFront.setAttribute("cy", 100);
+    latFront.setAttribute("rx", 95);
+    latFront.setAttribute("ry", ry);
+    latFront.setAttribute("class", "front");
+    svg.appendChild(latFront);
+
+    const latBack = latFront.cloneNode();
+    latBack.setAttribute("class", "back");
+    svg.appendChild(latBack);
+  }
+
+  for (let i = 1; i < density; i++) {
+    const rx = (95 / density) * i;
+    const lonFront = document.createElementNS(svgNS, "ellipse");
+    lonFront.setAttribute("cx", 100);
+    lonFront.setAttribute("cy", 100);
+    lonFront.setAttribute("rx", rx);
+    lonFront.setAttribute("ry", 95);
+    lonFront.setAttribute("class", "front");
+    svg.appendChild(lonFront);
+
+    const lonBack = lonFront.cloneNode();
+    lonBack.setAttribute("class", "back");
+    svg.appendChild(lonBack);
+  }
+
+  return svg;
+}
+
+function quantizedDensities(bins, minD, maxD) {
+  const out = [];
+  for (let i = 0; i < bins; i++) {
+    const t = (bins === 1) ? 0 : i / (bins - 1);
+    const d = Math.round(minD + (maxD - minD) * t);
+    out.push(d);
+  }
+  return [...new Set(out)];
+}
+
+function startShow() {
+  // clear old
+  stage.innerHTML = '';
+  silica.classList.remove('animate');
+  if (intervalId) clearInterval(intervalId);
+
+  const maxDensity = parseInt(document.getElementById('maxDensity').value, 10);
+  const bins = parseInt(document.getElementById('bins').value, 10);
+  const fade = parseInt(document.getElementById('fade').value, 10);
+  const dwell = parseInt(document.getElementById('dwell').value, 10);
+
+  document.documentElement.style.setProperty('--fade-ms', fade + 'ms');
+
+  const densities = quantizedDensities(bins, 2, maxDensity);
+  slides = densities.map(d => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide';
+    wrapper.appendChild(buildSphere(d));
+    stage.appendChild(wrapper);
+    return wrapper;
+  });
+
+  let index = -1;
+  function show(idx) {
+    if (index >= 0) slides[index].classList.remove('active');
+    index = idx;
+    slides[index].classList.add('active');
+  }
+
+  let i = 0;
+  show(i);
+  intervalId = setInterval(() => {
+    i++;
+    if (i < slides.length) {
+      show(i);
+    } else {
+      clearInterval(intervalId);
+      silica.classList.add('animate');
+    }
+  }, fade + dwell);
+}
+
+document.getElementById('restart').addEventListener('click', startShow);
+
+// kick off first run
+startShow();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+:root{
+  --bg:#071226; --panel:#0b1b2bcc; --muted:#9aa7bd; --accent:#58a6ff;
+}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#061425,#031022);color:#e6eef8}
+.wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+h3{margin:0;font-weight:600}
+.layout{display:flex;gap:16px;width:100%;max-width:1200px}
+.stage{flex:1;min-width:320px;background:linear-gradient(180deg,#071726,#041322);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.panel{width:420px;background:var(--panel);border-radius:12px;padding:14px;box-sizing:border-box;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;align-items:center}
+label{width:140px;color:#cfe3ff;font-size:13px}
+input[type="range"]{flex:1}
+input[type="number"]{width:86px;padding:6px;border-radius:6px;border:none;background:#071022;color:#dbeefe}
+select,button,input[type="color"]{background:#071022;color:#dbeefe;border-radius:6px;padding:6px;border:none}
+button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#cfe3ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+button.primary{background:var(--accent);color:#071022;border:none}
+.metric{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:6px;font-size:13px}

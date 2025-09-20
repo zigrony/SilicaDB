@@ -1,7 +1,12 @@
 ﻿using Silica.Exceptions;
+using System.ComponentModel;
 
 namespace Silica.Sql.Lexer.Exceptions
 {
+    /// <summary>
+    /// Reserved for future grammar surfaces (kept for contract stability).
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class InvalidEscapeSequenceException : SilicaException
     {
         public string Sequence { get; }

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wireframe Sphere Densities</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: radial-gradient(circle at center,
+        #00e6b8 0%,
+        #00997a 60%,
+        #003d33 100%
+      );
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .sphere {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      background: transparent;
+    }
+    .label {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 14px;
+      color: #fff;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Wireframe Sphere Densities</h1>
+  <div class="grid">
+    <!-- Example spheres -->
+    <!-- We'll generate 10, each with increasing density -->
+    <!-- 1 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <ellipse cx="100" cy="100" rx="95" ry="50" fill="none" stroke="white" stroke-opacity="0.4"/>
+          <ellipse cx="100" cy="100" rx="50" ry="95" fill="none" stroke="white" stroke-opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="label">Density 1</div>
+    </div>
+
+    <!-- 2 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <ellipse cx="100" cy="100" rx="95" ry="30" fill="none" stroke="white" stroke-opacity="0.3"/>
+          <ellipse cx="100" cy="100" rx="95" ry="60" fill="none" stroke="white" stroke-opacity="0.3"/>
+          <ellipse cx="100" cy="100" rx="30" ry="95" fill="none" stroke="white" stroke-opacity="0.3"/>
+          <ellipse cx="100" cy="100" rx="60" ry="95" fill="none" stroke="white" stroke-opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="label">Density 2</div>
+    </div>
+
+    <!-- 3 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes -->
+          <ellipse cx="100" cy="100" rx="95" ry="20" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="40" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="60" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="80" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="20" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="40" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="60" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="80" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+        </svg>
+      </div>
+      <div class="label">Density 3</div>
+    </div>
+
+    <!-- 4 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes -->
+          <ellipse cx="100" cy="100" rx="95" ry="15" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="30" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="45" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="60" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="75" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="15" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="30" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="45" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="60" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="75" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+        </svg>
+      </div>
+      <div class="label">Density 4</div>
+    </div>
+
+    <!-- 5 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes -->
+          <ellipse cx="100" cy="100" rx="95" ry="10" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="20" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="30" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="40" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="50" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="60" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="70" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="95" ry="80" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="10" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="20" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="30" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="40" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="60" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="70" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+          <ellipse cx="100" cy="100" rx="80" ry="95" fill="none" stroke="white" stroke-opacity="0.25"/>
+        </svg>
+      </div>
+      <div class="label">Density 5</div>
+    </div>
+
+    <!-- 6 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes -->
+          <!-- every 10 units -->
+          <ellipse cx="100" cy="100" rx="95" ry="10" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="20" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="30" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="40" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="50" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="60" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="70" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="80" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="90" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="10" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="20" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="30" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="40" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="50" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="60" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="70" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="80" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="90" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+        </svg>
+      </div>
+      <div class="label">Density 6</div>
+    </div>
+
+    <!-- 7 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes every 8 units -->
+          <!-- (12 lines) -->
+          <!-- generate rx=95, ry=8,16,...,96 -->
+          <!-- longitudes rx=8,16,...,96 -->
+          <!-- I'll show a few, pattern continues -->
+          <ellipse cx="100" cy="100" rx="95" ry="8" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="16" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="95" ry="24" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="95" ry="96" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="8" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="16" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <ellipse cx="100" cy="100" rx="24" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="96" ry="95" fill="none" stroke="white" stroke-opacity="0.2"/>
+        </svg>
+      </div>
+      <div class="label">Density 7</div>
+    </div>
+
+    <!-- 8 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes every 6 units -->
+          <!-- longitudes every 6 units -->
+          <!-- (about 16 lines each) -->
+          <!-- sample -->
+          <ellipse cx="100" cy="100" rx="95" ry="6" fill="none" stroke="white" stroke-opacity="0.15"/>
+          <ellipse cx="100" cy="100" rx="95" ry="12" fill="none" stroke="white" stroke-opacity="0.15"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="95" ry="96" fill="none" stroke="white" stroke-opacity="0.15"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="6" ry="95" fill="none" stroke="white" stroke-opacity="0.15"/>
+          <ellipse cx="100" cy="100" rx="12" ry="95" fill="none" stroke="white" stroke-opacity="0.15"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="96" ry="95" fill="none" stroke="white" stroke-opacity="0.15"/>
+        </svg>
+      </div>
+      <div class="label">Density 8</div>
+    </div>
+
+    <!-- 9 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitudes every 4 units -->
+          <!-- longitudes every 4 units -->
+          <!-- (about 24 lines each) -->
+          <ellipse cx="100" cy="100" rx="95" ry="4" fill="none" stroke="white" stroke-opacity="0.12"/>
+          <ellipse cx="100" cy="100" rx="95" ry="8" fill="none" stroke="white" stroke-opacity="0.12"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="95" ry="96" fill="none" stroke="white" stroke-opacity="0.12"/>
+          <!-- longitudes -->
+          <ellipse cx="100" cy="100" rx="4" ry="95" fill="none" stroke="white" stroke-opacity="0.12"/>
+          <ellipse cx="100" cy="100" rx="8" ry="95" fill="none" stroke="white" stroke-opacity="0.12"/>
+          <!-- ...repeat up to 96 -->
+          <ellipse cx="100" cy="100" rx="96" ry="95" fill="none" stroke="white" stroke-opacity="0.12"/>
+        </svg>
+      </div>
+      <div class="label">Density 9</div>
+    </div>
+
+    <!-- 10 -->
+    <div>
+      <div class="sphere">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="95" fill="none" stroke="white" stroke-opacity="0.6"/>
+          <!-- latitude lines every 2 units (very dense) -->
+          <ellipse cx="100" cy="100" rx="95" ry="2" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="95" ry="4" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="95" ry="6" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="95" ry="8" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <!-- …repeat every 2 units … -->
+          <ellipse cx="100" cy="100" rx="95" ry="96" fill="none" stroke="white" stroke-opacity="0.1"/>
+
+          <!-- longitude lines every 2 units (very dense) -->
+          <ellipse cx="100" cy="100" rx="2" ry="95" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="4" ry="95" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="6" ry="95" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <ellipse cx="100" cy="100" rx="8" ry="95" fill="none" stroke="white" stroke-opacity="0.1"/>
+          <!-- …repeat every 2 units … -->
+          <ellipse cx="100" cy="100" rx="96" ry="95" fill="none" stroke="white" stroke-opacity="0.1"/>
+        </svg>
+      </div>
+      <div class="label">Density 10</div>
+    </div>
+  </div> <!-- end grid -->
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pressure Gauge — 3D Toggle Demo (Extruded)</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#f1f5f9;
+    --muted:#6b7280;
+    --accent:#0580ff;
+    --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+    background:var(--bg);
+    color:#071022;
+  }
+
+  .wrap{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+  h3{margin:0;font-weight:600}
+
+  .layout{display:flex;gap:16px;width:100%;max-width:1200px}
+
+  /* transparent stage, no shadow */
+  .stage{
+    flex:1;
+    min-width:320px;
+    background:transparent;
+    border-radius:12px;
+    padding:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* keep a perspective container so CSS 3D rotates look plausible */
+  .svgWrapper{
+    width:min(72vw,560px);
+    height:min(60vh,560px);
+    transform-style:preserve-3d;
+    perspective: 900px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  svg{width:100%;height:100%;display:block;overflow:visible}
+
+  .panel{
+    width:420px;
+    background:var(--panel);
+    border-radius:12px;
+    padding:14px;
+    box-sizing:border-box;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .row{display:flex;gap:8px;align-items:center}
+  label{width:140px;color:#0b2340;font-size:13px}
+  input[type="range"]{flex:1}
+  input[type="number"]{width:86px;padding:6px;border-radius:6px;border:1px solid rgba(11,34,64,0.06);background:#fff;color:#071022}
+  select,button,input[type="color"]{background:#fff;color:#071022;border-radius:6px;padding:6px;border:1px solid rgba(11,34,64,0.06)}
+  button{background:transparent;border:1px solid rgba(11,34,64,0.06);color:#071022;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;border:none}
+  .hint{font-size:12px;color:var(--muted)}
+  .metrics{display:flex;gap:8px;flex-wrap:wrap}
+  .metric{background:#ffffff;padding:6px 8px;border-radius:6px;font-size:13px;border:1px solid rgba(11,34,64,0.04)}
+  footer{font-size:12px;color:var(--muted)}
+  .controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .toggle{display:inline-flex;align-items:center;gap:8px}
+
+  .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+  @media (max-width:880px){.layout{flex-direction:column}.panel{width:100%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Pressure Gauge — 3D Extrusion Demo</h3>
+    <div class="layout">
+      <div class="stage" id="stage">
+        <div class="svgWrapper" id="svgWrapper">
+          <svg id="gauge" viewBox="-220 -120 440 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Pressure gauge">
+            <defs>
+              <filter id="needleShadow" x="-200%" y="-200%" width="400%" height="400%">
+                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.18"/>
+              </filter>
+              <radialGradient id="pivotGrad" cx="40%" cy="40%" r="70%">
+                <stop offset="0%" stop-color="#fff" stop-opacity="0.95"/>
+                <stop offset="50%" stop-color="#d7dbe2" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#8f97a0" stop-opacity="0.95"/>
+              </radialGradient>
+            </defs>
+
+            <!-- groups; extrusion draws multiple layered shapes under these -->
+            <g id="zones"></g>
+            <g id="ticks"></g>
+            <g id="needleGroup">
+              <circle id="pivotBack" cx="0" cy="40" r="10" fill="rgba(0,0,0,0.12)"/>
+              <path id="needle" d="" fill="#ffdf6b" stroke="#c57c00" stroke-width="0.8"/>
+              <circle id="pivotCap" cx="0" cy="40" r="6" fill="#ddd"/>
+            </g>
+
+            <g id="readout" transform="translate(0,105)">
+              <rect x="-100" y="-26" width="200" height="34" rx="8" fill="rgba(255,255,255,0.9)" stroke="rgba(11,34,64,0.04)"/>
+              <text id="valueText" x="0" y="0" fill="#071022" font-size="20" text-anchor="middle" font-weight="600">0</text>
+              <text id="unitText" x="0" y="18" fill="#6b7280" font-size="11" text-anchor="middle">units</text>
+            </g>
+
+            <text id="minLabel" x="-180" y="140" fill="#6b7280" font-size="12" text-anchor="middle">min</text>
+            <text id="maxLabel" x="180" y="140" fill="#6b7280" font-size="12" text-anchor="middle">max</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel" aria-label="Controls">
+        <div class="row controls-row">
+          <label>Source</label>
+          <select id="mode"><option value="sim">Simulated</option><option value="manual">Manual</option></select>
+        </div>
+
+        <div id="manualControls" style="display:none" class="row">
+          <label for="value">Value</label>
+          <input id="value" type="range" min="-100" max="100" value="34"/>
+          <input id="valuen" type="number" value="34" />
+        </div>
+
+        <div class="row">
+          <label for="min">Min</label><input id="min" type="number" value="-20" />
+          <label style="width:64px;text-align:right">Max</label><input id="max" type="number" value="100" />
+        </div>
+
+        <div class="row">
+          <label for="greenEnd">Green end</label><input id="greenEnd" type="number" value="60" />
+          <label style="width:90px;text-align:right">Yellow end</label><input id="yellowEnd" type="number" value="80" />
+        </div>
+
+        <div class="row">
+          <label for="smoothing">Smoothing</label>
+          <input id="smoothing" type="range" min="0" max="1" step="0.02" value="0.18"/>
+          <input id="smoothingn" type="number" step="0.02" value="0.18"/>
+        </div>
+
+        <div class="row controls-row">
+          <label>Auto-sim</label>
+          <button id="toggleSim">Pause sim</button>
+          <div class="hint">Click gauge to pulse; arrow keys nudge value</div>
+        </div>
+
+        <hr>
+
+        <div style="font-weight:600;color:#0b2340">3D Controls</div>
+        <div class="controls-grid">
+          <div class="row">
+            <label style="width:70px">Rotate X</label>
+            <input id="rotX" type="range" min="-60" max="60" value="12"/>
+            <input id="rotXn" type="number" style="width:56px" value="12"/>
+          </div>
+          <div class="row">
+            <label style="width:70px">Rotate Y</label>
+            <input id="rotY" type="range" min="-60" max="60" value="-12"/>
+            <input id="rotYn" type="number" style="width:56px" value="-12"/>
+          </div>
+          <div class="row">
+            <label style="width:70px">Rotate Z</label>
+            <input id="rotZ" type="range" min="-180" max="180" value="0"/>
+            <input id="rotZn" type="number" style="width:56px" value="0"/>
+          </div>
+          <div class="row">
+            <label style="width:70px">Zoom</label>
+            <input id="zoom" type="range" min="0.5" max="1.8" step="0.01" value="1"/>
+            <input id="zoomn" type="number" style="width:56px" step="0.01" value="1"/>
+          </div>
+
+          <div class="row">
+            <label style="width:70px">Depth</label>
+            <input id="depth" type="range" min="0" max="30" value="8"/>
+            <input id="depthn" type="number" style="width:56px" value="8"/>
+          </div>
+          <div class="row">
+            <label style="width:70px">Steps</label>
+            <input id="steps" type="range" min="1" max="40" value="10"/>
+            <input id="stepsn" type="number" style="width:56px" value="10"/>
+          </div>
+        </div>
+
+        <div class="row controls-row" style="margin-top:6px">
+          <button id="copySvg">Copy SVG</button>
+          <button id="exportPng">Export PNG</button>
+          <button id="reset" class="primary">Reset</button>
+        </div>
+
+        <div class="row metrics">
+          <div class="metric">value: <span id="mValue">34</span></div>
+          <div class="metric">min: <span id="mMin">-20</span></div>
+          <div class="metric">max: <span id="mMax">100</span></div>
+          <div class="metric">zone: <span id="mZone">GREEN</span></div>
+        </div>
+
+        <div style="flex:1"></div>
+        <footer>Extrusion works by drawing layered offsets of arcs and needle; transforms rotate and scale the entire SVG for a 3D impression.</footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Extruded gauge:
+   - zones and needle are drawn as layered offsets to simulate extrusion along a depth vector.
+   - controls provided: rotX, rotY, rotZ, zoom, depth (px), steps (layers)
+   - visual transforms are applied to the wrapper to simulate camera rotation and zoom.
+*/
+
+(function(){
+  // DOM refs
+  const wrapper = document.getElementById('svgWrapper');
+  const svg = document.getElementById('gauge');
+  const zonesG = document.getElementById('zones');
+  const ticksG = document.getElementById('ticks');
+  const needlePath = document.getElementById('needle');
+  const pivotCap = document.getElementById('pivotCap');
+  const valueText = document.getElementById('valueText');
+  const unitText = document.getElementById('unitText');
+  const minLabel = document.getElementById('minLabel');
+  const maxLabel = document.getElementById('maxLabel');
+
+  // UI
+  const mode = document.getElementById('mode');
+  const manualControls = document.getElementById('manualControls');
+  const valueRange = document.getElementById('value'), valueNum = document.getElementById('valuen');
+  const minInput = document.getElementById('min'), maxInput = document.getElementById('max');
+  const greenEndInput = document.getElementById('greenEnd'), yellowEndInput = document.getElementById('yellowEnd');
+  const smoothingRange = document.getElementById('smoothing'), smoothingNum = document.getElementById('smoothingn');
+  const toggleSim = document.getElementById('toggleSim');
+
+  const rotX = document.getElementById('rotX'), rotXn = document.getElementById('rotXn');
+  const rotY = document.getElementById('rotY'), rotYn = document.getElementById('rotYn');
+  const rotZ = document.getElementById('rotZ'), rotZn = document.getElementById('rotZn');
+  const zoom = document.getElementById('zoom'), zoomn = document.getElementById('zoomn');
+  const depth = document.getElementById('depth'), depthn = document.getElementById('depthn');
+  const steps = document.getElementById('steps'), stepsn = document.getElementById('stepsn');
+
+  const copySvgBtn = document.getElementById('copySvg'), exportPngBtn = document.getElementById('exportPng'), resetBtn = document.getElementById('reset');
+
+  const mValue = document.getElementById('mValue'), mMin = document.getElementById('mMin'), mMax = document.getElementById('mMax'), mZone = document.getElementById('mZone');
+
+  // geometry
+  const startAngle = 135, endAngle = 45, radius = 150;
+
+  // state
+  let target = { value: 34, min: -20, max: 100, ts: Date.now(), source: 'sim' };
+  let display = { value: target.value };
+  let simT = 0, simRunning = true;
+
+  // helpers
+  const toRad = d => d * Math.PI / 180;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+  function valueToAngleDeg(v, minVal, maxVal){
+    if(maxVal === minVal) return (startAngle + ((endAngle - startAngle)/2));
+    const t = clamp((v - minVal) / (maxVal - minVal), 0, 1);
+    let a0 = startAngle, a1 = endAngle;
+    if(a1 <= a0) a1 += 360;
+    return a0 + (a1 - a0) * t;
+  }
+
+  // Build ticks (single layer, stay on top)
+  function buildTicks(){
+    while(ticksG.firstChild) ticksG.removeChild(ticksG.firstChild);
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    const ticks = 20;
+    for(let i=0;i<=ticks;i++){
+      const v = minVal + (maxVal - minVal) * i / ticks;
+      const deg = valueToAngleDeg(v, minVal, maxVal);
+      const a = toRad(deg);
+      const rOut = radius + (i%5===0 ? 12 : 6);
+      const rIn = radius - 12;
+      const x1 = Math.cos(a) * rIn, y1 = Math.sin(a) * rIn;
+      const x2 = Math.cos(a) * rOut, y2 = Math.sin(a) * rOut;
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#071022');
+      line.setAttribute('stroke-width', i%5===0 ? 2.2 : 1.2);
+      line.setAttribute('stroke-linecap', 'square');
+      ticksG.appendChild(line);
+      if(i%5===0){
+        const tx = Math.cos(a) * (radius - 30), ty = Math.sin(a) * (radius - 30);
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x', String(tx)); lbl.setAttribute('y', String(ty + 4));
+        lbl.setAttribute('fill', '#0b2340'); lbl.setAttribute('font-size', '12'); lbl.setAttribute('text-anchor', 'middle');
+        lbl.textContent = Number.isInteger(v) ? String(Math.round(v)) : v.toFixed(1);
+        ticksG.appendChild(lbl);
+      }
+    }
+  }
+
+  // Create an arc path string for given angle endpoints
+  function arcPathForAngles(a0Rad, a1Rad, r=radius){
+    let delta = a1Rad - a0Rad;
+    if(delta < 0) delta += Math.PI*2;
+    const large = Math.abs(delta) > Math.PI ? 1 : 0;
+    const x0 = Math.cos(a0Rad)*r, y0 = Math.sin(a0Rad)*r;
+    const x1 = Math.cos(a1Rad)*r, y1 = Math.sin(a1Rad)*r;
+    return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  }
+
+  // extrusion: draws multiple offset copies of a single path to simulate depth.
+  // offset vector is computed from rotX/rotY to match perceived camera axes.
+  function drawExtrudedArcs(){
+    while(zonesG.firstChild) zonesG.removeChild(zonesG.firstChild);
+
+    const minVal = Number(minInput.value);
+    const maxVal = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), minVal, maxVal);
+    const yEnd = clamp(Number(yellowEndInput.value), minVal, maxVal);
+
+    const depthPx = Number(depth.value);
+    const layerCount = Math.max(1, Math.min(60, Number(steps.value)));
+    // compute direction of extrusion in SVG user coords using rotX/rotY
+    // rotX (tilt up/down) maps to vertical offset, rotY (tilt left/right) maps to horizontal offset.
+    const rx = Number(rotX.value), ry = Number(rotY.value);
+    // normalized direction vector
+    const dx = Math.sin(toRad(ry)); // left/right tilt -> x component
+    const dy = -Math.sin(toRad(rx)); // up/down tilt -> y component (invert so positive rx lifts top towards viewer)
+    // scale per-layer offset
+    const perLayerX = dx * (depthPx / Math.max(1, layerCount));
+    const perLayerY = dy * (depthPx / Math.max(1, layerCount));
+
+    // helper to draw extruded colored arc
+    function extrudeArc(v0, v1, color){
+      const a0 = toRad(valueToAngleDeg(v0, minVal, maxVal));
+      const a1 = toRad(valueToAngleDeg(v1, minVal, maxVal));
+      // draw back-most layers darker and more transparent
+      for(let i = layerCount-1; i >= 0; i--){
+        const ox = (i+1) * perLayerX;
+        const oy = (i+1) * perLayerY;
+        const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d', arcPathForAngles(a0, a1, radius));
+        p.setAttribute('transform', `translate(${ox.toFixed(2)} ${oy.toFixed(2)})`);
+        // color darkens with depth; top layer uses full color stroke
+        const t = (i) / Math.max(1, layerCount-1);
+        // darken a bit and increase opacity towards front
+        const darken = 1 - 0.45 * (1 - t);
+        const alpha = 0.12 + 0.9 * (1 - t);
+        // use stroke with same width as visual band
+        p.setAttribute('stroke', color);
+        p.setAttribute('stroke-width', 20);
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke-linecap', 'butt');
+        p.setAttribute('opacity', String(alpha));
+        // apply a subtle darker blend by multiplying RGB via stroke-opacity isn't straightforward; instead use lower opacity layers behind full layer.
+        zonesG.appendChild(p);
+      }
+      // final top-most colored arc (no offset)
+      const top = document.createElementNS('http://www.w3.org/2000/svg','path');
+      top.setAttribute('d', arcPathForAngles(toRad(valueToAngleDeg(v0, minVal, maxVal)), toRad(valueToAngleDeg(v1, minVal, maxVal)), radius));
+      top.setAttribute('stroke', color);
+      top.setAttribute('stroke-width', 20);
+      top.setAttribute('fill', 'none');
+      top.setAttribute('stroke-linecap', 'butt');
+      top.setAttribute('opacity', '1');
+      zonesG.appendChild(top);
+    }
+
+    extrudeArc(minVal, gEnd, '#2ecc71');
+    extrudeArc(gEnd, yEnd, '#f39c12');
+    extrudeArc(yEnd, maxVal, '#e74c3c');
+  }
+
+  // Draw needle with extrusion: layered shapes offset backwards then drawn top-most
+  function drawNeedleClamped(angleDeg){
+    // clamp angle to display arc
+    let a0 = startAngle % 360; if(a0 < 0) a0 += 360;
+    let a1 = endAngle % 360; if(a1 < 0) a1 += 360;
+    if(a1 <= a0) a1 += 360;
+    let a = angleDeg;
+    while(a < a0 - 360) a += 360;
+    while(a > a1 + 360) a -= 360;
+    while(a < a0) a += 360;
+    while(a > a1) a -= 360;
+    if(a < a0) a = a0;
+    if(a > a1) a = a1;
+
+    const rad = toRad(a);
+    const len = radius - 28;
+    const tx = Math.cos(rad) * len;
+    const ty = Math.sin(rad) * len;
+
+    const halfWidth = 8;
+    const perp = Math.PI / 2;
+    const lx = Math.cos(rad + perp) * halfWidth;
+    const ly = Math.sin(rad + perp) * halfWidth;
+    const rx = Math.cos(rad - perp) * halfWidth;
+    const ry = Math.sin(rad - perp) * halfWidth;
+
+    const baseInset = 12;
+    const bx = Math.cos(rad) * baseInset;
+    const by = Math.sin(rad) * baseInset;
+
+    const leftX = bx + lx, leftY = by + ly;
+    const rightX = bx + rx, rightY = by + ry;
+
+    const mainD = `M ${leftX.toFixed(2)} ${leftY.toFixed(2)} L ${tx.toFixed(2)} ${ty.toFixed(2)} L ${rightX.toFixed(2)} ${rightY.toFixed(2)} Z`;
+
+    // remove existing extruded needle shapes (we'll append new ones)
+    // keep only the main needle path element as top-most; for extrusion we'll add siblings before it
+    // ensure the group has only pivotBack, needle, pivotCap plus our offset nodes
+    const ng = document.getElementById('needleGroup');
+
+    // remove any existing extra extrude paths (class "extrude")
+    Array.from(ng.querySelectorAll('.extrude')).forEach(n => n.remove());
+
+    const depthPx = Number(depth.value);
+    const layerCount = Math.max(1, Math.min(80, Number(steps.value)));
+    const rxVal = Number(rotX.value), ryVal = Number(rotY.value);
+    const dx = Math.sin(toRad(ryVal));
+    const dy = -Math.sin(toRad(rxVal));
+    const perLayerX = dx * (depthPx / Math.max(1, layerCount));
+    const perLayerY = dy * (depthPx / Math.max(1, layerCount));
+
+    // create layered back copies (darker, lower opacity)
+    for(let i = layerCount-1; i >= 0; i--){
+      const ox = (i+1) * perLayerX;
+      const oy = (i+1) * perLayerY;
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d', mainD);
+      p.setAttribute('transform', `translate(${ox.toFixed(2)} ${oy.toFixed(2)})`);
+      p.setAttribute('fill', '#c57c00');
+      p.setAttribute('stroke', '#8f5d00');
+      p.setAttribute('stroke-width', '0.6');
+      p.setAttribute('opacity', String(0.08 + 0.7 * (1 - (i/(layerCount-1 || 1)))));
+      p.classList.add('extrude');
+      ng.insertBefore(p, needlePath);
+    }
+
+    // set top-most needle (no transform)
+    needlePath.setAttribute('d', mainD);
+    // optionally attach a subtle shadow filter when zoomed/3D on
+    if(Number(zoom.value) > 0.98) needlePath.setAttribute('filter','url(#needleShadow)');
+    else needlePath.removeAttribute('filter');
+  }
+
+  function zoneForValue(v){
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    const gEnd = clamp(Number(greenEndInput.value), minVal, maxVal);
+    const yEnd = clamp(Number(yellowEndInput.value), minVal, maxVal);
+    if(v <= gEnd) return 'GREEN';
+    if(v <= yEnd) return 'YELLOW';
+    return 'RED';
+  }
+
+  function smoothStep(displayVal, targetVal, alpha){ return displayVal + (targetVal - displayVal) * alpha; }
+
+  // apply wrapper 3D transforms from controls
+  function apply3DTransform(){
+    const rx = Number(rotX.value), ry = Number(rotY.value), rz = Number(rotZ.value);
+    const z = Number(zoom.value);
+    // CSS: rotateX, rotateY, rotateZ and scale
+    wrapper.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${z})`;
+  }
+
+  // rebuild visual elements (ticks, extruded zones) when geometry or params change
+  function rebuildVisuals(){
+    buildTicks();
+    drawExtrudedArcs();
+    // redraw needle at current angle
+    const rawAngle = valueToAngleDeg(display.value, Number(minInput.value), Number(maxInput.value));
+    drawNeedleClamped(rawAngle);
+    // update labels
+    minLabel.textContent = String(Number(minInput.value));
+    maxLabel.textContent = String(Number(maxInput.value));
+  }
+
+  // rendering loop
+  let lastTs = performance.now();
+  function renderLoop(ts){
+    const dt = Math.min(0.1, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    if(mode.value === 'sim' && simRunning){
+      simT += dt;
+      const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+      const center = (minVal + maxVal) / 2;
+      const span = (maxVal - minVal) / 2;
+      const base = center + Math.sin(simT * 0.6) * span * 0.35;
+      const spike = (Math.sin(simT*2.7) > 0.98) ? (Math.random()*0.3*span) : 0;
+      target.value = clamp(base + spike, minVal, maxVal);
+      target.ts = Date.now();
+    }
+
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    target.value = clamp(Number(target.value), minVal, maxVal);
+
+    const alpha = Number(smoothingRange.value);
+    display.value = smoothStep(display.value, target.value, alpha);
+    display.value = clamp(display.value, minVal, maxVal);
+
+    const rawAngle = valueToAngleDeg(display.value, minVal, maxVal);
+    drawNeedleClamped(rawAngle);
+
+    valueText.textContent = (display.value).toFixed(1);
+    unitText.textContent = `range ${minVal}..${maxVal}`;
+    mValue.textContent = Number.isInteger(display.value) ? String(Math.round(display.value)) : display.value.toFixed(1);
+    mMin.textContent = String(minVal);
+    mMax.textContent = String(maxVal);
+    mZone.textContent = zoneForValue(display.value);
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  // UI bindings
+  valueRange.addEventListener('input', ()=>{ valueNum.value = valueRange.value; target.value = Number(valueRange.value); target.ts = Date.now(); });
+  valueNum.addEventListener('input', ()=>{ valueRange.value = valueNum.value; target.value = Number(valueNum.value); target.ts = Date.now(); });
+
+  minInput.addEventListener('change', ()=>{ rebuildVisuals(); target.value = clamp(target.value, Number(minInput.value), Number(maxInput.value)); display.value = clamp(display.value, Number(minInput.value), Number(maxInput.value)); });
+  maxInput.addEventListener('change', ()=>{ rebuildVisuals(); target.value = clamp(target.value, Number(minInput.value), Number(maxInput.value)); display.value = clamp(display.value, Number(minInput.value), Number(maxInput.value)); });
+
+  greenEndInput.addEventListener('change', rebuildVisuals);
+  yellowEndInput.addEventListener('change', rebuildVisuals);
+
+  smoothingRange.addEventListener('input', ()=>{ smoothingNum.value = smoothingRange.value; });
+  smoothingNum.addEventListener('input', ()=>{ smoothingRange.value = smoothingNum.value; });
+
+  mode.addEventListener('change', ()=>{
+    if(mode.value === 'manual'){ manualControls.style.display = 'flex'; simRunning = false; toggleSim.textContent='Sim paused'; }
+    else { manualControls.style.display = 'none'; simRunning = true; toggleSim.textContent='Pause sim'; }
+  });
+
+  toggleSim.addEventListener('click', ()=>{ simRunning = !simRunning; toggleSim.textContent = simRunning ? 'Pause sim' : 'Resume sim'; });
+
+  // rot/zoom/depth/steps two-way bindings
+  function bindRangeNumber(rng, num, onChange){
+    rng.addEventListener('input', ()=>{
+      num.value = rng.value;
+      onChange && onChange();
+    });
+    num.addEventListener('input', ()=>{
+      rng.value = num.value;
+      onChange && onChange();
+    });
+  }
+  bindRangeNumber(rotX, rotXn, apply3DTransform);
+  bindRangeNumber(rotY, rotYn, apply3DTransform);
+  bindRangeNumber(rotZ, rotZn, apply3DTransform);
+  bindRangeNumber(zoom, zoomn, apply3DTransform);
+  bindRangeNumber(depth, depthn, rebuildVisuals);
+  bindRangeNumber(steps, stepsn, rebuildVisuals);
+
+  // keyboard nudges & click pulses
+  window.addEventListener('keydown', (e)=>{
+    const nudge = e.shiftKey ? (Number(maxInput.value)-Number(minInput.value))*0.02 : (Number(maxInput.value)-Number(minInput.value))*0.005;
+    const minVal = Number(minInput.value), maxVal = Number(maxInput.value);
+    if(e.key === 'ArrowUp'){ target.value = clamp(Number(target.value) + nudge, minVal, maxVal); valueRange.value = target.value; valueNum.value = target.value; }
+    if(e.key === 'ArrowDown'){ target.value = clamp(Number(target.value) - nudge, minVal, maxVal); valueRange.value = target.value; valueNum.value = target.value; }
+  });
+
+  svg.addEventListener('click', (ev)=>{
+    const rect = svg.getBoundingClientRect();
+    const x = ev.clientX - (rect.left + rect.width/2);
+    const impulse = clamp(Math.abs(x)/160 * (Number(maxInput.value)-Number(minInput.value)) * 0.06, 1, (Number(maxInput.value)-Number(minInput.value))*0.4);
+    target.value = clamp(Number(target.value) + impulse, Number(minInput.value), Number(maxInput.value));
+    valueRange.value = target.value; valueNum.value = target.value;
+  });
+
+  // copy svg
+  copySvgBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    navigator.clipboard?.writeText(out).then(()=>{ copySvgBtn.textContent='Copied'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); }, ()=>{ copySvgBtn.textContent='Fail'; setTimeout(()=>copySvgBtn.textContent='Copy SVG',900); });
+  });
+
+  // export png
+  exportPngBtn.addEventListener('click', ()=>{
+    const s = new XMLSerializer();
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const out = s.serializeToString(clone);
+    const img = new Image();
+    const svg64 = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out);
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      const w = img.width || 1200, h = img.height || 700;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(function(blob){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'gauge.png'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+    };
+    img.src = svg64;
+  });
+
+  // reset
+  resetBtn.addEventListener('click', ()=>{
+    minInput.value = -20; maxInput.value = 100;
+    target.value = 34; valueRange.value = 34; valueNum.value = 34;
+    greenEndInput.value = 60; yellowEndInput.value = 80;
+    smoothingRange.value = 0.18; smoothingNum.value = 0.18;
+    rotX.value = rotXn.value = 12;
+    rotY.value = rotYn.value = -12;
+    rotZ.value = rotZn.value = 0;
+    zoom.value = zoomn.value = 1;
+    depth.value = depthn.value = 8;
+    steps.value = stepsn.value = 10;
+    apply3DTransform();
+    rebuildVisuals();
+  });
+
+  // telemetry API
+  window.applyPressure = function(payload){
+    if(!payload || typeof payload !== 'object') return;
+    if('min' in payload){ minInput.value = Number(payload.min); }
+    if('max' in payload){ maxInput.value = Number(payload.max); }
+    if('value' in payload){ target.value = Number(payload.value); valueRange.value = target.value; valueNum.value = target.value; }
+    rebuildVisuals();
+  };
+
+  // init
+  display.value = target.value;
+  apply3DTransform();
+  rebuildVisuals();
+  requestAnimationFrame(renderLoop);
+})();
+</script>
+</body>
+</html>
+```

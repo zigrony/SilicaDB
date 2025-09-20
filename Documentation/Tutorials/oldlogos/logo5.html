@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quantized Wireframe Sphere Slideshow</title>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at center,
+        #00e6b8 0%,
+        #00997a 60%,
+        #003d33 100%
+      );
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .stage {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity var(--fade-ms, 800ms) ease-in-out;
+      will-change: opacity;
+    }
+    .slide.active {
+      opacity: 1;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+    /* front vs back stroke styles for depth */
+    .front {
+      stroke: white;
+      stroke-opacity: 0.6;
+      fill: none;
+    }
+    .back {
+      stroke: #66cccc;
+      stroke-opacity: 0.25;
+      stroke-dasharray: 4 4;
+      fill: none;
+    }
+
+    /* optional small HUD (top-left) to show current density */
+    .hud {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      font-size: 12px;
+      opacity: 0.7;
+      user-select: none;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+  <div class="hud" id="hud"></div>
+
+  <script>
+    // ---------------------------
+    // Tunable parameters
+    // ---------------------------
+    const RANGE_MIN = 1;          // conceptual input range start
+    const RANGE_MAX = 100;        // conceptual input range end
+    const BINS = 12;              // how many intervals to quantize into
+    const MIN_DENSITY = 2;        // minimum wire density (visible but light)
+    const MAX_DENSITY = 36;       // maximum wire density (keeps legibility)
+    const CROSSFADE_MS = 900;     // CSS transition duration should match
+    const DWELL_MS = 1400;        // time the slide stays fully visible
+
+    // If you want later bins to ramp faster, increase EASE_POW (>1 = backloaded)
+    const EASE_POW = 1.35;        // ease exponent; 1 = linear, >1 = slow start, fast end
+
+    // ---------------------------
+    // Elements
+    // ---------------------------
+    const stage = document.getElementById('stage');
+    const hud = document.getElementById('hud');
+    document.documentElement.style.setProperty('--fade-ms', CROSSFADE_MS + 'ms');
+
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+
+    function easePow(t, pow) {
+      // simple power ease (0..1)
+      return Math.pow(t, pow);
+    }
+
+    function quantizedDensities(rangeMin, rangeMax, bins, minD, maxD, pow=1) {
+      const out = [];
+      for (let i = 0; i < bins; i++) {
+        const t = (bins === 1) ? 0 : i / (bins - 1); // 0..1
+        const te = easePow(t, pow);                  // apply easing
+        const d = Math.round(lerp(minD, maxD, te));
+        out.push(d);
+      }
+      // Deduplicate in case rounding collides
+      return [...new Set(out)];
+    }
+
+    function buildSphere(density) {
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("viewBox", "0 0 200 200");
+
+      // Outer circle (front)
+      const circle = document.createElementNS(svgNS, "circle");
+      circle.setAttribute("cx", 100);
+      circle.setAttribute("cy", 100);
+      circle.setAttribute("r", 95);
+      circle.setAttribute("class", "front");
+      svg.appendChild(circle);
+
+      // Latitude lines
+      for (let i = 1; i < density; i++) {
+        const ry = (95 / density) * i;
+
+        const latFront = document.createElementNS(svgNS, "ellipse");
+        latFront.setAttribute("cx", 100);
+        latFront.setAttribute("cy", 100);
+        latFront.setAttribute("rx", 95);
+        latFront.setAttribute("ry", ry);
+        latFront.setAttribute("class", "front");
+        svg.appendChild(latFront);
+
+        const latBack = latFront.cloneNode();
+        latBack.setAttribute("class", "back");
+        svg.appendChild(latBack);
+      }
+
+      // Longitude lines
+      for (let i = 1; i < density; i++) {
+        const rx = (95 / density) * i;
+
+        const lonFront = document.createElementNS(svgNS, "ellipse");
+        lonFront.setAttribute("cx", 100);
+        lonFront.setAttribute("cy", 100);
+        lonFront.setAttribute("rx", rx);
+        lonFront.setAttribute("ry", 95);
+        lonFront.setAttribute("class", "front");
+        svg.appendChild(lonFront);
+
+        const lonBack = lonFront.cloneNode();
+        lonBack.setAttribute("class", "back");
+        svg.appendChild(lonBack);
+      }
+
+      return svg;
+    }
+
+    // ---------------------------
+    // Build slides from quantized densities
+    // ---------------------------
+    const densities = quantizedDensities(RANGE_MIN, RANGE_MAX, BINS, MIN_DENSITY, MAX_DENSITY, EASE_POW);
+    const slides = densities.map(d => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'slide';
+      wrapper.appendChild(buildSphere(d));
+      stage.appendChild(wrapper);
+      return wrapper;
+    });
+
+    // ---------------------------
+    // Slideshow controller
+    // ---------------------------
+    let index = -1;
+    function show(idx) {
+      if (index >= 0) slides[index].classList.remove('active');
+      index = idx;
+      slides[index].classList.add('active');
+      hud.textContent = `Density: ${densities[index]}  (bin ${index + 1}/${densities.length})`;
+    }
+
+    // Start after brief blank
+    const totalStepMs = CROSSFADE_MS + DWELL_MS;
+    setTimeout(() => {
+      let i = 0;
+      show(i);
+      setInterval(() => {
+        i = (i + 1) % slides.length;
+        show(i);
+      }, totalStepMs);
+    }, 600);
+  </script>
+</body>
+</html>

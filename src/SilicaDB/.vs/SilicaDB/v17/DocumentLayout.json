@@ -3,10 +3,7 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5C3ED85E-2F62-4794-A078-BB30AECC00C1}|..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Silica.Sql.Lexer.csproj|c:\\githubrepos\\silicadb\\src\\silica.sql.lexer\\silica.sql.lexer\\config\\lexeroptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5C3ED85E-2F62-4794-A078-BB30AECC00C1}|..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Silica.Sql.Lexer.csproj|c:\\githubrepos\\silicadb\\src\\silica.sql.lexer\\silica.sql.lexer\\sqllexer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8FECD843-10AB-407E-85BD-FF8F6A056606}|..\\Silica.Concurrency\\Silica.Concurrency\\Silica.Concurrency.csproj|c:\\githubrepos\\silicadb\\src\\silica.concurrency\\silica.concurrency\\diagnostics\\concurrencydiagnostics.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -16,7 +13,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -24,28 +21,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "SqlLexer.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
-              "RelativeToolTip": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\SqlLexer.cs",
-              "ViewState": "AgIAAIYEAAAAAAAAAADwv74EAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-17T20:42:25.562Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "LexerOptions.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
-              "RelativeToolTip": "..\\Silica.Sql.Lexer\\Silica.Sql.Lexer\\Config\\LexerOptions.cs",
-              "ViewState": "AgIAABcAAAAAAAAAAAA4wDcAAAAAAAAAAAAAAA==",
+              "Title": "ConcurrencyDiagnostics.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Concurrency\\Silica.Concurrency\\Diagnostics\\ConcurrencyDiagnostics.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Concurrency\\Silica.Concurrency\\Diagnostics\\ConcurrencyDiagnostics.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Concurrency\\Silica.Concurrency\\Diagnostics\\ConcurrencyDiagnostics.cs",
+              "RelativeToolTip": "..\\Silica.Concurrency\\Silica.Concurrency\\Diagnostics\\ConcurrencyDiagnostics.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-17T20:39:47.946Z",
+              "WhenOpened": "2025-09-20T15:41:04.417Z",
               "EditorCaption": ""
             }
           ]

@@ -1,4 +1,6 @@
-﻿namespace Silica.Sql.Lexer.Config
+﻿using System.ComponentModel;
+
+namespace Silica.Sql.Lexer.Config
 {
     // Dialect hint for presets and diagnostics; behavior is governed by explicit toggles.
     public enum SqlDialect
@@ -32,10 +34,20 @@
         public bool EnableVerboseDiagnostics { get; }
         // Diagnostics/metrics component name for tag consistency
         public string ComponentName { get; }
+        // Identifier start constraints (explicit, versioned; default relaxed for compatibility)
+        // When true, bare identifiers must start with a letter or underscore. Dollar is allowed only when AllowDollarInIdentifiers is true.
+        public bool RequireLetterStartForIdentifiers { get; }
+        // When true, @variables and #temp names must start (after @/## prefix) with a letter or underscore.
+        // Dollar is allowed only when AllowDollarInIdentifiers is true.
+        public bool RequireLetterStartForVariablesAndTemps { get; }
+
         // Safety limits
         public int MaxTokens { get; }
         // Explicitly in UTF-8 bytes
         public int MaxInputBytes { get; }
+        // EOF behavior
+        public bool EmitEndOfFileToken { get; }
+        public bool CountEndOfFileTowardsLimit { get; }
 
         public LexerOptions(
             bool allowNewlinesInStringLiteral,
@@ -46,13 +58,18 @@
             bool enableVerboseDiagnostics = false,
             int maxTokens = 1_000_000,
             int maxInputBytes = 5_000_000,
+            bool requireLetterStartForIdentifiers = false,
+            bool requireLetterStartForVariablesAndTemps = false,
             SqlDialect dialect = default,
             // put the new toggles *after* the required ones
             bool allowDollarInIdentifiers = true,
             bool allowAtVariables = true,
             bool allowHashTempNames = true,
             bool treatDoubleQuotedAsIdentifier = true,
-            bool includeDialectTagInDiagnostics = true)
+            bool includeDialectTagInDiagnostics = true,
+            // EOF behavior toggles (explicit, versioned)
+            bool emitEndOfFileToken = true,
+            bool countEndOfFileTowardsLimit = false)
 
         {
             AllowDollarInIdentifiers = allowDollarInIdentifiers;
@@ -65,6 +82,8 @@
             AllowNewlinesInDelimitedIdentifier = allowNewlinesInDelimitedIdentifier;
             EnableNestedBlockComments = enableNestedBlockComments;
             EnableVerboseDiagnostics = enableVerboseDiagnostics;
+            RequireLetterStartForIdentifiers = requireLetterStartForIdentifiers;
+            RequireLetterStartForVariablesAndTemps = requireLetterStartForVariablesAndTemps;
             ComponentName = string.IsNullOrWhiteSpace(componentName)
                 ? "Silica.Sql.Lexer"
                 : componentName;
@@ -77,11 +96,15 @@
             MaxTokens = maxTokens;
             MaxInputBytes = maxInputBytes;
             Dialect = dialect;
+            EmitEndOfFileToken = emitEndOfFileToken;
+            CountEndOfFileTowardsLimit = countEndOfFileTowardsLimit;
         }
 
         // Presets
         public static readonly LexerOptions IsoSql =
             new LexerOptions(
+                requireLetterStartForIdentifiers: false,
+                requireLetterStartForVariablesAndTemps: false,
                 allowDollarInIdentifiers: false,
                 allowAtVariables: false,
                 allowHashTempNames: false,
@@ -99,6 +122,8 @@
 
         public static readonly LexerOptions TSql =
             new LexerOptions(
+                requireLetterStartForIdentifiers: false, // keep relaxed for compatibility; can tighten later
+                requireLetterStartForVariablesAndTemps: false,
                 allowDollarInIdentifiers: true,
                 allowAtVariables: true,
                 allowHashTempNames: true,

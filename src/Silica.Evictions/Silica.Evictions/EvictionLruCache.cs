@@ -8,6 +8,7 @@ using Silica.DiagnosticsCore;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Evictions.Metrics;
 using Silica.Evictions.Exceptions;
+using Silica.Evictions.Diagnostics;
 
 namespace Silica.Evictions
 {
@@ -18,6 +19,10 @@ namespace Silica.Evictions
     public class EvictionLruCache<TKey, TValue> : IAsyncEvictionCache<TKey, TValue>
         where TKey : notnull
     {
+        static EvictionLruCache()
+        {
+            try { EvictionExceptions.RegisterAll(); } catch { }
+        }
         private readonly AsyncLock _lock = new();
         private readonly int _capacity;
         private readonly TimeSpan _idleTimeout;
@@ -30,6 +35,7 @@ namespace Silica.Evictions
         private IMetricsManager _metrics;
         private readonly string _componentName;
         private bool _metricsRegistered;
+        private readonly bool _verbose;
         /// <summary>
         /// How many entries are currently in the cache.
         /// </summary>
@@ -96,6 +102,7 @@ namespace Silica.Evictions
                     _lruList.Remove(existingNode);
                     _lruList.AddFirst(existingNode);
                     try { EvictionMetrics.IncrementHit(_metrics); } catch { }
+                    if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "hit"); } catch { } }
                     return existingNode.Value.Value;
                 }
             }
@@ -106,6 +113,7 @@ namespace Silica.Evictions
             swFactory.Stop();
             try { EvictionMetrics.RecordFactoryLatency(_metrics, swFactory.Elapsed.TotalMilliseconds); } catch { }
             try { EvictionMetrics.IncrementMiss(_metrics); } catch { }
+            if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "get_or_add", "miss_build"); } catch { } }
 
             // Phase 3: re-acquire lock to insert + collect eviction
             List<CacheEntry>? toEvict = null;
@@ -133,6 +141,13 @@ namespace Silica.Evictions
                     Interlocked.Decrement(ref _count);
                     toEvict.Add(tail.Value);
                     try { EvictionMetrics.IncrementEviction(_metrics, EvictionMetrics.Fields.Lru); } catch { }
+                    try
+                    {
+                        EvictionDiagnostics.Emit(_componentName, "evict", "info", "lru_evict",
+                            null,
+                            new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { TagKeys.Field, EvictionMetrics.Fields.Lru } });
+                    }
+                    catch { }
                 }
             }
 
@@ -153,6 +168,7 @@ namespace Silica.Evictions
             using (await _lock.LockAsync().ConfigureAwait(false))
             {
                 toEvict = new List<CacheEntry>();
+                if (_verbose) { try { EvictionDiagnostics.EmitDebug(_componentName, "cleanup_idle", "begin"); } catch { } }
                 while (_lruList.Last is { Value: var entry } tailNode
                        && entry.LastUse < threshold)
                 {
@@ -168,6 +184,16 @@ namespace Silica.Evictions
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
             swCleanup.Stop();
             try { EvictionMetrics.OnCleanupCompleted(_metrics, swCleanup.Elapsed.TotalMilliseconds); } catch { }
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "cleanup_idle", "info", "done",
+                    null,
+                    new Dictionary<string, string>(2, StringComparer.OrdinalIgnoreCase){
+                        { "evicted", (toEvict?.Count ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                        { "ms", swCleanup.Elapsed.TotalMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) }
+                    });
+            }
+            catch { }
         }
 
         public async ValueTask DisposeAsync()
@@ -183,6 +209,14 @@ namespace Silica.Evictions
                 _map.Clear();
                 Interlocked.Exchange(ref _count, 0);
             }
+
+            try
+            {
+                EvictionDiagnostics.Emit(_componentName, "dispose", "info", "disposing_cache",
+                    null,
+                    new Dictionary<string, string>(1, StringComparer.OrdinalIgnoreCase) { { "evicted_items", allEntries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+            }
+            catch { }
 
             foreach (var e in allEntries)
                 await _onEvictedAsync(e.Key, e.Value).ConfigureAwait(false);
