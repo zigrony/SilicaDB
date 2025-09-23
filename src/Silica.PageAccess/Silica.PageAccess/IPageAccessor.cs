@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers.Binary;
-using System.IO;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -355,35 +354,6 @@ namespace Silica.PageAccess
                 useRawFlags: true);
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Specific operational exceptions for precise handling.
-    // ─────────────────────────────────────────────────────────────────────────────
-    public sealed class PageHeaderInvalidException : IOException
-    {
-        public PageHeaderInvalidException(string message) : base(message) { }
-    }
-
-    public sealed class MagicMismatchException : IOException
-    {
-        public MagicMismatchException(string message) : base(message) { }
-    }
-
-    public sealed class PageTypeMismatchException : IOException
-    {
-        public PageTypeMismatchException(string message) : base(message) { }
-    }
-
-    public sealed class PageVersionMismatchException : IOException
-    {
-        public PageVersionMismatchException(string message) : base(message) { }
-    }
-
-    public sealed class PageChecksumMismatchException : IOException
-    {
-        public PageChecksumMismatchException(string message) : base(message) { }
-    }
-
 
     /// <summary>
     /// Handle for a read lease. Holds the pin+shared latch via the underlying buffer pool lease until disposed.

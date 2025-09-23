@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Silica.BufferPool\Silica.BufferPool\Silica.BufferPool.csproj" />
+    <ProjectReference Include="..\..\Silica.Concurrency\Silica.Concurrency\Silica.Concurrency.csproj" />
     <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
   </ItemGroup>
 

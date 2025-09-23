@@ -25,7 +25,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.PageAccess", "..\Sil
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Exceptions", "..\Silica.Exceptions\Silica.Exceptions\Silica.Exceptions.csproj", "{EBE0E3E1-13DD-419E-A5D4-62243F3D6B56}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.Sql.Lexer", "..\Silica.Sql.Lexer\Silica.Sql.Lexer\Silica.Sql.Lexer.csproj", "{5C3ED85E-2F62-4794-A078-BB30AECC00C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Sql.Lexer", "..\Silica.Sql.Lexer\Silica.Sql.Lexer\Silica.Sql.Lexer.csproj", "{5C3ED85E-2F62-4794-A078-BB30AECC00C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.Authentication", "..\Silica.Authentication\Silica.Authentication\Silica.Authentication.csproj", "{5E890D1A-3857-4B97-8515-0A6D532EB8A8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -81,6 +83,10 @@ Global
 		{5C3ED85E-2F62-4794-A078-BB30AECC00C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C3ED85E-2F62-4794-A078-BB30AECC00C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C3ED85E-2F62-4794-A078-BB30AECC00C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E890D1A-3857-4B97-8515-0A6D532EB8A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E890D1A-3857-4B97-8515-0A6D532EB8A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E890D1A-3857-4B97-8515-0A6D532EB8A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E890D1A-3857-4B97-8515-0A6D532EB8A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

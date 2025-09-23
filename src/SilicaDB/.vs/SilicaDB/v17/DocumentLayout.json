@@ -3,7 +3,34 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{4E3F295C-A536-47EB-BA99-E1239278CC5F}|..\\Silica.BufferPool\\Silica.BufferPool\\Silica.BufferPool.csproj|c:\\githubrepos\\silicadb\\src\\silica.bufferpool\\silica.bufferpool\\bufferpoolmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\exceptions\\authenticationexceptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\exceptions\\unexpectedauthenticationerrorexception.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\exceptions\\invalidcredentialsexception.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\local\\inmemorylocaluserstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\local\\localauthenticationoptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\local\\localauthenticator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\ntlm\\ntlmauthenticator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\kerberos\\kerberosauthenticator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\jwt\\jwtauthenticator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E890D1A-3857-4B97-8515-0A6D532EB8A8}|..\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj|c:\\githubrepos\\silicadb\\src\\silica.authentication\\silica.authentication\\certificate\\certificateauthenticator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -13,7 +40,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 9,
           "Children": [
             {
               "$type": "Bookmark",
@@ -21,15 +48,132 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "BufferPoolManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
-              "RelativeToolTip": "..\\Silica.BufferPool\\Silica.BufferPool\\BufferPoolManager.cs",
+              "DocumentIndex": 2,
+              "Title": "InvalidCredentialsException.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\InvalidCredentialsException.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\InvalidCredentialsException.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\InvalidCredentialsException.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\InvalidCredentialsException.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-20T19:19:34.189Z",
+              "WhenOpened": "2025-09-23T15:20:39.22Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "InMemoryLocalUserStore.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\InMemoryLocalUserStore.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Local\\InMemoryLocalUserStore.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\InMemoryLocalUserStore.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Local\\InMemoryLocalUserStore.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:17:48.133Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "LocalAuthenticationOptions.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticationOptions.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticationOptions.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticationOptions.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticationOptions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:17:17.966Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "LocalAuthenticator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticator.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Local\\LocalAuthenticator.cs",
+              "ViewState": "AgIAAAUBAAAAAAAAAAD4vyoBAABHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:12:29.622Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "NtlmAuthenticator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Ntlm\\NtlmAuthenticator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Ntlm\\NtlmAuthenticator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Ntlm\\NtlmAuthenticator.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Ntlm\\NtlmAuthenticator.cs",
+              "ViewState": "AgIAALMAAAAAAAAAAAD4v9IAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:10:53.251Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "KerberosAuthenticator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Kerberos\\KerberosAuthenticator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Kerberos\\KerberosAuthenticator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Kerberos\\KerberosAuthenticator.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Kerberos\\KerberosAuthenticator.cs",
+              "ViewState": "AgIAALIAAAAAAAAAAAD4v9EAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:09:20.269Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "JwtAuthenticator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Jwt\\JwtAuthenticator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Jwt\\JwtAuthenticator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Jwt\\JwtAuthenticator.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Jwt\\JwtAuthenticator.cs",
+              "ViewState": "AgIAAJoAAAAAAAAAAAD4v8sAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:07:52.796Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "CertificateAuthenticator.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Certificate\\CertificateAuthenticator.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Certificate\\CertificateAuthenticator.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Certificate\\CertificateAuthenticator.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Certificate\\CertificateAuthenticator.cs",
+              "ViewState": "AgIAAMsAAAAAAAAAAAD4v+wAAABHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:04:40.052Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "AuthenticationExceptions.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\AuthenticationExceptions.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\AuthenticationExceptions.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\AuthenticationExceptions.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\AuthenticationExceptions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAA0AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:03:54.672Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "UnexpectedAuthenticationErrorException.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\UnexpectedAuthenticationErrorException.cs",
+              "RelativeDocumentMoniker": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\UnexpectedAuthenticationErrorException.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Exceptions\\UnexpectedAuthenticationErrorException.cs",
+              "RelativeToolTip": "..\\Silica.Authentication\\Silica.Authentication\\Exceptions\\UnexpectedAuthenticationErrorException.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-23T15:03:16.1Z",
               "EditorCaption": ""
             }
           ]

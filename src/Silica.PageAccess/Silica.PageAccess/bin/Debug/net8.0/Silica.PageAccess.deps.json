@@ -9,6 +9,7 @@
       "Silica.PageAccess/1.0.0": {
         "dependencies": {
           "Silica.BufferPool": "1.0.0",
+          "Silica.Concurrency": "1.0.0",
           "Silica.DiagnosticsCore": "1.0.0"
         },
         "runtime": {
@@ -33,6 +34,17 @@
       "Silica.Common/1.0.0": {
         "runtime": {
           "Silica.Common.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.Concurrency/1.0.0": {
+        "dependencies": {
+          "Silica.DiagnosticsCore": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Concurrency.dll": {
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -109,6 +121,11 @@
       "sha512": ""
     },
     "Silica.Common/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Concurrency/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

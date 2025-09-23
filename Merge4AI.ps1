@@ -1,6 +1,6 @@
 param(
-    [string]$srcPath = "C:\GitHubRepos\SilicaDB\src\",
-    [string]$dstPath = "C:\temp\",
+    [string]$srcPath    = "C:\GitHubRepos\SilicaDB\src\",
+    [string]$dstPath    = "C:\temp\",
     [ValidateSet(
         "All",
         "Silica.BufferPool",
@@ -13,29 +13,31 @@ param(
         "Silica.Storage",
         "Silica.PageAccess",
         "Silica.Sql.Lexer",
+        "Silica.Authentication",
         "test.app"
     )]
     [string[]]$Projects = @("All"),
-    [int]$fileSize = 80000
+    [int]   $fileSize   = 80000,
+    [switch]$IncludeTests
 )
 
 function Split-LargeFile {
     param (
         [string]$FilePath,
-        [int]$MaxSize,
+        [int]   $MaxSize,
         [string]$prefix = "file_"
     )
 
-    if (-Not (Test-Path -Path $FilePath)) {
+    if (-not (Test-Path -Path $FilePath)) {
         Write-Error "The specified file does not exist: $FilePath"
         return
     }
 
-    $FolderPath = Split-Path -Path $FilePath
-    $FileIndex = 0
+    $FolderPath  = Split-Path -Path $FilePath
+    $FileIndex   = 0
     $CurrentSize = 0
-    $OutputFile = Join-Path $FolderPath ("{0}_{1}.txt" -f $prefix, $FileIndex)
-    $Writer = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
+    $OutputFile  = Join-Path $FolderPath ("{0}_{1}.txt" -f $prefix, $FileIndex)
+    $Writer      = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
 
     try {
         foreach ($Line in Get-Content -Path $FilePath) {
@@ -44,7 +46,7 @@ function Split-LargeFile {
                 $Writer.Close()
                 $FileIndex++
                 $OutputFile = Join-Path $FolderPath ("{0}_{1}.txt" -f $prefix, $FileIndex)
-                $Writer = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
+                $Writer     = [System.IO.StreamWriter]::new($OutputFile, $false, [System.Text.Encoding]::UTF8)
                 $CurrentSize = 0
             }
             $Writer.WriteLine($Line)
@@ -70,6 +72,7 @@ $AllProjectsList = @(
     "Silica.Storage",
     "Silica.PageAccess",
     "Silica.Sql.Lexer",
+    "Silica.Authentication",
     "test.app"
 )
 
@@ -85,24 +88,24 @@ foreach ($project in $ProjectList) {
     Write-Host "Processing project: $project"
 
     $fullSrc = Join-Path $srcPath $project
-    if (-Not (Test-Path $fullSrc)) {
+    if (-not (Test-Path $fullSrc)) {
         Write-Warning "Source path does not exist: $fullSrc"
         continue
     }
 
     $fullDst = Join-Path $dstPath "$($project)_AllContent.txt"
-    $writer = [System.IO.StreamWriter]::new($fullDst, $false, [System.Text.Encoding]::UTF8)
+    $writer  = [System.IO.StreamWriter]::new($fullDst, $false, [System.Text.Encoding]::UTF8)
 
-    # Skip files containing 'Tests' in the path
-	#
-	# Get all projectrelated files.
-	# Get-ChildItem -Path "$fullSrc\*" -Recurse -File -Include *.cs,*.csproj,*.sln,*.config,*.resx,*.xaml,*.json,*.xml,*.user,*.props,*.targets,*.cshtml |
-	#
-	#Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Where-Object { $_.Name -notlike '*.GlobalUsings.g.cs' -and $_.FullName -notmatch '[\\/]\bobj\b[\\/]'}
+    # Gather .cs files, exclude GlobalUsings & obj folder
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" |
+             Where-Object { $_.Name -notlike '*.GlobalUsings.g.cs' -and $_.FullName -notmatch '[\\/]\bobj\b[\\/]' }
 
-    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" | Where-Object { $_.Name -notlike '*.GlobalUsings.g.cs' -and $_.FullName -notmatch '[\\/]\bobj\b[\\/]'} |
-             Where-Object { $_.FullName -notmatch "Tests" } |
-             Sort-Object FullName
+    # Conditionally exclude Tests folder
+    if (-not $IncludeTests) {
+        $files = $files | Where-Object { $_.FullName -notmatch "Tests" }
+    }
+
+    $files = $files | Sort-Object FullName
 
     foreach ($file in $files) {
         Write-Host "`tFileName[$($file.FullName)]"
@@ -114,8 +117,8 @@ foreach ($project in $ProjectList) {
         }
         $writer.WriteLine()
     }
-    $writer.Close()
 
+    $writer.Close()
     Split-LargeFile -FilePath $fullDst -MaxSize $fileSize -prefix $project
 }
 
@@ -127,7 +130,7 @@ $writer = [System.IO.StreamWriter]::new($allDst, $false, [System.Text.Encoding]:
 
 foreach ($project in $ProjectList) {
     $fullSrc = Join-Path $srcPath $project
-    if (-Not (Test-Path $fullSrc)) {
+    if (-not (Test-Path $fullSrc)) {
         Write-Warning "Source path does not exist: $fullSrc"
         continue
     }
@@ -137,10 +140,15 @@ foreach ($project in $ProjectList) {
     $writer.WriteLine("//")
     $writer.WriteLine()
 
-    # Skip files containing 'Tests' in the path
-    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs" |
-             Where-Object { $_.FullName -notmatch "Tests" } |
-             Sort-Object FullName
+    # Gather .cs files
+    $files = Get-ChildItem -Recurse -File -Path $fullSrc -Filter "*.cs"
+
+    # Conditionally exclude Tests folder
+    if (-not $IncludeTests) {
+        $files = $files | Where-Object { $_.FullName -notmatch "Tests" }
+    }
+
+    $files = $files | Sort-Object FullName
 
     foreach ($file in $files) {
         Write-Host "`t[AllProjects] FileName[$($file.FullName)]"
@@ -158,8 +166,8 @@ foreach ($project in $ProjectList) {
     $writer.WriteLine("//")
     $writer.WriteLine()
 }
-$writer.Close()
 
+$writer.Close()
 Split-LargeFile -FilePath $allDst -MaxSize $fileSize -prefix "AllProjects"
 
 Write-Host "All processing complete."

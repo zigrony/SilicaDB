@@ -8,12 +8,19 @@ using Silica.Exceptions.Testing;
 using Silica.DiagnosticsCore.Tests;
 using Silica.Evictions.Tests;
 using Silica.Storage.Tests;
+using Silica.BufferPool.Tests;
+using Silica.PageAccess.Tests;
+using Silica.Authentication.Tests;
+using Silica.Concurrency.Tests;
+using Silica.Durability.Tests;
 using Silica.Sql.Lexer.Tests;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        // Enable auth verbose via env (no assembly change required)
+        Environment.SetEnvironmentVariable("SILICA_AUTHENTICATION_VERBOSE", "1");
 
         // 1) Build configuration
         var options = new DiagnosticsOptions
@@ -44,6 +51,12 @@ class Program
 
         // 2) Start DiagnosticsCore
         var instance = DiagnosticsCoreBootstrap.Start(options);
+
+        // 2.5) Enable verbose auth diagnostics so EmitDebug calls surface
+        //Silica.Authentication.Diagnostics.SetVerbose(true);
+
+        // 3.5) Create a dummy metrics manager you can pass into LocalAuthenticator (same style as Concurrency harness)
+        IMetricsManager dummyMetrics = new DummyMetricsManager();
 
         // 3) Register an extra FileTraceSink
         var fileSink = new FileTraceSink(
@@ -83,9 +96,19 @@ class Program
         Console.WriteLine($"Diagnostics started: {status.IsStarted}, Policy: {status.DispatcherPolicy}");
 
         // 4) Run your harnesses
-        LexerTestHarness.Run();
-        await EvictionsTestHarness.Run();
-        await StorageTestHarness.RunAsync();
+        //LexerTestHarness.Run();
+        //await EvictionsTestHarness.Run();
+        //await StorageTestHarness.RunAsync();
+        //await BufferPoolTestHarness.Run();
+        //await DurabilityTestHarness.Run();
+        //await PageAccessTestHarness.Run();
+        //await ConcurrencyTestHarness.Run();
+        //await PageAccessIntegrationHarnessPhysical.RunAsync();
+        await AuthenticationTestHarnessLocal.Run();
+        await AuthenticationTestHarnessNtlm.Run();
+        await AuthenticationTestHarnessKerberos.Run();
+        await AuthenticationTestHarnessJwt.Run();
+        await AuthenticationTestHarnessCertificate.Run();
 
         Console.WriteLine("All test harnesses completed.");
 

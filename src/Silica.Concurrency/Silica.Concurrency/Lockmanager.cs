@@ -80,6 +80,10 @@ namespace Silica.Concurrency
         }
         private readonly ConcurrentDictionary<string, ResourceTokenState> _resourceTokens
             = new ConcurrentDictionary<string, ResourceTokenState>();
+        // Preserve last-issued token per resource when the full ResourceTokenState is pruned.
+        // Keeps monotonicity without retaining the full token map for long-unused resources.
+        private readonly ConcurrentDictionary<string, long> _resourceLastIssued
+            = new ConcurrentDictionary<string, long>();
 
         private readonly ILockRpcClient _rpcClient;
         // Identifier for “this node” (forward-hook for future DTC/RPC)
@@ -1931,7 +1935,17 @@ namespace Silica.Concurrency
         // ─────────────────────────────────────────────────────────────
         private long IssueToken(string resourceId, long txId)
         {
-            var state = _resourceTokens.GetOrAdd(resourceId, _ => new ResourceTokenState());
+            var state = _resourceTokens.GetOrAdd(resourceId, _ =>
+            {
+                // If we previously pruned this resource, resume the LastIssued counter
+                // so tokens remain monotonic across prune/recreate cycles.
+                var s = new ResourceTokenState();
+                if (_resourceLastIssued.TryGetValue(resourceId, out var last) && last > 0)
+                {
+                    s.LastIssued = last;
+                }
+                return s;
+            });
             lock (state.Sync)
             {
                 // Monotonic per resource
@@ -2108,6 +2122,17 @@ namespace Silica.Concurrency
                 {
                     if (state.TxTokens.Count == 0)
                     {
+                        // Save last-issued counter so we can restore monotonicity if the state
+                        // is recreated later, then remove the (now-empty) state to free memory.
+                        try
+                        {
+                            var last = state.LastIssued;
+                            if (last > 0)
+                            {
+                                _resourceLastIssued[resourceId] = last;
+                            }
+                        }
+                        catch { /* best-effort */ }
                         _resourceTokens.TryRemove(resourceId, out _);
                     }
                 }

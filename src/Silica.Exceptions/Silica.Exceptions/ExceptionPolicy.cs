@@ -396,6 +396,7 @@ namespace Silica.Exceptions
                 case FailureCategory.Internal:
                 case FailureCategory.Timeout:
                 case FailureCategory.Cancelled:
+                case FailureCategory.ResourceLimits:
                     return;
                 default:
                     throw new ArgumentOutOfRangeException(paramName, "Invalid failure category value.");

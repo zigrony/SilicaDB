@@ -10,6 +10,7 @@ using Silica.PageAccess.Metrics;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.DiagnosticsCore;
 using System.Collections.Generic;
+using Silica.PageAccess.Diagnostics;
 
 namespace Silica.PageAccess
 {
@@ -23,14 +24,19 @@ namespace Silica.PageAccess
     /// </summary>
     public sealed class PageManager : IPageAccessor, IAsyncDisposable
     {
+        // Static bootstrap: register PageAccess exception definitions once.
+        static PageManager()
+        {
+            try { PageAccessExceptions.RegisterAll(); } catch { /* idempotent, never throw */ }
+        }
+
+
         private readonly IBufferPoolManager _pool;
         private readonly PageAccessorOptions _options;
         private readonly IMetricsManager _metrics;
         private readonly KeyValuePair<string, object> _componentTag;
         private readonly IPageWalHook? _walHook;
         private int _disposed;
-        [ThreadStatic]
-        private static int _traceReentrancy;
 
         public PageManager(
             IBufferPoolManager pool,
@@ -63,7 +69,7 @@ namespace Silica.PageAccess
         }
 
 
-        private static bool IsTracing => DiagnosticsCoreBootstrap.IsStarted;
+        // Centralized tracing is handled via PageAccessDiagnostics.Emit (which checks IsStarted internally).
 
         /// <summary>
         /// ARIES-compliant write: mutate a range under exclusive latch, append WAL via the hook,
@@ -93,8 +99,20 @@ namespace Silica.PageAccess
                 if (!TryReadHeader(readLease.Page, out current))
                 {
                     RecordError("invalid_header");
-                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "invalid_page_header", "invalid_header", id);
-                    throw new PageHeaderInvalidException("Invalid page header during write.");
+                    PageAccessDiagnostics.Emit(
+                        component: "Silica.PageAccess",
+                        operation: "WriteAndStampAsync",
+                        level: "error",
+                        message: "invalid_page_header",
+                        ex: null,
+                        more: new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "invalid_header" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
+                    throw new PageHeaderInvalidException(id, "invalid_header_prewrite");
                 }
                 ValidateHeader(id, current, expectedType, expectedVersion);
                 ValidateHeaderPhysical(id, current, readLease.Page.Length);
@@ -119,21 +137,45 @@ namespace Silica.PageAccess
                     if (!TryReadHeader(w.Slice, out headerUnderWrite))
                     {
                         RecordError("invalid_header");
-                        if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "invalid_page_header_under_write", "invalid_header", id);
-                        throw new PageHeaderInvalidException("Invalid page header during exclusive write.");
+                        PageAccessDiagnostics.Emit(
+                            "Silica.PageAccess", "WriteAndStampAsync", "error", "invalid_page_header_under_write", null,
+                            new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                            {
+                                { "status", "error" },
+                                { "code", "invalid_header" },
+                                { "file_id", id.FileId.ToString() },
+                                { "page_index", id.PageIndex.ToString() },
+                            });
+                        throw new PageHeaderInvalidException(id, "invalid_header_under_write");
                     }
                     ValidateHeader(id, headerUnderWrite, expectedType, expectedVersion);
                 }
                 else if (_options.RequireHeaderRevalidationOnWrite)
                 {
                     RecordError("header_not_revalidated");
-                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "error", "header_not_revalidated_requires_header_lock", "header_not_revalidated", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteAndStampAsync", "error", "header_not_revalidated_requires_header_lock", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "header_not_revalidated" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                     throw new PageHeaderInvalidException("Header revalidation required; include header region in the write lease.");
                 }
                 else
                 {
                     RecordWarn("header_not_revalidated");
-                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "warn", "header_not_revalidated", "header_not_revalidated", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteAndStampAsync", "warn", "header_not_revalidated", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "warn" },
+                            { "code", "header_not_revalidated" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
 
                 // 3) Mutate in-place under the exclusive latch
@@ -153,7 +195,15 @@ namespace Silica.PageAccess
                 {
                     // No hook installed: still proceed, but signal via warn metric/trace.
                     RecordWarn("wal_hook_missing");
-                    if (IsTracing) TryEmitTrace("WriteAndStampAsync", "warn", "wal_hook_missing", "wal_hook_missing", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteAndStampAsync", "warn", "wal_hook_missing", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "warn" },
+                            { "code", "wal_hook_missing" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
 
                 // 6) Stamp header LSN and re-write header under the same exclusive latch if headerLocked
@@ -166,6 +216,11 @@ namespace Silica.PageAccess
                 if (headerLocked)
                 {
                     WriteHeaderToMemory(w.Slice, _options.UpdateChecksumOnWrite ? mutatedHeader.With(checksum: 0) : mutatedHeader);
+                    if (lsn != 0)
+                    {
+                        // We modified the header via the main write lease 'w'
+                        w.MarkDirty((long)lsn);
+                    }
                 }
                 else
                 {
@@ -174,11 +229,16 @@ namespace Silica.PageAccess
                     try
                     {
                         if (!TryReadHeader(hdrLease.Slice, out var hdrNow))
-                            throw new PageHeaderInvalidException("Invalid header during LSN stamp.");
+                            throw new PageHeaderInvalidException(id, "invalid_header_lsn_stamp");
                         ValidateHeader(id, hdrNow, expectedType, expectedVersion);
                         var hdrStamped = mutatedHeader;
                         if (lsn != 0) hdrStamped = hdrStamped.With(lsn: lsn);
                         WriteHeaderToMemory(hdrLease.Slice, _options.UpdateChecksumOnWrite ? hdrStamped.With(checksum: 0) : hdrStamped);
+                        if (lsn != 0)
+                        {
+                            // We modified the header via the short header lease
+                            hdrLease.MarkDirty((long)lsn);
+                        }
                     }
                     finally
                     {
@@ -216,7 +276,16 @@ namespace Silica.PageAccess
             catch (OperationCanceledException)
             {
                 RecordWarn("canceled");
-                if (IsTracing) TryEmitTrace("ReadAsync", "warn", $"operation_canceled: {id.FileId}/{id.PageIndex}", "canceled", id);
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ReadAsync", "warn",
+                    $"operation_canceled: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "warn" },
+                        { "code", "canceled" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
                 throw;
             }
 
@@ -225,8 +294,17 @@ namespace Silica.PageAccess
                 if (!TryReadHeader(lease.Page, out var hdr))
                 {
                     RecordError("invalid_header");
-                    if (IsTracing) TryEmitTrace("ReadAsync", "error", $"invalid_page_header: {id.FileId}/{id.PageIndex}", "invalid_header", id);
-                    throw new PageHeaderInvalidException($"Invalid page header at {id.FileId}/{id.PageIndex} (len={lease.Page.Length}).");
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "ReadAsync", "error",
+                        $"invalid_page_header: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "invalid_header" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
+                    throw new PageHeaderInvalidException(id, $"invalid_header(len={lease.Page.Length})");
                 }
 
                 ValidateHeader(id, hdr, expectedType, expectedVersion);
@@ -238,15 +316,33 @@ namespace Silica.PageAccess
                     if (!VerifyChecksum(lease.Page.Span, out var expected, out var actual))
                     {
                         RecordError("checksum_mismatch");
-                        if (IsTracing) TryEmitTrace("ReadAsync", "error", $"checksum_mismatch: {expected:X8}!={actual:X8} id={id.FileId}/{id.PageIndex}", "checksum_mismatch", id);
-                        throw new PageChecksumMismatchException($"Checksum mismatch at {id.FileId}/{id.PageIndex}: header={expected:X8}, computed={actual:X8}.");
+                        PageAccessDiagnostics.Emit(
+                            "Silica.PageAccess", "ReadAsync", "error",
+                            $"checksum_mismatch: {expected:X8}!={actual:X8} id={id.FileId}/{id.PageIndex}", null,
+                            new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                            {
+                                { "status", "error" },
+                                { "code", "checksum_mismatch" },
+                                { "file_id", id.FileId.ToString() },
+                                { "page_index", id.PageIndex.ToString() },
+                            });
+                        throw new PageChecksumMismatchException(id, expected, actual);
                     }
                 }
                 else if (_options.VerifyChecksumOnRead && hdr.Checksum == 0 && _options.SkipChecksumVerifyIfZero)
                 {
                     // Operational visibility: we deliberately skipped verification due to policy and zero checksum.
                     RecordWarn("checksum_skipped_zero");
-                    if (IsTracing) TryEmitTrace("ReadAsync", "info", $"checksum_verification_skipped_zero: {id.FileId}/{id.PageIndex}", "checksum_skipped_zero", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "ReadAsync", "info",
+                        $"checksum_verification_skipped_zero: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "info" },
+                            { "code", "checksum_skipped_zero" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
 
                 RecordRead(hdr.Type, start);
@@ -287,8 +383,17 @@ namespace Silica.PageAccess
                 if (!TryReadHeader(readLease.Page, out hdr))
                 {
                     RecordError("invalid_header");
-                    if (IsTracing) TryEmitTrace("WriteAsync", "error", $"invalid_page_header: {id.FileId}/{id.PageIndex}", "invalid_header", id);
-                    throw new PageHeaderInvalidException($"Invalid page header at {id.FileId}/{id.PageIndex} (len={readLease.Page.Length}).");
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteAsync", "error",
+                        $"invalid_page_header: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "invalid_header" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
+                    throw new PageHeaderInvalidException(id, $"invalid_header(len={readLease.Page.Length})");
                 }
                 ValidateHeader(id, hdr, expectedType, expectedVersion);
                 ValidateHeaderPhysical(id, hdr, readLease.Page.Length);
@@ -315,8 +420,17 @@ namespace Silica.PageAccess
                         if (!TryReadHeader(writeLease.Slice, out var hdr2))
                         {
                             RecordError("invalid_header");
-                            if (IsTracing) TryEmitTrace("WriteAsync", "error", $"invalid_page_header_under_write: {id.FileId}/{id.PageIndex}", "invalid_header", id);
-                            throw new PageHeaderInvalidException($"Invalid page header at {id.FileId}/{id.PageIndex} during write.");
+                            PageAccessDiagnostics.Emit(
+                                "Silica.PageAccess", "WriteAsync", "error",
+                                $"invalid_page_header_under_write: {id.FileId}/{id.PageIndex}", null,
+                                new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                                {
+                                    { "status", "error" },
+                                    { "code", "invalid_header" },
+                                    { "file_id", id.FileId.ToString() },
+                                    { "page_index", id.PageIndex.ToString() },
+                                });
+                            throw new PageHeaderInvalidException(id, "invalid_header_under_write");
                         }
                         ValidateHeader(id, hdr2, expectedType, expectedVersion);
                         hdr = hdr2;
@@ -328,20 +442,45 @@ namespace Silica.PageAccess
                         if (_options.RequireHeaderRevalidationOnWrite)
                         {
                             RecordError("header_not_revalidated");
-                            if (IsTracing) TryEmitTrace("WriteAsync", "error", $"header_not_revalidated_requires_header_lock: {id.FileId}/{id.PageIndex}", "header_not_revalidated", id);
+                            PageAccessDiagnostics.Emit(
+                                "Silica.PageAccess", "WriteAsync", "error",
+                                $"header_not_revalidated_requires_header_lock: {id.FileId}/{id.PageIndex}", null,
+                                new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                                {
+                                    { "status", "error" },
+                                    { "code", "header_not_revalidated" },
+                                    { "file_id", id.FileId.ToString() },
+                                    { "page_index", id.PageIndex.ToString() },
+                                });
                             throw new PageHeaderInvalidException("Header revalidation required on write. Include header region [0..HeaderSize) in the write lease.");
                         }
                         else
                         {
                             RecordWarn("header_not_revalidated");
-                            if (IsTracing) TryEmitTrace("WriteAsync", "warn", $"header_not_revalidated: {id.FileId}/{id.PageIndex}", "header_not_revalidated", id);
+                            PageAccessDiagnostics.Emit(
+                                "Silica.PageAccess", "WriteAsync", "warn",
+                                $"header_not_revalidated: {id.FileId}/{id.PageIndex}", null,
+                                new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                                {
+                                    { "status", "warn" },
+                                    { "code", "header_not_revalidated" },
+                                    { "file_id", id.FileId.ToString() },
+                                    { "page_index", id.PageIndex.ToString() },
+                                });
                             // Optional: highlight that no LSN will be stamped unless caller uses WriteAndStampAsync.
                             if (_walHook != null)
                             {
                                 RecordWarn("wal_stamp_unavailable_in_plain_write");
-                                if (IsTracing) TryEmitTrace("WriteAsync", "info",
-                                    $"use WriteAndStampAsync for ARIES-compliant LSN stamping: {id.FileId}/{id.PageIndex}",
-                                    "advise_use_write_and_stamp", id);
+                                PageAccessDiagnostics.Emit(
+                                    "Silica.PageAccess", "WriteAsync", "info",
+                                    $"use WriteAndStampAsync for ARIES-compliant LSN stamping: {id.FileId}/{id.PageIndex}", null,
+                                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                                    {
+                                        { "status", "info" },
+                                        { "code", "advise_use_write_and_stamp" },
+                                        { "file_id", id.FileId.ToString() },
+                                        { "page_index", id.PageIndex.ToString() },
+                                    });
                             }
                         }
                     }
@@ -363,7 +502,16 @@ namespace Silica.PageAccess
             catch (OperationCanceledException)
             {
                 RecordWarn("canceled");
-                if (IsTracing) TryEmitTrace("WriteAsync", "warn", $"operation_canceled: {id.FileId}/{id.PageIndex}", "canceled", id);
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "WriteAsync", "warn",
+                    $"operation_canceled: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "warn" },
+                        { "code", "canceled" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
                 throw;
             }
         }
@@ -387,8 +535,17 @@ namespace Silica.PageAccess
                 if (!TryReadHeader(lease.Slice, out var hdr))
                 {
                     RecordError("invalid_header");
-                    if (IsTracing) TryEmitTrace("WriteHeaderAsync", "error", $"invalid_page_header: {id.FileId}/{id.PageIndex}", "invalid_header", id);
-                    throw new PageHeaderInvalidException($"Invalid page header at {id.FileId}/{id.PageIndex} during header write.");
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteHeaderAsync", "error",
+                        $"invalid_page_header: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "invalid_header" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
+                    throw new PageHeaderInvalidException(id, "invalid_header_header_write");
                 }
 
                 ValidateHeader(id, hdr, expectedType, expectedVersion);
@@ -411,7 +568,16 @@ namespace Silica.PageAccess
                 else
                 {
                     RecordWarn("wal_hook_missing");
-                    if (IsTracing) TryEmitTrace("WriteHeaderAsync", "warn", $"wal_hook_missing: {id.FileId}/{id.PageIndex}", "wal_hook_missing", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteHeaderAsync", "warn",
+                        $"wal_hook_missing: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "warn" },
+                            { "code", "wal_hook_missing" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
 
                 // Ensure the mutated header still respects physical invariants.
@@ -422,9 +588,23 @@ namespace Silica.PageAccess
                 var writeBack = _options.UpdateChecksumOnWrite ? updated.With(checksum: 0) : updated;
                 if (_options.UpdateChecksumOnWrite)
                 {
-                    if (IsTracing) TryEmitTrace("WriteHeaderAsync", "info", $"checksum_zeroed: {id.FileId}/{id.PageIndex}", "checksum_zeroed", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "WriteHeaderAsync", "info",
+                        $"checksum_zeroed: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "info" },
+                            { "code", "checksum_zeroed" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
                 WriteHeaderToMemory(lease.Slice, writeBack);
+                if (lsn != 0)
+                {
+                    // Header-only mutation; mark this page dirty with the stamped pageLSN
+                    lease.MarkDirty((long)lsn);
+                }
 
                 RecordHeaderWrite(updated.Type, start);
                 return updated;
@@ -432,7 +612,16 @@ namespace Silica.PageAccess
             catch (OperationCanceledException)
             {
                 RecordWarn("canceled");
-                if (IsTracing) TryEmitTrace("WriteHeaderAsync", "warn", $"operation_canceled: {id.FileId}/{id.PageIndex}", "canceled", id);
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "WriteHeaderAsync", "warn",
+                    $"operation_canceled: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "warn" },
+                        { "code", "canceled" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
                 throw;
             }
             finally
@@ -493,22 +682,49 @@ namespace Silica.PageAccess
             if (hdr.Lsn == 0 && IsLsnExpected(hdr.Type))
             {
                 RecordWarn("lsn_zero");
-                TryEmitTrace("ValidateHeader", "warn", $"lsn_zero: {id.FileId}/{id.PageIndex}", "lsn_zero", id);
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "warn",
+                    $"lsn_zero: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "warn" },
+                        { "code", "lsn_zero" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
                 // optionally throw or warn
             }
 
             if (hdr.Magic != _options.Magic)
             {
                 RecordError("bad_magic");
-                TryEmitTrace("ValidateHeader", "error", $"magic_mismatch: {id.FileId}/{id.PageIndex}", "bad_magic", id);
-                throw new MagicMismatchException($"Magic mismatch at {id.FileId}/{id.PageIndex}: expected={_options.Magic:X8}, actual={hdr.Magic:X8}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"magic_mismatch: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "bad_magic" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new MagicMismatchException(id, _options.Magic, hdr.Magic);
             }
 
             if (expectedType != PageType.Unknown && hdr.Type != expectedType)
             {
                 RecordError("type_mismatch");
-                TryEmitTrace("ValidateHeader", "error", $"type_mismatch: {id.FileId}/{id.PageIndex}", "type_mismatch", id);
-                throw new PageTypeMismatchException($"Page type mismatch at {id.FileId}/{id.PageIndex}: expected={expectedType}, actual={hdr.Type}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"type_mismatch: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "type_mismatch" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageTypeMismatchException(id, expectedType, hdr.Type);
             }
 
             // PageType handling: Unknown is allowed only if explicitly expected, otherwise reject.
@@ -517,41 +733,95 @@ namespace Silica.PageAccess
                 if (expectedType == PageType.Unknown)
                 {
                     RecordWarn("type_unknown");
-                    TryEmitTrace("ValidateHeader", "warn", $"page_type_unknown: {id.FileId}/{id.PageIndex}", "type_unknown", id);
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "ValidateHeader", "warn",
+                        $"page_type_unknown: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "warn" },
+                            { "code", "type_unknown" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
                 }
                 else
                 {
                     RecordError("type_unexpected_unknown");
-                    TryEmitTrace("ValidateHeader", "error", $"unexpected_unknown_type: {id.FileId}/{id.PageIndex}", "type_unexpected_unknown", id);
-                    throw new PageHeaderInvalidException($"Unexpected Unknown page type at {id.FileId}/{id.PageIndex}.");
+                    PageAccessDiagnostics.Emit(
+                        "Silica.PageAccess", "ValidateHeader", "error",
+                        $"unexpected_unknown_type: {id.FileId}/{id.PageIndex}", null,
+                        new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                        {
+                            { "status", "error" },
+                            { "code", "type_unexpected_unknown" },
+                            { "file_id", id.FileId.ToString() },
+                            { "page_index", id.PageIndex.ToString() },
+                        });
+                    throw new PageHeaderInvalidException(id, "unexpected_unknown_type");
                 }
             }
             else if (expectedType == PageType.Unknown && !IsKnownPageType(hdr.Type))
             {
                 RecordError("type_invalid");
-                TryEmitTrace("ValidateHeader", "error", $"invalid_page_type: {id.FileId}/{id.PageIndex}", "type_invalid", id);
-                throw new PageHeaderInvalidException($"Invalid page type at {id.FileId}/{id.PageIndex}: {hdr.Type}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"invalid_page_type: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "type_invalid" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageHeaderInvalidException(id, $"invalid_type:{hdr.Type}");
             }
 
             if (hdr.Version.Major != expectedVersion.Major)
             {
                 RecordError("major_version");
-                TryEmitTrace("ValidateHeader", "error", $"major_version_mismatch: {id.FileId}/{id.PageIndex}", "major_version", id);
-                throw new PageVersionMismatchException($"Major version mismatch at {id.FileId}/{id.PageIndex}: expected={expectedVersion.Major}, actual={hdr.Version.Major}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"major_version_mismatch: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "major_version" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageVersionMismatchException(id, expectedVersion, hdr.Version, "major_mismatch");
             }
 
             if (hdr.Version.Minor < expectedVersion.Minor && !_options.AllowMinorUpgrade)
             {
                 RecordError("minor_version");
-                TryEmitTrace("ValidateHeader", "error", $"minor_version_too_old: {id.FileId}/{id.PageIndex}", "minor_version", id);
-                throw new PageVersionMismatchException($"Minor version too old at {id.FileId}/{id.PageIndex}: expected≥{expectedVersion.Minor}, actual={hdr.Version.Minor}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"minor_version_too_old: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "minor_version" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageVersionMismatchException(id, expectedVersion, hdr.Version, "minor_too_old");
             }
 
             if (!_options.AllowFutureMinor && hdr.Version.Minor > expectedVersion.Minor)
             {
                 RecordError("minor_future");
-                TryEmitTrace("ValidateHeader", "error", $"minor_version_too_new: {id.FileId}/{id.PageIndex}", "minor_future", id);
-                throw new PageVersionMismatchException($"Minor version too new at {id.FileId}/{id.PageIndex}: expected≤{expectedVersion.Minor}, actual={hdr.Version.Minor}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeader", "error",
+                    $"minor_version_too_new: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "minor_future" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageVersionMismatchException(id, expectedVersion, hdr.Version, "minor_too_new");
             }
 
         }
@@ -563,15 +833,33 @@ namespace Silica.PageAccess
             if (pageLength < PageHeader.HeaderSize)
             {
                 RecordError("page_too_small");
-                TryEmitTrace("ValidateHeaderPhysical", "error", $"page_too_small: {id.FileId}/{id.PageIndex}", "page_too_small", id);
-                throw new PageHeaderInvalidException($"Page too small at {id.FileId}/{id.PageIndex}: len={pageLength}, required={PageHeader.HeaderSize}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeaderPhysical", "error",
+                    $"page_too_small: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "page_too_small" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageHeaderInvalidException(id, $"page_too_small(len={pageLength}, required={PageHeader.HeaderSize})");
             }
             // FreeSpaceOffset must be within [HeaderSize..pageLength]
             if (hdr.FreeSpaceOffset < PageHeader.HeaderSize || hdr.FreeSpaceOffset > pageLength)
             {
                 RecordError("free_offset_range");
-                TryEmitTrace("ValidateHeaderPhysical", "error", $"free_offset_out_of_range: {id.FileId}/{id.PageIndex}", "free_offset_range", id);
-                throw new PageHeaderInvalidException($"FreeSpaceOffset out of bounds at {id.FileId}/{id.PageIndex}: offset={hdr.FreeSpaceOffset}, pageLen={pageLength}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeaderPhysical", "error",
+                    $"free_offset_out_of_range: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "free_offset_range" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageHeaderInvalidException(id, $"free_offset_out_of_range(offset={hdr.FreeSpaceOffset}, pageLen={pageLength})");
             }
 
             // PageType validity handled in ValidateHeader via IsKnownPageType when unconstrained
@@ -583,8 +871,17 @@ namespace Silica.PageAccess
             if (hdr.FreeSpaceOffset < PageHeader.HeaderSize)
             {
                 RecordError("free_offset_lt_header");
-                TryEmitTrace("ValidateHeaderPhysicalLowerBoundOnly", "error", $"free_offset_lt_header: {id.FileId}/{id.PageIndex}", "free_offset_lt_header", id);
-                throw new PageHeaderInvalidException($"FreeSpaceOffset below header size: offset={hdr.FreeSpaceOffset}, required≥{PageHeader.HeaderSize} at {id.FileId}/{id.PageIndex}.");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "ValidateHeaderPhysicalLowerBoundOnly", "error",
+                    $"free_offset_lt_header: {id.FileId}/{id.PageIndex}", null,
+                    new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "free_offset_lt_header" },
+                        { "file_id", id.FileId.ToString() },
+                        { "page_index", id.PageIndex.ToString() },
+                    });
+                throw new PageHeaderInvalidException(id, $"free_offset_lt_header(offset={hdr.FreeSpaceOffset}, required>={PageHeader.HeaderSize})");
             }
         }
 
@@ -707,8 +1004,14 @@ namespace Silica.PageAccess
             var success = PageHeader.TryRead(mem.Span, out hdr);
             if (!success)
             {
-                // Use the guarded trace path to avoid any recursion on this thread.
-                TryEmitTrace("TryReadHeader", "error", "Failed to parse page header", "header_parse_failed");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "TryReadHeader", "error",
+                    "Failed to parse page header", null,
+                    new Dictionary<string, string>(2, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "error" },
+                        { "code", "header_parse_failed" },
+                    });
             }
             return success;
         }
@@ -728,7 +1031,14 @@ namespace Silica.PageAccess
             }
             catch (Exception ex)
             {
-                if (IsTracing) TryEmitTrace("DisposeAsync", "warn", $"flush_all_failed: {ex.Message}", "flush_failed");
+                PageAccessDiagnostics.Emit(
+                    "Silica.PageAccess", "DisposeAsync", "warn",
+                    $"flush_all_failed: {ex.Message}", ex,
+                    new Dictionary<string, string>(2, StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "status", "warn" },
+                        { "code", "flush_failed" },
+                    });
             }
         }
 
@@ -747,41 +1057,7 @@ namespace Silica.PageAccess
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void TryEmitTrace(string operation, string status, string message, string code, in PageId? id = null)
-        {
-            if (!DiagnosticsCoreBootstrap.IsStarted) return;
-            if (_traceReentrancy != 0) return; // prevent recursion on this thread if trace pipeline faults
-            try
-            {
-                _traceReentrancy = 1;
-                string component = (_componentTag.Value is string s) ? s : "PageAccess";
-                var tags = new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase);
-                // Keep trace classification under a dedicated, low-cardinality key.
-                tags["code"] = code;
-                if (id.HasValue)
-                {
-                    // Add structured correlation tags for querying.
-                    tags["file_id"] = id.Value.FileId.ToString();
-                    tags["page_index"] = id.Value.PageIndex.ToString();
-                }
-                DiagnosticsCoreBootstrap.Instance.Traces.Emit(
-                    component: component,
-                    operation: operation,
-                    status: status,
-                    tags: tags,
-                    message: message
-                );
-            }
-            catch
-            {
-                // Swallow: never bounce back into metrics or tracing on trace failures.
-            }
-            finally
-            {
-                _traceReentrancy = 0;
-            }
-        }
+        // Inline TryEmitTrace removed; all trace emissions now go through PageAccessDiagnostics.Emit.
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsLsnExpected(PageType t)
