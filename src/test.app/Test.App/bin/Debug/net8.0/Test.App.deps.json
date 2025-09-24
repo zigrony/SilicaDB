@@ -10,6 +10,7 @@
         "dependencies": {
           "Silica.Authentication": "1.0.0",
           "Silica.BufferPool": "1.0.0",
+          "Silica.Certificates": "1.0.0",
           "Silica.Concurrency": "1.0.0",
           "Silica.DiagnosticsCore": "1.0.0",
           "Silica.Evictions": "1.0.0",
@@ -44,6 +45,17 @@
         },
         "runtime": {
           "Silica.BufferPool.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.Certificates/1.0.0": {
+        "dependencies": {
+          "Silica.DiagnosticsCore": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Certificates.dll": {
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -165,6 +177,11 @@
       "sha512": ""
     },
     "Silica.BufferPool/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Certificates/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

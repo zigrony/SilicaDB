@@ -51,7 +51,7 @@ $AllProjectsList = @(
   "Silica.BufferPool","Silica.Common","Silica.Concurrency",
   "Silica.DiagnosticsCore","Silica.Durability","Silica.Evictions",
   "Silica.Exceptions","Silica.Storage","Silica.PageAccess",
-  "Silica.Sql.Lexer","Silica.Authentication","test.app"
+  "Silica.Sql.Lexer","Silica.Authentication","Silica.Certificates","test.app"
 )
 
 # Resolve which projects to export

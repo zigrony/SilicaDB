@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Silica.Authentication\Silica.Authentication\Silica.Authentication.csproj" />
     <ProjectReference Include="..\..\Silica.BufferPool\Silica.BufferPool\Silica.BufferPool.csproj" />
+    <ProjectReference Include="..\..\Silica.Certificates\Silica.Certificates\Silica.Certificates.csproj" />
     <ProjectReference Include="..\..\Silica.Concurrency\Silica.Concurrency\Silica.Concurrency.csproj" />
     <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
     <ProjectReference Include="..\..\Silica.Evictions\Silica.Evictions\Silica.Evictions.csproj" />

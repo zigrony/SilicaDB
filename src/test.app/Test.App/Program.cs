@@ -14,11 +14,22 @@ using Silica.Authentication.Tests;
 using Silica.Concurrency.Tests;
 using Silica.Durability.Tests;
 using Silica.Sql.Lexer.Tests;
+using Silica.Certificates.Providers;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Silica.Certificates.Metrics;
+using Silica.Certificates.Diagnostics;
+using System.Security.Cryptography.X509Certificates;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+
+
+
+
         // Enable auth verbose via env (no assembly change required)
         Environment.SetEnvironmentVariable("SILICA_AUTHENTICATION_VERBOSE", "1");
 
@@ -51,6 +62,18 @@ class Program
 
         // 2) Start DiagnosticsCore
         var instance = DiagnosticsCoreBootstrap.Start(options);
+
+        // Register metrics
+        CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
+
+        // Register traces
+        // After DiagnosticsCoreBootstrap.Start(options)
+        CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
+
+        // No need for CertificateDiagnostics.Initialize(...)
+
+
+        var builder = WebApplication.CreateBuilder(args);
 
         // 2.5) Enable verbose auth diagnostics so EmitDebug calls surface
         //Silica.Authentication.Diagnostics.SetVerbose(true);
@@ -94,6 +117,36 @@ class Program
         // 6) Print status
         var status = DiagnosticsCoreBootstrap.GetStatus();
         Console.WriteLine($"Diagnostics started: {status.IsStarted}, Policy: {status.DispatcherPolicy}");
+
+        CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
+
+        // Use ephemeral cert
+        var certProvider = new EphemeralCertificateProvider();
+        var cert = certProvider.GetCertificate();
+
+        // On Windows, re-import with MachineKeySet so SChannel can access the private key
+        if (OperatingSystem.IsWindows())
+        {
+            cert = new X509Certificate2(
+                cert.Export(X509ContentType.Pfx),
+                (string?)null,
+                X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
+        }
+
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ListenAnyIP(5001, listenOptions =>
+            {
+                listenOptions.UseHttps(cert);
+            });
+        });
+
+        var app = builder.Build();
+        app.MapGet("/", () => "Hello from SilicaDB over ephemeral TLS!");
+        app.Run();
+        Console.ReadKey();
+
+
 
         // 4) Run your harnesses
         //LexerTestHarness.Run();

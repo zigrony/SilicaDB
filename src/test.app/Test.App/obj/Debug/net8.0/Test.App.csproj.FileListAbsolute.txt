@@ -37,3 +37,14 @@ C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\refint\Test.App.d
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.genruntimeconfig.cache
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\ref\Test.App.dll
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Certificates.dll
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Certificates.pdb
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.MvcApplicationPartsAssemblyInfo.cache
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.build.json
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.development.json
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.Test.App.Microsoft.AspNetCore.StaticWebAssets.props
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.build.Test.App.props
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Test.App.props
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Test.App.props
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.pack.json
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\scopedcss\bundle\Test.App.styles.css
