@@ -16,6 +16,7 @@
           "Silica.Evictions": "1.0.0",
           "Silica.Exceptions": "1.0.0",
           "Silica.PageAccess": "1.0.0",
+          "Silica.Sessions": "1.0.0",
           "Silica.Sql.Lexer": "1.0.0",
           "Silica.Storage": "1.0.0"
         },
@@ -136,6 +137,18 @@
           }
         }
       },
+      "Silica.Sessions/1.0.0": {
+        "dependencies": {
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Sessions.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "Silica.Sql.Lexer/1.0.0": {
         "dependencies": {
           "Silica.Common": "1.0.0",
@@ -217,6 +230,11 @@
       "sha512": ""
     },
     "Silica.PageAccess/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Sessions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

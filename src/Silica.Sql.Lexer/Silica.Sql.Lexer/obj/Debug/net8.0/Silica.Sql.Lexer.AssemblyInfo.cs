@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Sql.Lexer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+61e945f8d02603099e5db696616c1393961bc14e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a800cc4ab5625eaf5edecaacda08e6ffd12d3057")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Sql.Lexer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Sql.Lexer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

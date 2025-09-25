@@ -29,7 +29,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Sql.Lexer", "..\Sili
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Authentication", "..\Silica.Authentication\Silica.Authentication\Silica.Authentication.csproj", "{5E890D1A-3857-4B97-8515-0A6D532EB8A8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.Certificates", "..\Silica.Certificates\Silica.Certificates\Silica.Certificates.csproj", "{2BA1CF87-825E-4EF0-9276-BA2DD4E951B3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Certificates", "..\Silica.Certificates\Silica.Certificates\Silica.Certificates.csproj", "{2BA1CF87-825E-4EF0-9276-BA2DD4E951B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.Sessions", "..\Silica.Sessions\Silica.Sessions\Silica.Sessions.csproj", "{AFC2B9C4-ED83-4BA9-94E9-95544E9BCAB8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -93,6 +95,10 @@ Global
 		{2BA1CF87-825E-4EF0-9276-BA2DD4E951B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BA1CF87-825E-4EF0-9276-BA2DD4E951B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BA1CF87-825E-4EF0-9276-BA2DD4E951B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFC2B9C4-ED83-4BA9-94E9-95544E9BCAB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFC2B9C4-ED83-4BA9-94E9-95544E9BCAB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFC2B9C4-ED83-4BA9-94E9-95544E9BCAB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFC2B9C4-ED83-4BA9-94E9-95544E9BCAB8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

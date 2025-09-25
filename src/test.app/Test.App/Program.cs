@@ -21,6 +21,7 @@ using Microsoft.Extensions.Hosting;
 using Silica.Certificates.Metrics;
 using Silica.Certificates.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
+using Silica.Sessions.Tests;
 
 class Program
 {
@@ -147,7 +148,6 @@ class Program
         Console.ReadKey();
 
 
-
         // 4) Run your harnesses
         //LexerTestHarness.Run();
         //await EvictionsTestHarness.Run();
@@ -157,11 +157,12 @@ class Program
         //await PageAccessTestHarness.Run();
         //await ConcurrencyTestHarness.Run();
         //await PageAccessIntegrationHarnessPhysical.RunAsync();
-        await AuthenticationTestHarnessLocal.Run();
-        await AuthenticationTestHarnessNtlm.Run();
-        await AuthenticationTestHarnessKerberos.Run();
-        await AuthenticationTestHarnessJwt.Run();
-        await AuthenticationTestHarnessCertificate.Run();
+        //await AuthenticationTestHarnessLocal.Run();
+        //await AuthenticationTestHarnessNtlm.Run();
+        //await AuthenticationTestHarnessKerberos.Run();
+        //await AuthenticationTestHarnessJwt.Run();
+        //await AuthenticationTestHarnessCertificate.Run();
+        await SessionsTestHarness.Run();
 
         Console.WriteLine("All test harnesses completed.");
 

@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\Silica.Evictions\Silica.Evictions\Silica.Evictions.csproj" />
     <ProjectReference Include="..\..\Silica.Exceptions\Silica.Exceptions\Silica.Exceptions.csproj" />
     <ProjectReference Include="..\..\Silica.PageAccess\Silica.PageAccess\Silica.PageAccess.csproj" />
+    <ProjectReference Include="..\..\Silica.Sessions\Silica.Sessions\Silica.Sessions.csproj" />
     <ProjectReference Include="..\..\Silica.Sql.Lexer\Silica.Sql.Lexer\Silica.Sql.Lexer.csproj" />
     <ProjectReference Include="..\..\Silica.Storage\Silica.Storage\Silica.Storage.csproj" />
   </ItemGroup>

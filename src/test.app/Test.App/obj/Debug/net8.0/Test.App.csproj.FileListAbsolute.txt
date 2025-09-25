@@ -48,3 +48,5 @@ C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\m
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Test.App.props
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.pack.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\scopedcss\bundle\Test.App.styles.css
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sessions.dll
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sessions.pdb
