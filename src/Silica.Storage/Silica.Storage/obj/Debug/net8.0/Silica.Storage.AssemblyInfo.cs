@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Storage")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+17ef0ef0254823c71abca0fbd9e6f8804525ae6e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+02c81ad7cd50fb3f6093a1710612f84bac81bded")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Storage")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Storage")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

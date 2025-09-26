@@ -18,7 +18,11 @@ namespace Silica.UI.Core
 
         public SilicaSystem(SilicaOptions options)
         {
+            // Register UI exception catalog once per process before subsystem construction.
+            Silica.UI.Exceptions.UIExceptions.RegisterAll();
+
             _sessions = new SessionManagerAdapter(options.SessionConfig);
+            _sessions.Initialize();
             _auth = new AuthManager(options.AuthConfig, _sessions);
             _frontEnd = new FrontEndController(options.FrontEndConfig, _auth, _sessions);
         }
@@ -38,11 +42,13 @@ namespace Silica.UI.Core
             await StartAsync(cancellationToken);
         }
 
-        public async Task ReloadAsync(SilicaOptions options, CancellationToken cancellationToken = default)
+        // Return a new, started system. Caller is responsible for swapping references.
+        public async Task<SilicaSystem> ReloadAsync(SilicaOptions options, CancellationToken cancellationToken = default)
         {
             await StopAsync(cancellationToken);
             var newSystem = new SilicaSystem(options);
             await newSystem.StartAsync(cancellationToken);
+            return newSystem;
         }
 
         public async ValueTask DisposeAsync()

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Silica.Authentication.Abstractions;
 using Silica.Authentication.Local;
@@ -18,14 +17,26 @@ namespace Silica.UI.Auth
 
         public DbUserStore(IEnumerable<LocalUser> seedUsers)
         {
-            _users.AddRange(seedUsers);
+            if (seedUsers != null)
+            {
+                foreach (var u in seedUsers)
+                {
+                    if (u == null) continue;
+                    // Avoid duplicate seed entries by username (case-insensitive)
+                    var existingIndex = FindIndexByUsername(u.Username);
+                    if (existingIndex >= 0) _users[existingIndex] = u;
+                    else _users.Add(u);
+                }
+            }
         }
 
         // Required by ILocalUserStore
         public LocalUser? FindByUsername(string username)
         {
-            return _users.FirstOrDefault(u =>
-                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(username)) return null;
+            var idx = FindIndexByUsername(username);
+            if (idx < 0) return null;
+            return _users[idx];
         }
 
         public Task<LocalUser?> FindByUsernameAsync(string username)
@@ -46,17 +57,31 @@ namespace Silica.UI.Auth
                 "auth_successful_login", null,
                 new Dictionary<string, string> { { "username", username ?? string.Empty } });
         }
-
+        private int FindIndexByUsername(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return -1;
+            for (int i = 0; i < _users.Count; i++)
+            {
+                var u = _users[i];
+                if (u != null && string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
 
         public Task AddUserAsync(LocalUser user)
         {
-            _users.Add(user);
+            if (user == null) return Task.CompletedTask;
+            var idx = FindIndexByUsername(user.Username);
+            if (idx >= 0) _users[idx] = user;
+            else _users.Add(user);
             return Task.CompletedTask;
         }
 
         public Task UpdateUserAsync(LocalUser user)
         {
-            var existing = _users.FindIndex(u => u.Username == user.Username);
+            if (user == null) return Task.CompletedTask;
+            var existing = FindIndexByUsername(user.Username);
             if (existing >= 0) _users[existing] = user;
             return Task.CompletedTask;
         }

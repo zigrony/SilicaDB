@@ -14,6 +14,7 @@ using Silica.DiagnosticsCore.Metrics;
 using System.Diagnostics;
 using Silica.UI.Diagnostics;
 using Silica.UI.Metrics;
+using System.Collections.Generic;
 
 namespace Silica.UI.FrontEnds
 {
@@ -48,8 +49,12 @@ namespace Silica.UI.FrontEnds
         }
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
+            // Ensure UI exception catalog is registered before any failure paths.
+            Silica.UI.Exceptions.UIExceptions.RegisterAll();
             if (_host != null)
-                throw new InvalidOperationException("Frontend already running.");
+                throw new Silica.UI.Exceptions.ComponentRenderFailureException(
+                    componentId: "Silica.UI.FrontEndController",
+                    inner: null);
             UiDiagnostics.Emit("Silica.UI.FrontEnd", "Start", "start",
                 "frontend_starting", null, new Dictionary<string, string> { { "url", _config.Url } });
 
@@ -98,9 +103,15 @@ namespace Silica.UI.FrontEnds
 
                                       endpoints.MapGet("/private", async context =>
                                       {
-                                          if (!_config.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                          // Enforce HTTPS for private endpoints if configured
+                                          if (_config.EnforceHttpsForPrivate &&
+                                              !context.Request.IsHttps)
                                           {
-                                              // Still allow in dev; production should enforce TLS.
+                                              UiDiagnostics.Emit("Silica.UI.FrontEnd", "GET /private", "warn",
+                                                  "tls_required");
+                                              context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                                              await context.Response.WriteAsync("TLS required");
+                                              return;
                                           }
 
                                           // Basic auth (if enabled)
@@ -185,7 +196,7 @@ namespace Silica.UI.FrontEnds
                                                   HttpOnly = true,
                                                   Secure = true,
                                                   SameSite = SameSiteMode.Strict,
-                                                  MaxAge = TimeSpan.FromMinutes(15)
+                                                  MaxAge = TimeSpan.FromMinutes(_sessions.IdleTimeoutMinutes)
                                               });
                                           }
                                           UiDiagnostics.Emit("Silica.UI.FrontEnd", "GET /private", "ok",
@@ -218,7 +229,7 @@ namespace Silica.UI.FrontEnds
                                               "session_resume_attempt", null,
                                               new Dictionary<string, string> { { "session_id", sessionGuid.ToString() } });
 
-                                          dynamic? session = _sessions.Resume(sessionGuid);
+                                          var session = _sessions.Resume(sessionGuid);
                                           if (session is null)
                                           {
                                               UiDiagnostics.Emit("Silica.UI.FrontEnd", "GET /private/resume", "warn",
@@ -277,6 +288,7 @@ namespace Silica.UI.FrontEnds
             _host?.Dispose();
         }
 
-        private bool _authMatchesConfigBasicEnabled() => true; // placeholder for future provider switching
+        private bool _authMatchesConfigBasicEnabled()
+            => _auth.IsBasicAuthEnabled;
     }
 }

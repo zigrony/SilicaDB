@@ -29,5 +29,6 @@
     public class FrontEndConfig
     {
         public string Url { get; set; } = "https://localhost:5001";
+        public bool EnforceHttpsForPrivate { get; set; } = true;
     }
 }

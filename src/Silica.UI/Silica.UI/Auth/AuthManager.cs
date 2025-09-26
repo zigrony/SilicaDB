@@ -7,6 +7,7 @@ using Silica.Authentication.Abstractions;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.UI.Diagnostics;
 using Silica.UI.Metrics;
+using System.Collections.Generic;
 
 namespace Silica.UI.Auth
 {
@@ -22,6 +23,7 @@ namespace Silica.UI.Auth
         private readonly LocalAuthenticationOptions _localOptions;
         private readonly LocalAuthenticator _local;
         private readonly IMetricsManager _metrics;
+        public bool IsBasicAuthEnabled => _config.EnableBasicAuth;
 
         public AuthManager(AuthConfig config, SessionManagerAdapter sessions)
         {
@@ -31,19 +33,26 @@ namespace Silica.UI.Auth
             _config = config;
             _sessions = sessions;
             _hasher = new PasswordHasher();
+            // Single metrics manager instance per component
             _metrics = new NullMetricsManager();
             UiMetrics.RegisterAll(_metrics, "Silica.UI.Auth");
 
-            // Seed a local user (demo/dev only) from config.Auth
-            var salt = PasswordHasher.CreateSalt();
-            var seededUser = new LocalUser
+            // Seed a local user (demo/dev only), gated by config and non-empty values
+            var seedUsers = new List<LocalUser>();
+            if (!string.IsNullOrWhiteSpace(_config.SeedUsername) &&
+                !string.IsNullOrWhiteSpace(_config.SeedPassword) &&
+                string.Equals(_config.Provider, "Local", StringComparison.OrdinalIgnoreCase))
             {
-                Username = _config.SeedUsername,
-                Salt = salt,
-                PasswordHash = _hasher.Hash(_config.SeedPassword, salt),
-                Roles = new[] { "User" }
-            };
-
+                var salt = PasswordHasher.CreateSalt();
+                var seededUser = new LocalUser
+                {
+                    Username = _config.SeedUsername,
+                    Salt = salt,
+                    PasswordHash = _hasher.Hash(_config.SeedPassword, salt),
+                    Roles = new[] { "User" }
+                };
+                seedUsers.Add(seededUser);
+            }
             _localOptions = new LocalAuthenticationOptions
             {
                 MinPasswordLength = _config.MinPasswordLength,
@@ -54,54 +63,50 @@ namespace Silica.UI.Auth
             };
 
             // In production, replace with DB fetch of users
-            _userStore = new DbUserStore(new[] { seededUser });
+            _userStore = new DbUserStore(seedUsers);
 
             // Use the session provider from adapter; minimal metrics via NullMetricsManager
             _local = new LocalAuthenticator(
                 _userStore,
                 _hasher,
                 _localOptions,
-                metrics: new NullMetricsManager(),
+                metrics: _metrics,
                 sessionProvider: _sessions.Provider);
         }
 
         public bool Authenticate(string username, string password)
         {
-            var result = AuthenticateAsync(new AuthenticationContext
-            {
-                Username = username,
-                Password = password
-            }).GetAwaiter().GetResult();
+            // Synchronous convenience; prefer async in server code paths.
+            var ctx = new AuthenticationContext { Username = username, Password = password };
+            var result = AuthenticateAsync(ctx).GetAwaiter().GetResult();
             return result.Succeeded;
         }
 
-        public Task<IAuthenticationResult> AuthenticateAsync(AuthenticationContext context)
+        public async Task<IAuthenticationResult> AuthenticateAsync(AuthenticationContext context)
         {
+            if (context == null) throw new ArgumentNullException(nameof(context));
             // metrics + trace: attempt
             UiMetrics.IncrementLoginAttempt(_metrics);
             UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "start",
                 "login_attempt", null,
                 more: new Dictionary<string, string> { { "username", context.Username ?? string.Empty } });
 
-            return _local.AuthenticateAsync(context).ContinueWith(t =>
+            var res = await _local.AuthenticateAsync(context);
+            if (!res.Succeeded)
             {
-                var res = t.Result;
-                if (!res.Succeeded)
-                {
-                    UiMetrics.IncrementLoginFailure(_metrics);
-                    UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "warn", "login_failed", null,
-                        new Dictionary<string, string> { { "username", context.Username ?? string.Empty } });
-                }
-                else
-                {
-                    UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "ok", "login_success", null,
-                        new Dictionary<string, string> {
-                            { "username", context.Username ?? string.Empty },
-                            { "session_id", res.SessionId.ToString() }
-                        });
-                }
-                return (IAuthenticationResult)res;
-            });
+                UiMetrics.IncrementLoginFailure(_metrics);
+                UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "warn", "login_failed", null,
+                    new Dictionary<string, string> { { "username", context.Username ?? string.Empty } });
+            }
+            else
+            {
+                UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "ok", "login_success", null,
+                    new Dictionary<string, string> {
+                        { "username", context.Username ?? string.Empty },
+                        { "session_id", res.SessionId.ToString() }
+                    });
+            }
+            return res;
         }
     }
 }
