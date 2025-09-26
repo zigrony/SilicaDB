@@ -3,8 +3,10 @@ C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debu
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.Authentication.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.DiagnosticsCore.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.Exceptions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.Sessions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.Exceptions.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\bin\Debug\net8.0\Silica.Sessions.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\obj\Debug\net8.0\Silica.Authentication.csproj.AssemblyReference.cache
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\obj\Debug\net8.0\Silica.Authentication.GeneratedMSBuildEditorConfig.editorconfig
 C:\GitHubRepos\SilicaDB\src\Silica.Authentication\Silica.Authentication\obj\Debug\net8.0\Silica.Authentication.AssemblyInfoInputs.cache

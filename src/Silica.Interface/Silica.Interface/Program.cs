@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +17,8 @@ using Silica.FrontEnds.Core;
 using Silica.FrontEnds.Kestrel;
 using Silica.Authentication.Abstractions;
 using Silica.Authentication.Local;
+using Silica.Sessions.Contracts;
+using Silica.Sessions.Implementation;
 
 class Program
 {
@@ -82,7 +85,16 @@ class Program
         };
 
         var userStore = new InMemoryLocalUserStore(new[] { seededUser }, localOptions);
-        var localAuthenticator = new LocalAuthenticator(userStore, hasher, localOptions, instance.Metrics);
+        // Sessions provider (in-memory manager) with metrics bound to Interface component
+        ISessionProvider sessionProvider = new SessionManager(instance.Metrics, "Silica.Interface.Sessions");
+
+        // Pass session provider into authenticator (DI-like). Use named argument to avoid binding to principalMapper.
+        var localAuthenticator = new LocalAuthenticator(
+            userStore,
+            hasher,
+            localOptions,
+            instance.Metrics,
+            sessionProvider: sessionProvider);
         // -----------------------------------
 
         var registry = new FrontendRegistry(instance.Metrics);
@@ -103,7 +115,7 @@ class Program
         var app = registry.ConfigureAll(builder);
 
         // 4) Public static docs (pointing to Documentation folder)
-        var publicPath = @"C:\GitHubRepos\SilicaDB\Documentation";
+        var publicPath = @"C:\GitHubRepos\SilicaDB\src\Silica.Documentation\";
 
         // Serve index.html / index.htm / default.html if present
         app.UseDefaultFiles(new DefaultFilesOptions
@@ -177,13 +189,59 @@ class Program
                 return Results.Unauthorized();
             }
 
-            return Results.Ok($"Private endpoint reached by: {result.Principal}");
+            // If a session was created by the authenticator, return it to client.
+            if (result is { Succeeded: true, SessionId: Guid sid } && sid != Guid.Empty)
+            {
+                // Header + cookie for browser convenience
+                ctx.Response.Headers["X-Silica-Session-Id"] = sid.ToString();
+                ctx.Response.Cookies.Append("silica_session_id", sid.ToString(), new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromMinutes(15)
+                });
+            }
+
+            return Results.Ok(new
+            {
+                principal = result.Principal,
+                session_id = result.SessionId,
+                roles = result.Roles
+            });
+        });
+
+        // Session resume: read header/cookie, touch, and return a snapshot.
+        app.MapGet("/private/resume", (HttpContext ctx) =>
+        {
+            string? sid = null;
+            if (ctx.Request.Headers.TryGetValue("X-Silica-Session-Id", out var h) && h.Count > 0) sid = h[0];
+            else if (ctx.Request.Cookies.TryGetValue("silica_session_id", out var c)) sid = c;
+
+            if (string.IsNullOrWhiteSpace(sid) || !Guid.TryParse(sid, out var sessionGuid))
+                return Results.BadRequest(new { error = "missing_or_invalid_session_id" });
+
+            var session = sessionProvider.ResumeSession(sessionGuid);
+            if (session == null) return Results.Unauthorized();
+
+            // Activity touch; keep lifecycle accurate.
+            session.Touch();
+            var snap = session.ReadSnapshot();
+            return Results.Ok(new
+            {
+                session_id = snap.SessionId,
+                principal = snap.Principal,
+                state = snap.State.ToString(),
+                created_utc = snap.CreatedUtc,
+                last_activity_utc = snap.LastActivityUtc
+            });
         });
 
         // 7) Run
         registry.RunIfAnyFrontendOwnsLifecycle(app);
 
         // 8) Shutdown
+        // No background sweeps started here; SessionManager can be managed centrally if needed.
         DiagnosticsCoreBootstrap.Stop(throwOnErrors: true);
     }
 }

@@ -10,7 +10,7 @@ using Silica.Exceptions;
 
 namespace Silica.Sessions.Implementation
 {
-    public sealed class SessionManager : ISessionManager, IDisposable
+    public sealed class SessionManager : ISessionManager, ISessionProvider, IDisposable
     {
         private readonly Dictionary<Guid, ISessionContext> _sessions = new();
         private readonly object _lock = new();
@@ -122,6 +122,32 @@ namespace Silica.Sessions.Implementation
                 CreateManagerTagMap(session.SessionId, session.GlobalSessionId,
                     "principal_present", principalPresent));
             return session;
+        }
+
+        // ISessionProvider: create is already implemented above via ISessionManager.CreateSession.
+        // Provide a simple indirection to satisfy the contract.
+        ISessionContext ISessionProvider.CreateSession(string? principal, TimeSpan idleTimeout, TimeSpan transactionTimeout, string? coordinatorNode)
+        {
+            return CreateSession(principal, idleTimeout, transactionTimeout, coordinatorNode);
+        }
+
+        // ISessionProvider: attempt to resume by ID without throwing.
+        ISessionContext? ISessionProvider.ResumeSession(Guid sessionId)
+        {
+            if (_disposed) return null;
+            lock (_lock)
+            {
+                _sessions.TryGetValue(sessionId, out var session);
+                return session;
+            }
+        }
+
+        // ISessionProvider: invalidate session (expire) idempotently.
+        bool ISessionProvider.InvalidateSession(Guid sessionId)
+        {
+            if (_disposed) return false;
+            // TryExpire handles removal + terminal transition safely.
+            return TryExpire(sessionId);
         }
 
         // Convenience ISession getters for frontend adapters (optional).

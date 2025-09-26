@@ -17,6 +17,9 @@
 .PARAMETER IncludeTests
   If present, includes any folder or file matching *Tests*. Otherwise those are filtered out.
 
+.PARAMETER IncludeWeb
+  If present, includes web‑related files (*.js, *.css, *.html, *.htm, *.md).
+
 .PARAMETER GenerateMap
   If present, emits a Markdown map (.md) showing file structure, types, and project references.
 
@@ -24,7 +27,7 @@
   Path (including filename) for the generated Markdown map. Defaults to "$dstPath\ProjectMap.md".
 
 .EXAMPLE
-  .\PackageForAI.ps1 -Projects All -IncludeTests -GenerateMap
+  .\PackageForAI.ps1 -Projects All -IncludeTests -IncludeWeb -GenerateMap
 #>
 param(
   [ValidateNotNullOrEmpty()][string]$srcPath      = "C:\GitHubRepos\SilicaDB\src\",
@@ -32,6 +35,7 @@ param(
   [string[]]                        $Projects     = @("All"),
   [int]                             $fileSize     = 80000,
   [switch]                          $IncludeTests,
+  [switch]                          $IncludeWeb,
   [switch]                          $GenerateMap,
   [string]                          $MapOutput    = ""
 )
@@ -51,11 +55,23 @@ $AllProjectsList = @(
   "Silica.BufferPool","Silica.Common","Silica.Concurrency",
   "Silica.DiagnosticsCore","Silica.Durability","Silica.Evictions",
   "Silica.Exceptions","Silica.Storage","Silica.PageAccess",
-  "Silica.Sql.Lexer","Silica.Authentication","Silica.Certificates","Silica.Sessions", "Silica.FrontEnds", "Silica.Interface","test.app"
+  "Silica.Sql.Lexer","Silica.Authentication","Silica.Certificates",
+  "Silica.Sessions","Silica.FrontEnds","Silica.UI", "test.app"
 )
 
 # Resolve which projects to export
 $ProjectList = if ($Projects -contains "All") { $AllProjectsList } else { $Projects }
+
+function Get-IncludedExtensions {
+  param([bool]$IncludeWeb)
+
+  $extensions = @("*.cs","*.csproj","*.sln","*.config","*.resx",
+                  "*.xaml","*.json","*.xml","*.user","*.props","*.targets")
+  if ($IncludeWeb) {
+    $extensions += @("*.js","*.css","*.html","*.htm","*.md")
+  }
+  return $extensions
+}
 
 function Split-LargeFile {
   param(
@@ -93,6 +109,7 @@ function Generate-ProjectMap {
     [string]    $BasePath,
     [string[]]  $Projects,
     [bool]      $IncludeTests,
+    [bool]      $IncludeWeb,
     [string]    $OutputFile
   )
 
@@ -107,8 +124,8 @@ function Generate-ProjectMap {
     $mapLines += "### Folder & File Tree"
     $mapLines += ""
 
-    $all = Get-ChildItem -Path $root -Recurse -File `
-      -Include "*.cs","*.csproj","*.sln","*.config","*.resx","*.xaml","*.json","*.xml","*.user","*.props","*.targets"
+    $extensions = Get-IncludedExtensions -IncludeWeb:$IncludeWeb
+    $all = Get-ChildItem -Path $root -Recurse -File -Include $extensions
 
     if (-not $IncludeTests) {
       $all = $all | Where-Object { $_.FullName -notmatch "\\Tests\\" }
@@ -184,8 +201,8 @@ foreach ($proj in $ProjectList) {
   $outFile = Join-Path $dstPath "$proj`_AllContent.txt"
   $sw      = [System.IO.StreamWriter]::new($outFile, $false, [System.Text.Encoding]::UTF8)
 
-  $files = Get-ChildItem -Path $root -Recurse -File `
-    -Include "*.cs","*.csproj","*.sln","*.config","*.resx","*.xaml","*.json","*.xml","*.user","*.props","*.targets"
+  $extensions = Get-IncludedExtensions -IncludeWeb:$IncludeWeb
+  $files = Get-ChildItem -Path $root -Recurse -File -Include $extensions
 
   if (-not $IncludeTests) {
     $files = $files | Where-Object { $_.FullName -notmatch "\\Tests\\" }
@@ -209,49 +226,4 @@ foreach ($proj in $ProjectList) {
 # 2) Combined “AllProjects.txt”
 #---------------------------------------
 Write-Host "Exporting combined AllProjects"
-$allOut = Join-Path $dstPath "AllProjects.txt"
-$swAll  = [System.IO.StreamWriter]::new($allOut, $false, [System.Text.Encoding]::UTF8)
-
-foreach ($proj in $ProjectList) {
-  $root = Join-Path $srcPath $proj
-  if (-not (Test-Path $root)) { continue }
-
-  $swAll.WriteLine("// Start Project: $proj")
-  $swAll.WriteLine()
-
-  $files = Get-ChildItem -Path $root -Recurse -File `
-    -Include "*.cs","*.csproj","*.sln","*.config","*.resx","*.xaml","*.json","*.xml","*.user","*.props","*.targets"
-
-  if (-not $IncludeTests) {
-    $files = $files | Where-Object { $_.FullName -notmatch "\\Tests\\" }
-  }
-
-  $files = $files | Sort-Object FullName
-
-  foreach ($f in $files) {
-    $rel = $f.FullName.Substring($root.Length + 1)
-    $swAll.WriteLine("// [$proj] $rel")
-    $swAll.WriteLine()
-    Get-Content $f.FullName | ForEach-Object { $swAll.WriteLine($_) }
-    $swAll.WriteLine()
-  }
-
-  $swAll.WriteLine("// End Project: $proj")
-  $swAll.WriteLine()
-}
-
-$swAll.Close()
-Split-LargeFile -FilePath $allOut -MaxSize $fileSize -Prefix "AllProjects"
-
-#---------------------------------------
-# 3) Optionally generate the Markdown map
-#---------------------------------------
-if ($GenerateMap) {
-  Generate-ProjectMap `
-    -BasePath    $srcPath `
-    -Projects    $ProjectList `
-    -IncludeTests:$IncludeTests `
-    -OutputFile  $MapOutput
-}
-
-Write-Host "`nExport complete in $dstPath"
+$allOut

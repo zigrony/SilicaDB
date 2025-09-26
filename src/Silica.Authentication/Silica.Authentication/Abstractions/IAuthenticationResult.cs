@@ -1,5 +1,6 @@
 ﻿namespace Silica.Authentication.Abstractions
 {
+    using System;
     /// <summary>
     /// Represents the outcome of an authentication attempt.
     /// </summary>
@@ -26,5 +27,10 @@
         /// Optional failure reason for diagnostics.
         /// </summary>
         string? FailureReason { get; }
+
+        /// <summary>
+        /// Optional session identifier when a session was created for this authentication.
+        /// </summary>
+        Guid? SessionId { get; }
     }
 }

@@ -1,0 +1,137 @@
+/* /css/themes.css */
+
+/* Example: map your earlier theme variables onto the normalized surface
+   This keeps the component consuming stable names like --header-bg, etc.
+*/
+
+/* Windows */
+[data-theme="Windows"] {
+  --color-bg: #0078D7;
+  --color-fg: #ffffff;
+
+  --header-bg: #005A9E;
+  --header-fg: #ffffff;
+
+  --footer-bg: #005A9E;
+  --footer-fg: #ffffff;
+
+  --sidebar-bg: #E6F2FF;
+  --sidebar-fg: #003366;
+
+  --content-bg: #ffffff;
+  --content-fg: #000000;
+
+  --splitter-color: #A6A6A6;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Burnt Orange */
+[data-theme="Burnt Orange"] {
+  --color-bg: #e39d02;
+  --color-fg: #ffffff;
+
+  --header-bg: #c98e02;
+  --header-fg: #ffffff;
+
+  --footer-bg: #c98e02;
+  --footer-fg: #ffffff;
+
+  --sidebar-bg: #FFF5E6;
+  --sidebar-fg: #3b2a00;
+
+  --content-bg: #ffffff;
+  --content-fg: #000000;
+
+  --splitter-color: #A6A6A6;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Black on White */
+[data-theme="Black on White"] {
+  --color-bg: #ffffff;
+  --color-fg: #000000;
+
+  --header-bg: #e0e0e0;
+  --header-fg: #000000;
+
+  --footer-bg: #e0e0e0;
+  --footer-fg: #000000;
+
+  --sidebar-bg: #f9f9f9;
+  --sidebar-fg: #000000;
+
+  --content-bg: #ffffff;
+  --content-fg: #000000;
+
+  --splitter-color: #cccccc;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* White on Black */
+[data-theme="White on Black"] {
+  --color-bg: #000000;
+  --color-fg: #ffffff;
+
+  --header-bg: #1A1A1A;
+  --header-fg: #ffffff;
+
+  --footer-bg: #1A1A1A;
+  --footer-fg: #ffffff;
+
+  --sidebar-bg: #111111;
+  --sidebar-fg: #ffffff;
+
+  --content-bg: #000000;
+  --content-fg: #ffffff;
+
+  --splitter-color: #4D4D4D;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* DefaultTest (mapped) */
+[data-theme="DefaultTest"] {
+  --color-bg: #ffffff;
+  --color-fg: #003366;
+
+  --header-bg: #cce0ff;
+  --header-fg: #003366;
+
+  --footer-bg: #cce0ff;
+  --footer-fg: #003366;
+
+  --sidebar-bg: #e6f7ff;
+  --sidebar-fg: #003366;
+
+  --content-bg: #ffffff;
+  --content-fg: #003366;
+
+  --splitter-color: #80cfff;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Silver Reflective (mapped) */
+[data-theme="Silver Reflective"] {
+  --color-bg: #ffffff;
+  --color-fg: #000000;
+
+  --header-bg: #a0a0a0;
+  --header-fg: #000000;
+
+  --footer-bg: #a0a0a0;
+  --footer-fg: #000000;
+
+  --sidebar-bg: #cccccc;
+  --sidebar-fg: #000000;
+
+  --content-bg: #ffffff;
+  --content-fg: #000000;
+
+  --splitter-color: #8a8a8a;
+
+  --font-family: Ubuntu, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}

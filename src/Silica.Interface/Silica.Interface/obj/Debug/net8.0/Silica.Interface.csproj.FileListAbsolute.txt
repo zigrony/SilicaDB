@@ -25,3 +25,5 @@ C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\obj\Debug\net8.0\S
 C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\obj\Debug\net8.0\ref\Silica.Interface.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\bin\Debug\net8.0\Silica.Authentication.dll
 C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\bin\Debug\net8.0\Silica.Authentication.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\bin\Debug\net8.0\Silica.Sessions.dll
+C:\GitHubRepos\SilicaDB\src\Silica.Interface\Silica.Interface\bin\Debug\net8.0\Silica.Sessions.pdb

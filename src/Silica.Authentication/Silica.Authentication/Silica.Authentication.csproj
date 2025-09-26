@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
     <ProjectReference Include="..\..\Silica.Exceptions\Silica.Exceptions\Silica.Exceptions.csproj" />
+    <ProjectReference Include="..\..\Silica.Sessions\Silica.Sessions\Silica.Sessions.csproj" />
   </ItemGroup>
 
 </Project>

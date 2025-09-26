@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Three Row Two Column Themed Component - Split CSS</title>
+
+  <!-- Base layout CSS always loaded -->
+  <link rel="stylesheet" href="css/component-base.css" />
+
+  <!-- Theme CSS files are loaded on demand by theme-loader.js -->
+  <style>
+    /* Page-level pattern allowing the component to fill its parent */
+    html,body { height:100%; margin:0; }
+    #root { height:100%; display:flex; flex-direction:column; }
+    /* Place toolbar above the component in the demo */
+    .toolbar { padding:8px 12px; background:transparent; z-index:2; }
+    /* Component fills available space in this demo */
+    three-row-two-col { flex:1 1 auto; min-height:0; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="toolbar">
+      <label for="theme-select">Theme</label>
+      <select id="theme-select" aria-label="Choose theme">
+        <option value="auto">Auto (prefers-color-scheme)</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="sepia">Sepia</option>
+      </select>
+    </div>
+
+    <three-row-two-col id="app" theme="light">
+      <div slot="header"><h1>App Header</h1></div>
+
+      <div slot="menu">
+        <nav>
+          <ul>
+            <li><a href="#item1">Item 1</a></li>
+            <li><a href="#item2">Item 2</a></li>
+            <li><a href="#item3">Item 3</a></li>
+            <li><a href="#item4">Item 4</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <div slot="content">
+        <article>
+          <h2>Content area</h2>
+          <p>Resizable menu on the left. Drag the vertical handle or use keyboard arrows when the handle is focused.</p>
+          <p style="height:1200px">Long content to demonstrate internal scrolling.</p>
+        </article>
+      </div>
+
+      <div slot="footer"><small>© Example Footer</small></div>
+    </three-row-two-col>
+  </div>
+
+  <script type="module" src="js/theme-loader.js"></script>
+  <script type="module" src="js/three-row-two-col.js"></script>
+  <script type="module">
+    import { applyThemeSelector, loadPreferredTheme } from './js/theme-loader.js';
+    const picker = document.getElementById('theme-select');
+    const app = document.getElementById('app');
+
+    // initialize from stored preference or system
+    const initial = loadPreferredTheme();
+    if (initial === 'auto') {
+      picker.value = 'auto';
+      applyThemeSelector(app, 'auto');
+    } else {
+      picker.value = initial;
+      applyThemeSelector(app, initial);
+    }
+
+    // user change
+    picker.addEventListener('change', () => applyThemeSelector(app, picker.value));
+  </script>
+</body>
+</html>

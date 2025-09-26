@@ -1,0 +1,12 @@
+/* Dark theme tokens only */
+three-row-two-col[theme="dark"] {
+  --bg: #0b1020;
+  --surface: #0f1724;
+  --text: #e6eef8;
+  --muted: #9aa6bf;
+  --accent: #4f9cff;
+  --shadow: 0 6px 24px rgba(2,6,23,0.7);
+  --menu-gradient-from: #0f1724;
+  --menu-gradient-to: #0b1220;
+  --divider-bg: rgba(255,255,255,0.06);
+}

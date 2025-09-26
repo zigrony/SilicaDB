@@ -35,7 +35,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.Sessions", "..\Silic
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Silica.FrontEnds", "..\Silica.FrontEnds\Silica.FrontEnds\Silica.FrontEnds.csproj", "{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.Interface", "..\Silica.Interface\Silica.Interface\Silica.Interface.csproj", "{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silica.UI", "..\Silica.UI\Silica.UI\Silica.UI.csproj", "{88A145C8-A876-418C-86CD-FB38B181E8AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -107,10 +107,10 @@ Global
 		{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88A145C8-A876-418C-86CD-FB38B181E8AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88A145C8-A876-418C-86CD-FB38B181E8AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88A145C8-A876-418C-86CD-FB38B181E8AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88A145C8-A876-418C-86CD-FB38B181E8AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

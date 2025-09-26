@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using Silica.Authentication.Abstractions;
+using System;
 
 namespace Silica.Authentication.Jwt
 {
@@ -9,5 +10,6 @@ namespace Silica.Authentication.Jwt
         public string? Principal { get; init; }
         public IReadOnlyCollection<string> Roles { get; init; } = Array.Empty<string>();
         public string? FailureReason { get; init; }
+        public Guid? SessionId { get; init; }
     }
 }

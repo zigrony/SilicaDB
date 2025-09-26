@@ -1,0 +1,12 @@
+/* Sepia theme tokens only */
+three-row-two-col[theme="sepia"] {
+  --bg: #fbf5ee;
+  --surface: #fff9f2;
+  --text: #2b2b1f;
+  --muted: #7a6f5a;
+  --accent: #b05a1b;
+  --shadow: 0 4px 16px rgba(43,43,31,0.06);
+  --menu-gradient-from: #fffaf3;
+  --menu-gradient-to: #fbf1e4;
+  --divider-bg: rgba(43,43,31,0.06);
+}

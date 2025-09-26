@@ -19,7 +19,8 @@
           "Silica.PageAccess": "1.0.0",
           "Silica.Sessions": "1.0.0",
           "Silica.Sql.Lexer": "1.0.0",
-          "Silica.Storage": "1.0.0"
+          "Silica.Storage": "1.0.0",
+          "Silica.UI": "1.0.0"
         },
         "runtime": {
           "Test.App.dll": {}
@@ -28,7 +29,8 @@
       "Silica.Authentication/1.0.0": {
         "dependencies": {
           "Silica.DiagnosticsCore": "1.0.0",
-          "Silica.Exceptions": "1.0.0"
+          "Silica.Exceptions": "1.0.0",
+          "Silica.Sessions": "1.0.0"
         },
         "runtime": {
           "Silica.Authentication.dll": {
@@ -189,6 +191,21 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "Silica.UI/1.0.0": {
+        "dependencies": {
+          "Silica.Authentication": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0",
+          "Silica.FrontEnds": "1.0.0",
+          "Silica.Sessions": "1.0.0"
+        },
+        "runtime": {
+          "Silica.UI.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -264,6 +281,11 @@
       "sha512": ""
     },
     "Silica.Storage/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.UI/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

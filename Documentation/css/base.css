@@ -1,0 +1,64 @@
+/* /css/base.css */
+
+/* Host-level resets and sensible defaults */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  /* These can be overridden by themes.css via [data-theme="..."] */
+  --layout-header-height: 56px;
+  --layout-footer-height: 28px;
+  --layout-sidebar-width: 280px;
+
+  --color-bg: #ffffff;
+  --color-fg: #000000;
+
+  --header-bg: #f5f5f5;
+  --header-fg: #000000;
+
+  --footer-bg: #f5f5f5;
+  --footer-fg: #000000;
+
+  --sidebar-bg: #fafafa;
+  --sidebar-fg: #000000;
+
+  --content-bg: #ffffff;
+  --content-fg: #000000;
+
+  --splitter-color: #cccccc;
+  --focus-ring: #2b7cff;
+
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-size: 14px;
+  --line-height: 1.4;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  color: var(--color-fg);
+  background: var(--color-bg);
+}
+
+/* Optional: style content projected into slots (outside Shadow DOM) */
+.brand {
+  font-weight: 600;
+}
+
+.actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+}

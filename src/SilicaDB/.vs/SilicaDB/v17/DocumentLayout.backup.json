@@ -3,13 +3,16 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{BBD4A89D-9750-45D8-92BD-82AAE807F0BD}|..\\Silica.Interface\\Silica.Interface\\Silica.Interface.csproj|c:\\githubrepos\\silicadb\\src\\silica.interface\\silica.interface\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\frontends\\frontendcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}|..\\Silica.FrontEnds\\Silica.FrontEnds\\Silica.FrontEnds.csproj|c:\\githubrepos\\silicadb\\src\\silica.frontends\\silica.frontends\\kestrel\\kestrelfrontendoptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{260D0B21-B6A4-429F-8E11-95CF779542FE}|..\\test.app\\Test.App\\Test.App.csproj|c:\\githubrepos\\silicadb\\src\\test.app\\test.app\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F1808351-9AD6-4D49-BE4E-FE8E2C599B62}|..\\Silica.FrontEnds\\Silica.FrontEnds\\Silica.FrontEnds.csproj|c:\\githubrepos\\silicadb\\src\\silica.frontends\\silica.frontends\\abstractions\\frontendoptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\core\\silicasystem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\auth\\authmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,8 +22,21 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "FrontEndController.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
+              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs*",
+              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs*",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAWwD0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-26T21:17:23.507Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
@@ -28,40 +44,40 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "KestrelFrontendOptions.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Kestrel\\KestrelFrontendOptions.cs",
-              "RelativeDocumentMoniker": "..\\Silica.FrontEnds\\Silica.FrontEnds\\Kestrel\\KestrelFrontendOptions.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Kestrel\\KestrelFrontendOptions.cs",
-              "RelativeToolTip": "..\\Silica.FrontEnds\\Silica.FrontEnds\\Kestrel\\KestrelFrontendOptions.cs",
-              "ViewState": "AgIAAA8AAAAAAAAAAAAowAAAAAAAAAAAAAAAAA==",
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\test.app\\Test.App\\Program.cs",
+              "RelativeDocumentMoniker": "..\\test.app\\Test.App\\Program.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\test.app\\Test.App\\Program.cs",
+              "RelativeToolTip": "..\\test.app\\Test.App\\Program.cs",
+              "ViewState": "AgIAAF4AAAAAAAAAAAAgwH4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T14:45:27.309Z",
+              "WhenOpened": "2025-09-26T21:20:50.893Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "FrontendOptions.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Abstractions\\FrontendOptions.cs",
-              "RelativeDocumentMoniker": "..\\Silica.FrontEnds\\Silica.FrontEnds\\Abstractions\\FrontendOptions.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Abstractions\\FrontendOptions.cs",
-              "RelativeToolTip": "..\\Silica.FrontEnds\\Silica.FrontEnds\\Abstractions\\FrontendOptions.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAASAAAAAAAAAA==",
+              "Title": "SilicaSystem.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
+              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
+              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T14:45:06.711Z",
+              "WhenOpened": "2025-09-26T21:19:39.046Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Interface\\Silica.Interface\\Program.cs",
-              "RelativeDocumentMoniker": "..\\Silica.Interface\\Silica.Interface\\Program.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Interface\\Silica.Interface\\Program.cs*",
-              "RelativeToolTip": "..\\Silica.Interface\\Silica.Interface\\Program.cs*",
-              "ViewState": "AgIAAIUAAAAAAAAAAADwv70AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "AuthManager.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
+              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
+              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T14:30:46.63Z",
+              "WhenOpened": "2025-09-26T21:16:34.201Z",
               "EditorCaption": ""
             }
           ]

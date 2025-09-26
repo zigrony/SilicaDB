@@ -1,0 +1,12 @@
+/* Light theme tokens only */
+three-row-two-col[theme="light"] {
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --shadow: 0 2px 10px rgba(16,24,40,0.06);
+  --menu-gradient-from: #ffffff;
+  --menu-gradient-to: #fbfdff;
+  --divider-bg: rgba(15,23,42,0.06);
+}

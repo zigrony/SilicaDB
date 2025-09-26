@@ -17,6 +17,7 @@ C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.PageAccess
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sessions.dll
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sql.Lexer.dll
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Storage.dll
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.UI.dll
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Authentication.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.BufferPool.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Certificates.pdb
@@ -29,6 +30,7 @@ C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.PageAccess
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sessions.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Sql.Lexer.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Storage.pdb
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.UI.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Common.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Durability.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.csproj.AssemblyReference.cache

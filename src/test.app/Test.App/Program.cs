@@ -23,6 +23,8 @@ using Silica.Certificates.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using Silica.Sessions.Tests;
 using Silica.FrontEnds.Tests;
+using Silica.UI.Core;
+using Silica.UI.Config;
 
 class Program
 {
@@ -122,31 +124,46 @@ class Program
 
         CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
 
-        // Use ephemeral cert
-        var certProvider = new EphemeralCertificateProvider();
-        var cert = certProvider.GetCertificate();
-
-        // On Windows, re-import with MachineKeySet so SChannel can access the private key
-        if (OperatingSystem.IsWindows())
+        var optionsUI = new SilicaOptions
         {
-            cert = new X509Certificate2(
-                cert.Export(X509ContentType.Pfx),
-                (string?)null,
-                X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
-        }
+            AuthConfig = new AuthConfig { Provider = "Local" },
+            SessionConfig = new SessionConfig { IdleTimeoutMinutes = 20 },
+            FrontEndConfig = new FrontEndConfig { Url = "https://0.0.0.0:5001" }
+        };
 
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            options.ListenAnyIP(5001, listenOptions =>
-            {
-                listenOptions.UseHttps(cert);
-            });
-        });
+        await using var system = new SilicaSystem(optionsUI);
+        await system.StartAsync();
 
-        var app = builder.Build();
-        app.MapGet("/", () => "Hello from SilicaDB over ephemeral TLS!");
-        app.Run();
-        Console.ReadKey();
+        Console.WriteLine("Silica running. Press Enter to stop...");
+        Console.ReadLine();
+
+        await system.StopAsync();
+
+        //// Use ephemeral cert
+        //var certProvider = new EphemeralCertificateProvider();
+        //var cert = certProvider.GetCertificate();
+
+        //// On Windows, re-import with MachineKeySet so SChannel can access the private key
+        //if (OperatingSystem.IsWindows())
+        //{
+        //    cert = new X509Certificate2(
+        //        cert.Export(X509ContentType.Pfx),
+        //        (string?)null,
+        //        X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
+        //}
+
+        //builder.WebHost.ConfigureKestrel(options =>
+        //{
+        //    options.ListenAnyIP(5001, listenOptions =>
+        //    {
+        //        listenOptions.UseHttps(cert);
+        //    });
+        //});
+
+        //var app = builder.Build();
+        //app.MapGet("/", () => "Hello from SilicaDB over ephemeral TLS!");
+        //app.Run();
+        //Console.ReadKey();
 
 
         // 4) Run your harnesses
