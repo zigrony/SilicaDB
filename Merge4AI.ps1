@@ -16,6 +16,8 @@ param(
         "Silica.Authentication",
 		"Silica.Certificates",
 		"Silica.Sessions",
+		"Silica.FrontEnds",
+		"Silica.Interface",
         "test.app"
     )]
     [string[]]$Projects = @("All"),
@@ -75,6 +77,8 @@ $AllProjectsList = @(
     "Silica.PageAccess",
     "Silica.Sql.Lexer",
     "Silica.Authentication",
+	"Silica.FrontEnds",
+	"Silica.Interface",
     "test.app"
 )
 

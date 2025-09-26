@@ -22,6 +22,7 @@ using Silica.Certificates.Metrics;
 using Silica.Certificates.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using Silica.Sessions.Tests;
+using Silica.FrontEnds.Tests;
 
 class Program
 {
@@ -162,7 +163,18 @@ class Program
         //await AuthenticationTestHarnessKerberos.Run();
         //await AuthenticationTestHarnessJwt.Run();
         //await AuthenticationTestHarnessCertificate.Run();
-        await SessionsTestHarness.Run();
+        //await SessionsTestHarness.Run();
+
+        // Create a token that cancels on Ctrl+C or process exit
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            e.Cancel = true; // prevent immediate process kill
+            cts.Cancel();
+        };
+
+        // Pass it into the harness
+        await FrontEndsTestHarness.RunAsync(cts.Token);
 
         Console.WriteLine("All test harnesses completed.");
 

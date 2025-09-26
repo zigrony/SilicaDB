@@ -15,6 +15,7 @@
           "Silica.DiagnosticsCore": "1.0.0",
           "Silica.Evictions": "1.0.0",
           "Silica.Exceptions": "1.0.0",
+          "Silica.FrontEnds": "1.0.0",
           "Silica.PageAccess": "1.0.0",
           "Silica.Sessions": "1.0.0",
           "Silica.Sql.Lexer": "1.0.0",
@@ -124,6 +125,19 @@
           }
         }
       },
+      "Silica.FrontEnds/1.0.0": {
+        "dependencies": {
+          "Silica.Certificates": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0"
+        },
+        "runtime": {
+          "Silica.FrontEnds.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "Silica.PageAccess/1.0.0": {
         "dependencies": {
           "Silica.BufferPool": "1.0.0",
@@ -225,6 +239,11 @@
       "sha512": ""
     },
     "Silica.Exceptions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.FrontEnds/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

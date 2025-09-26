@@ -1,0 +1,186 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0": {
+      "Silica.Authentication/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.Authentication.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Authentication.dll": {}
+        }
+      },
+      "Silica.Certificates/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.DiagnosticsCore": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.Certificates.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Certificates.dll": {}
+        }
+      },
+      "Silica.DiagnosticsCore/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Exceptions": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.DiagnosticsCore.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.DiagnosticsCore.dll": {}
+        }
+      },
+      "Silica.Exceptions/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Silica.Exceptions.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.Exceptions.dll": {}
+        }
+      },
+      "Silica.FrontEnds/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.Certificates": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.FrontEnds.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.FrontEnds.dll": {}
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      }
+    }
+  },
+  "libraries": {
+    "Silica.Authentication/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Authentication/Silica.Authentication/Silica.Authentication.csproj",
+      "msbuildProject": "../../Silica.Authentication/Silica.Authentication/Silica.Authentication.csproj"
+    },
+    "Silica.Certificates/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Certificates/Silica.Certificates/Silica.Certificates.csproj",
+      "msbuildProject": "../../Silica.Certificates/Silica.Certificates/Silica.Certificates.csproj"
+    },
+    "Silica.DiagnosticsCore/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.DiagnosticsCore/Silica.DiagnosticsCore/Silica.DiagnosticsCore.csproj",
+      "msbuildProject": "../../Silica.DiagnosticsCore/Silica.DiagnosticsCore/Silica.DiagnosticsCore.csproj"
+    },
+    "Silica.Exceptions/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.Exceptions/Silica.Exceptions/Silica.Exceptions.csproj",
+      "msbuildProject": "../../Silica.Exceptions/Silica.Exceptions/Silica.Exceptions.csproj"
+    },
+    "Silica.FrontEnds/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.FrontEnds/Silica.FrontEnds/Silica.FrontEnds.csproj",
+      "msbuildProject": "../../Silica.FrontEnds/Silica.FrontEnds/Silica.FrontEnds.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0": [
+      "Silica.Authentication >= 1.0.0",
+      "Silica.Certificates >= 1.0.0",
+      "Silica.DiagnosticsCore >= 1.0.0",
+      "Silica.FrontEnds >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\aboyd\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Interface\\Silica.Interface\\Silica.Interface.csproj",
+      "projectName": "Silica.Interface",
+      "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Interface\\Silica.Interface\\Silica.Interface.csproj",
+      "packagesPath": "C:\\Users\\aboyd\\.nuget\\packages\\",
+      "outputPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Interface\\Silica.Interface\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\aboyd\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "projectReferences": {
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Authentication\\Silica.Authentication\\Silica.Authentication.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Certificates\\Silica.Certificates\\Silica.Certificates.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.Certificates\\Silica.Certificates\\Silica.Certificates.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Silica.FrontEnds.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.FrontEnds\\Silica.FrontEnds\\Silica.FrontEnds.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      }
+    },
+    "frameworks": {
+      "net8.0": {
+        "targetAlias": "net8.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}
