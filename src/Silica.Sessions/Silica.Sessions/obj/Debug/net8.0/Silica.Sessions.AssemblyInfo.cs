@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Silica.Sessions")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+02c81ad7cd50fb3f6093a1710612f84bac81bded")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+98cdb13d4b619753019130fc216c2be707c5f61d")]
 [assembly: System.Reflection.AssemblyProductAttribute("Silica.Sessions")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Silica.Sessions")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,6 +1,21 @@
 <#
 .SYNOPSIS
-  Package up one or more SilicaDB projects into text dumps + a navigable Markdown map.
+  Package up one or more SilicaDB projects into text dumps, split files, and an optional Markdown map.
+
+.DESCRIPTION
+  This script exports source files from SilicaDB projects into plain text dumps for analysis or AI ingestion.
+  Each project produces:
+    - A single combined dump (<Project>_AllContent.txt)
+    - A series of split files (<Project>_0.txt, <Project>_1.txt, …)
+
+  Additionally, all projects can be combined into:
+    - AllProjects_AllCombined.txt
+    - AllProjects_<0-n>.txt (split by size)
+
+  If -GenerateMap is specified, a Markdown map is created showing:
+    - Folder & file tree
+    - Types & signatures
+    - Project references
 
 .PARAMETER srcPath
   Root folder for your SilicaDB repo (default: C:\GitHubRepos\SilicaDB\src\).
@@ -9,7 +24,7 @@
   Where to emit the dumps & map (default: C:\temp\SilicaDBExport\).
 
 .PARAMETER Projects
-  Which project(s) to export. Use "All" to pick up every folder under srcPath.
+  Which project(s) to export. Use "All" (case-insensitive) to pick up every folder under srcPath.
 
 .PARAMETER fileSize
   Maximum bytes per split file (default 80 000).
@@ -29,9 +44,10 @@
 .EXAMPLE
   .\PackageForAI.ps1 -Projects All -IncludeTests -IncludeWeb -GenerateMap
 #>
+
 param(
   [ValidateNotNullOrEmpty()][string]$srcPath      = "C:\GitHubRepos\SilicaDB\src\",
-  [ValidateNotNullOrEmpty()][string]$dstPath      = "C:\temp\",
+  [ValidateNotNullOrEmpty()][string]$dstPath      = "C:\temp\SilicaDBExport\",
   [string[]]                        $Projects     = @("All"),
   [int]                             $fileSize     = 80000,
   [switch]                          $IncludeTests,
@@ -56,11 +72,16 @@ $AllProjectsList = @(
   "Silica.DiagnosticsCore","Silica.Durability","Silica.Evictions",
   "Silica.Exceptions","Silica.Storage","Silica.PageAccess",
   "Silica.Sql.Lexer","Silica.Authentication","Silica.Certificates",
-  "Silica.Sessions","Silica.FrontEnds","Silica.UI", "test.app"
+  "Silica.Sessions","Silica.FrontEnds","Silica.UI","test.app"
 )
 
-# Resolve which projects to export
-$ProjectList = if ($Projects -contains "All") { $AllProjectsList } else { $Projects }
+# Resolve which projects to export (case-insensitive handling of "All")
+$useAll = (($Projects | ForEach-Object { $_.ToLower() }) -contains "all")
+$ProjectList = if ($useAll) { $AllProjectsList } else { $Projects }
+
+#---------------------------------------
+# Utility Functions
+#---------------------------------------
 
 function Get-IncludedExtensions {
   param([bool]$IncludeWeb)
@@ -104,6 +125,90 @@ function Split-LargeFile {
   Write-Host "  Split into files with prefix '$Prefix'"
 }
 
+function Export-Project {
+  param(
+    [string]   $Project,
+    [string]   $SrcPath,
+    [string]   $DstPath,
+    [int]      $FileSize,
+    [switch]   $IncludeTests,
+    [switch]   $IncludeWeb
+  )
+
+  Write-Host "Exporting project: $Project"
+  $root = Join-Path $SrcPath $Project
+  if (-not (Test-Path $root)) {
+    Write-Warning "  Skipped (not found): $root"
+    return
+  }
+
+  $outFile = Join-Path $DstPath "$Project`_AllContent.txt"
+  $sw      = [System.IO.StreamWriter]::new($outFile, $false, [System.Text.Encoding]::UTF8)
+
+  $extensions = Get-IncludedExtensions -IncludeWeb:$IncludeWeb
+  $files = Get-ChildItem -Path $root -Recurse -File -Include $extensions
+
+  if (-not $IncludeTests) {
+    $files = $files | Where-Object { $_.FullName -notmatch "\\Tests\\" }
+  }
+
+  $files = $files | Sort-Object FullName
+
+  foreach ($f in $files) {
+    $rel = $f.FullName.Substring($root.Length + 1)
+    $sw.WriteLine("// File: $rel")
+    $sw.WriteLine()
+    Get-Content $f.FullName | ForEach-Object { $sw.WriteLine($_) }
+    $sw.WriteLine()
+  }
+
+  $sw.Close()
+  Split-LargeFile -FilePath $outFile -MaxSize $FileSize -Prefix $Project
+}
+
+function Export-AllProjects {
+  param(
+    [string[]] $Projects,
+    [string]   $SrcPath,
+    [string]   $DstPath,
+    [int]      $FileSize,
+    [switch]   $IncludeTests,
+    [switch]   $IncludeWeb
+  )
+
+  Write-Host "Exporting combined AllProjects"
+
+  $combinedFile = Join-Path $DstPath "AllProjects_AllCombined.txt"
+  $swAll        = [System.IO.StreamWriter]::new($combinedFile, $false, [System.Text.Encoding]::UTF8)
+
+  foreach ($proj in $Projects) {
+    $root = Join-Path $SrcPath $proj
+    if (-not (Test-Path $root)) {
+      Write-Warning "  Skipped (not found): $root"
+      continue
+    }
+
+    $extensions = Get-IncludedExtensions -IncludeWeb:$IncludeWeb
+    $files = Get-ChildItem -Path $root -Recurse -File -Include $extensions
+
+    if (-not $IncludeTests) {
+      $files = $files | Where-Object { $_.FullName -notmatch "\\Tests\\" }
+    }
+
+    $files = $files | Sort-Object FullName
+
+    foreach ($f in $files) {
+      $rel = $f.FullName.Substring($root.Length + 1)
+      $swAll.WriteLine("// Project: $proj | File: $rel")
+      $swAll.WriteLine()
+      Get-Content $f.FullName | ForEach-Object { $swAll.WriteLine($_) }
+      $swAll.WriteLine()
+    }
+  }
+
+  $swAll.Close()
+  Split-LargeFile -FilePath $combinedFile -MaxSize $FileSize -Prefix "AllProjects"
+}
 function Generate-ProjectMap {
   param(
     [string]    $BasePath,
@@ -188,42 +293,22 @@ function Generate-ProjectMap {
 }
 
 #---------------------------------------
-# 1) Per‐Project Export
+# Main Orchestration
 #---------------------------------------
+
+# 1) Per‑Project Export
 foreach ($proj in $ProjectList) {
-  Write-Host "Exporting project: $proj"
-  $root = Join-Path $srcPath $proj
-  if (-not (Test-Path $root)) {
-    Write-Warning "  Skipped (not found): $root"
-    continue
-  }
-
-  $outFile = Join-Path $dstPath "$proj`_AllContent.txt"
-  $sw      = [System.IO.StreamWriter]::new($outFile, $false, [System.Text.Encoding]::UTF8)
-
-  $extensions = Get-IncludedExtensions -IncludeWeb:$IncludeWeb
-  $files = Get-ChildItem -Path $root -Recurse -File -Include $extensions
-
-  if (-not $IncludeTests) {
-    $files = $files | Where-Object { $_.FullName -notmatch "\\Tests\\" }
-  }
-
-  $files = $files | Sort-Object FullName
-
-  foreach ($f in $files) {
-    $rel = $f.FullName.Substring($root.Length + 1)
-    $sw.WriteLine("// File: $rel")
-    $sw.WriteLine()
-    Get-Content $f.FullName | ForEach-Object { $sw.WriteLine($_) }
-    $sw.WriteLine()
-  }
-
-  $sw.Close()
-  Split-LargeFile -FilePath $outFile -MaxSize $fileSize -Prefix $proj
+  Export-Project -Project $proj -SrcPath $srcPath -DstPath $dstPath `
+                 -FileSize $fileSize -IncludeTests:$IncludeTests -IncludeWeb:$IncludeWeb
 }
 
-#---------------------------------------
-# 2) Combined “AllProjects.txt”
-#---------------------------------------
-Write-Host "Exporting combined AllProjects"
-$allOut
+# 2) Combined Export
+Export-AllProjects -Projects $ProjectList -SrcPath $srcPath -DstPath $dstPath `
+                   -FileSize $fileSize -IncludeTests:$IncludeTests -IncludeWeb:$IncludeWeb
+
+# 3) Markdown Map (optional)
+if ($GenerateMap) {
+  Generate-ProjectMap -BasePath $srcPath -Projects $ProjectList `
+                      -IncludeTests:$IncludeTests -IncludeWeb:$IncludeWeb `
+                      -OutputFile $MapOutput
+}

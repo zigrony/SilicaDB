@@ -15,6 +15,7 @@ using System.Diagnostics;
 using Silica.UI.Diagnostics;
 using Silica.UI.Metrics;
 using System.Collections.Generic;
+using Microsoft.Extensions.FileProviders;
 
 namespace Silica.UI.FrontEnds
 {
@@ -82,21 +83,44 @@ namespace Silica.UI.FrontEnds
 
                                   // Simple test endpoint
                                   app.UseRouting();
+                                  app.Use(async (context, next) =>
+                                  {
+                                      UiDiagnostics.Emit("Silica.UI.FrontEnd", "Request", "info",
+                                          $"Request {context.Request.Method} {context.Request.Path}",
+                                          null,
+                                          new Dictionary<string, string> {
+                                            { "method", context.Request.Method },
+                                            { "path", context.Request.Path }
+                                          });
+                                      await next();
+                                  });
+
+                                  app.Use(async (context, next) =>
+                                  {
+                                      var sw = Stopwatch.StartNew();
+                                      await next(); // Let FileServer handle the actual file
+                                      sw.Stop();
+
+                                      UiMetrics.RecordPageLoadLatency(_metrics, sw.Elapsed.TotalMilliseconds);
+
+                                      UiDiagnostics.Emit("Silica.UI.FrontEnd", "Request", "info",
+                                          "resource_served", null,
+                                          new Dictionary<string, string> {
+                                            { "method", context.Request.Method },
+                                            { "path", context.Request.Path },
+                                            { "latency_ms", sw.Elapsed.TotalMilliseconds.ToString("F3") },
+                                            { "status_code", context.Response.StatusCode.ToString() }
+                                          });
+                                  });
+
+                                  app.UseFileServer(new FileServerOptions
+                                  {
+                                      FileProvider = new PhysicalFileProvider(@"C:\GitHubRepos\SilicaDB\Documentation"),
+                                      RequestPath = "",
+                                      EnableDefaultFiles = true
+                                  });
                                   app.UseEndpoints(endpoints =>
                                   {
-                                      endpoints.MapGet("/", async context =>
-                                      {
-                                          var sw = Stopwatch.StartNew();
-                                          await context.Response.WriteAsync("Silica public page is running.");
-                                          sw.Stop();
-                                          UiMetrics.RecordPageLoadLatency(_metrics, sw.Elapsed.TotalMilliseconds);
-                                          UiDiagnostics.Emit("Silica.UI.FrontEnd", "GET /", "ok",
-                                              "public_root_served", null,
-                                              new Dictionary<string, string> {
-                                                  { "latency_ms", sw.Elapsed.TotalMilliseconds.ToString("F3") }
-                                              });
-                                      });
-
                                       // REST root (parity with original Program.cs)
                                       endpoints.MapGet("/rest", () =>
                                           Results.Ok(new { status = "ok", message = "REST API placeholder" }));

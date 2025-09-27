@@ -26,6 +26,60 @@ using Silica.FrontEnds.Tests;
 using Silica.UI.Core;
 using Silica.UI.Config;
 
+public static class DiagnosticsRegistration
+{
+    public static void RegisterAll(IMetricsManager metrics)
+    {
+        // Buffer pool
+        Silica.BufferPool.Metrics.BufferPoolMetrics.RegisterAll(metrics, "Silica.BufferPool");
+
+        // Concurrency
+        Silica.Concurrency.Metrics.ConcurrencyMetrics.RegisterAll(metrics, "Silica.Concurrency");
+
+        // Durability (WAL, checkpoints, recovery)
+        Silica.Durability.Metrics.WalMetrics.RegisterAll(
+            metrics, "Silica.Durability.WalManager",
+            latestLsnProvider: () => 0,          // TODO: wire to WAL manager
+            inFlightOpsProvider: () => 0         // TODO: wire to WAL manager
+        );
+        Silica.Durability.Metrics.CheckpointMetrics.RegisterAll(metrics, "Silica.Durability.CheckpointManager");
+        Silica.Durability.Metrics.RecoveryMetrics.RegisterAll(metrics, "Silica.Durability.RecoveryManager");
+
+        // Evictions
+        Silica.Evictions.Metrics.EvictionMetrics.RegisterAll(metrics, "Silica.Evictions");
+
+        // Storage
+        Silica.Storage.Metrics.StorageMetrics.RegisterAll(
+            metrics, "Silica.Storage",
+            frameLockCacheSizeProvider: null,    // TODO: supply from storage engine
+            freeSpaceProvider: null,
+            queueDepthProvider: null,
+            inFlightProvider: null
+        );
+
+        // Page access
+        Silica.PageAccess.Metrics.PageAccessMetrics.RegisterAll(metrics, "Silica.PageAccess");
+
+        // SQL lexer
+        Silica.Sql.Lexer.Metrics.LexerMetrics.RegisterAll(metrics, "Silica.Sql.Lexer");
+
+        // Authentication
+        Silica.Authentication.Metrics.AuthenticationMetrics.RegisterAll(metrics, "Silica.Authentication");
+
+        // Certificates
+        Silica.Certificates.Metrics.CertificateMetrics.RegisterAll(metrics, "Silica.Certificates");
+
+        // Frontends
+        Silica.FrontEnds.Metrics.FrontendMetrics.RegisterAll(metrics, "Silica.FrontEnds");
+
+        // Sessions
+        Silica.Sessions.Metrics.SessionMetrics.RegisterAll(metrics, "Silica.Sessions");
+
+        // UI
+        Silica.UI.Metrics.UiMetrics.RegisterAll(metrics, "Silica.UI");
+    }
+}
+
 class Program
 {
     static async Task Main(string[] args)
@@ -67,12 +121,14 @@ class Program
         // 2) Start DiagnosticsCore
         var instance = DiagnosticsCoreBootstrap.Start(options);
 
+        DiagnosticsRegistration.RegisterAll(instance.Metrics);
+
         // Register metrics
-        CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
+        //CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
 
         // Register traces
         // After DiagnosticsCoreBootstrap.Start(options)
-        CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
+        //CertificateMetrics.RegisterAll(instance.Metrics, "Silica.Certificates");
 
         // No need for CertificateDiagnostics.Initialize(...)
 
@@ -81,9 +137,6 @@ class Program
 
         // 2.5) Enable verbose auth diagnostics so EmitDebug calls surface
         //Silica.Authentication.Diagnostics.SetVerbose(true);
-
-        // 3.5) Create a dummy metrics manager you can pass into LocalAuthenticator (same style as Concurrency harness)
-        IMetricsManager dummyMetrics = new DummyMetricsManager();
 
         // 3) Register an extra FileTraceSink
         var fileSink = new FileTraceSink(
@@ -182,18 +235,18 @@ class Program
         //await AuthenticationTestHarnessCertificate.Run();
         //await SessionsTestHarness.Run();
 
-        // Create a token that cancels on Ctrl+C or process exit
-        using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (sender, e) =>
-        {
-            e.Cancel = true; // prevent immediate process kill
-            cts.Cancel();
-        };
+        //// Create a token that cancels on Ctrl+C or process exit
+        //using var cts = new CancellationTokenSource();
+        //Console.CancelKeyPress += (sender, e) =>
+        //{
+        //    e.Cancel = true; // prevent immediate process kill
+        //    cts.Cancel();
+        //};
 
-        // Pass it into the harness
-        await FrontEndsTestHarness.RunAsync(cts.Token);
+        //// Pass it into the harness
+        //await FrontEndsTestHarness.RunAsync(cts.Token);
 
-        Console.WriteLine("All test harnesses completed.");
+        //Console.WriteLine("All test harnesses completed.");
 
         // 5) Stop DiagnosticsCore cleanly
         DiagnosticsCoreBootstrap.Stop(throwOnErrors: true);

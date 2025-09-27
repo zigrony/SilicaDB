@@ -3,22 +3,13 @@
   "WorkspaceRootPath": "C:\\GitHubRepos\\SilicaDB\\src\\SilicaDB\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\config\\silicaoptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\core\\silicasystem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{353C6282-9E0E-4EAF-940A-798CB790871C}|..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj|c:\\githubrepos\\silicadb\\src\\silica.diagnosticscore\\silica.diagnosticscore\\tracing\\sinks\\filetracesink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\frontends\\frontendcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\sessions\\sessionmanageradapter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\auth\\dbuserstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{88A145C8-A876-418C-86CD-FB38B181E8AB}|..\\Silica.UI\\Silica.UI\\Silica.UI.csproj|c:\\githubrepos\\silicadb\\src\\silica.ui\\silica.ui\\auth\\authmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{260D0B21-B6A4-429F-8E11-95CF779542FE}|..\\test.app\\Test.App\\Test.App.csproj|c:\\githubrepos\\silicadb\\src\\test.app\\test.app\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -37,79 +28,40 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "SilicaOptions.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Config\\SilicaOptions.cs",
-              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Config\\SilicaOptions.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Config\\SilicaOptions.cs",
-              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Config\\SilicaOptions.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAowB8AAABAAAAAAAAAAA==",
+              "Title": "FileTraceSink.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
+              "RelativeDocumentMoniker": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
+              "RelativeToolTip": "..\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Tracing\\Sinks\\FileTraceSink.cs",
+              "ViewState": "AgIAABABAAAAAAAAAAAAwBgBAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:20:08.342Z",
+              "WhenOpened": "2025-09-27T22:55:19.481Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "SilicaSystem.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
-              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
-              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Core\\SilicaSystem.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAmwDQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:19:16.597Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
               "Title": "FrontEndController.cs",
               "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
               "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
               "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
               "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\FrontEnds\\FrontEndController.cs",
-              "ViewState": "AgIAAAIBAAAAAAAAAAAjwCQBAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAAAGEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:17:09.101Z",
+              "WhenOpened": "2025-09-27T16:13:21.11Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "SessionManagerAdapter.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Sessions\\SessionManagerAdapter.cs",
-              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Sessions\\SessionManagerAdapter.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Sessions\\SessionManagerAdapter.cs",
-              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Sessions\\SessionManagerAdapter.cs",
-              "ViewState": "AgIAABgAAAAAAAAAAADwv1AAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\test.app\\Test.App\\Program.cs",
+              "RelativeDocumentMoniker": "..\\test.app\\Test.App\\Program.cs",
+              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\test.app\\Test.App\\Program.cs",
+              "RelativeToolTip": "..\\test.app\\Test.App\\Program.cs",
+              "ViewState": "AgIAAHgAAAAAAAAAAAAiwJUAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:15:48.503Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "DbUserStore.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\DbUserStore.cs",
-              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Auth\\DbUserStore.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\DbUserStore.cs",
-              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Auth\\DbUserStore.cs",
-              "ViewState": "AgIAACwAAAAAAAAAAAA9wFUAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:13:23.568Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "AuthManager.cs",
-              "DocumentMoniker": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
-              "RelativeDocumentMoniker": "..\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
-              "ToolTip": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
-              "RelativeToolTip": "..\\Silica.UI\\Silica.UI\\Auth\\AuthManager.cs",
-              "ViewState": "AgIAAEAAAAAAAAAAAAAjwG0AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-26T22:09:40.748Z",
+              "WhenOpened": "2025-09-27T15:54:23.434Z",
               "EditorCaption": ""
             }
           ]
