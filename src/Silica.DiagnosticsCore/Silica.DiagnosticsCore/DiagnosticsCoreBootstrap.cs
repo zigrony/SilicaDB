@@ -36,8 +36,10 @@ namespace Silica.DiagnosticsCore
             TraceManager Traces,
             TraceDispatcher Dispatcher,
             BoundedInMemoryTraceSink BoundedSink,
+            BoundedInMemoryMetricsSink BoundedMetricsSink,
             DiagnosticsOptions Options,
             DateTimeOffset StartedAt);
+
 
         private static volatile BootstrapInstance? _current;
 
@@ -227,7 +229,9 @@ namespace Silica.DiagnosticsCore
                 };
 
                 var registry = new MetricRegistry();
-                
+                // In-memory bounded metrics sink for dashboard snapshots
+                var boundedMetrics = new BoundedInMemoryMetricsSink(DiagnosticsOptions.Defaults.InMemoryCapacity);
+
                 // Prepare to close over the IMetricsManager instance
                 IMetricsManager? effectiveInner = null;
 
@@ -261,7 +265,8 @@ namespace Silica.DiagnosticsCore
                     strict: options.EnableMetrics && options.StrictMetrics,
                     onDrop: onDrop,
                     globalTags: options.EffectiveGlobalTags,
-                    ownsInner: options.EnableMetrics && ownManager);
+                    ownsInner: options.EnableMetrics && ownManager,
+                    observer: boundedMetrics);
 
                 if (options.EnableMetrics)
                 {
@@ -520,6 +525,7 @@ namespace Silica.DiagnosticsCore
                     Traces: traceMgr,
                     Dispatcher: dispatcher,
                     BoundedSink: bounded,
+                    BoundedMetricsSink: boundedMetrics,
                     Options: options,
                     StartedAt: startedAt);
 

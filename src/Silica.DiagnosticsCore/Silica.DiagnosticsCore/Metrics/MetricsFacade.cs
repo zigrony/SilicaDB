@@ -17,6 +17,7 @@ namespace Silica.DiagnosticsCore.Metrics
         private readonly bool _strict;
         private readonly Action<string>? _onDrop;
         private readonly IReadOnlyDictionary<string, string>? _globalTags;
+        private readonly BoundedInMemoryMetricsSink? _observer;
         // Optional: surface a single warning metric when strict=false is used with a manager that doesn't auto-register
         private volatile bool _warnedLenientNoAutoReg;
         private volatile bool _warnedLenientAutoReg;
@@ -35,23 +36,24 @@ namespace Silica.DiagnosticsCore.Metrics
                catch { }
         }
 
-    /// <param name="inner">The underlying metrics manager to emit to.</param>
-    /// <param name="registry">Canonical registry of metric definitions.</param>
-    /// <param name="strict">
-    /// If true, emissions to unknown metrics are rejected (and optionally dropped).
-    /// If false, emissions may be auto‑registered by the underlying manager.
-    /// </param>
-    /// <param name="onDrop">
-    /// Optional callback invoked with the metric name whenever an emission is dropped due to strict mode.
-    /// </param>
-    public MetricsFacade(
+        /// <param name="inner">The underlying metrics manager to emit to.</param>
+        /// <param name="registry">Canonical registry of metric definitions.</param>
+        /// <param name="strict">
+        /// If true, emissions to unknown metrics are rejected (and optionally dropped).
+        /// If false, emissions may be auto‑registered by the underlying manager.
+        /// </param>
+        /// <param name="onDrop">
+        /// Optional callback invoked with the metric name whenever an emission is dropped due to strict mode.
+        /// </param>
+        public MetricsFacade(
             IMetricsManager inner,
             MetricRegistry registry,
             TagValidator tagValidator,
             bool strict = true,
             Action<string>? onDrop = null,
             IReadOnlyDictionary<string, string>? globalTags = null,
-            bool ownsInner = true)
+            bool ownsInner = true,
+            BoundedInMemoryMetricsSink? observer = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -60,6 +62,7 @@ namespace Silica.DiagnosticsCore.Metrics
             _onDrop = onDrop;
             _globalTags = globalTags;
             _ownsInner = ownsInner;
+            _observer = observer;
             // Wire tag drop/truncation accounting for metrics emissions.
             // Note: No-op when metrics are globally disabled via NoOpMetricsManager.
             _tagValidator.SetCallbacks(
@@ -118,7 +121,12 @@ namespace Silica.DiagnosticsCore.Metrics
 
             if (!VerifyTypeOrDrop(name, MetricType.Counter)) return;
             PublishIfAllowed(name, () =>
-                _inner.Increment(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
+            {
+                var validated = _tagValidator.Validate(Merge(tags));
+                _inner.Increment(name, value, validated);
+                // Mirror into in-memory observer (counter → "counter")
+                _observer?.Record(name, "counter", (double)value, validated);
+            });
         }
 
         public void Record(string name, double value, params KeyValuePair<string, object>[] tags)
@@ -141,7 +149,12 @@ namespace Silica.DiagnosticsCore.Metrics
 
             if (!VerifyTypeOrDrop(name, MetricType.Histogram)) return;
             PublishIfAllowed(name, () =>
-                _inner.Record(name, value, _tagValidator.Validate(Merge(tags)))); // CHG
+            {
+                var validated = _tagValidator.Validate(Merge(tags));
+                _inner.Record(name, value, validated);
+                // Mirror into in-memory observer (histogram → "histogram")
+                _observer?.Record(name, "histogram", value, validated);
+            });
         }
 
         private void PublishIfAllowed(string name, Action publish)

@@ -1,0 +1,63 @@
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  margin: 0;
+}
+header {
+  background: #2d2d2d;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 4px #0006;
+}
+h1 { margin: 0; font-size: 1.4rem; }
+.controls {
+  margin: 1rem 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+button {
+  background: #0078d7;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover { background: #005a9e; }
+#searchBox, select {
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #2d2d2d;
+  color: #eee;
+}
+#logsTable {
+  width: 96%;
+  margin: 1rem auto;
+  border-collapse: collapse;
+  background: #252526;
+  border-radius: 6px;
+  overflow: hidden;
+}
+#logsTable th, #logsTable td {
+  padding: 0.5em 0.7em;
+  border-bottom: 1px solid #333;
+  text-align: left;
+}
+#logsTable th {
+  background: #222;
+  cursor: pointer;
+}
+#logsTable tr:hover { background: #2f2f2f; }
+.status-info { color: #8ec07c; }
+.status-warn { color: #fabd2f; }
+.status-error { color: #fb4934; }
+.status-fatal { color: #fb4934; font-weight: bold; }
+.status-debug, .status-trace { color: #83a598; }
+.status-ok, .status-start { color: #b8bb26; }
+.log-meta { color: #999; font-size: 0.8em; }
+.details { font-size: 0.85em; color: #bbb; }
+.hidden { display: none; }

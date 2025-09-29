@@ -16,6 +16,8 @@ using Silica.UI.Diagnostics;
 using Silica.UI.Metrics;
 using System.Collections.Generic;
 using Microsoft.Extensions.FileProviders;
+using Silica.DiagnosticsCore;
+using Silica.Sessions.Contracts;
 
 namespace Silica.UI.FrontEnds
 {
@@ -83,6 +85,54 @@ namespace Silica.UI.FrontEnds
 
                                   // Simple test endpoint
                                   app.UseRouting();
+
+                                  app.Use(async (context, next) =>
+                                  {
+                                      // Try header then cookie
+                                      string? sid = null;
+                                      if (context.Request.Headers.TryGetValue("X-Silica-Session-Id", out var h) && h.Count > 0)
+                                          sid = h[0];
+                                      else if (context.Request.Cookies.TryGetValue("silica_session_id", out var c))
+                                          sid = c;
+
+                                      ISessionContext? session = null;
+                                      if (!string.IsNullOrWhiteSpace(sid) && Guid.TryParse(sid, out var sessionGuid))
+                                      {
+                                          session = _sessions.Resume(sessionGuid); // SessionManagerAdapter.Resume returns ISessionContext?
+                                      }
+
+                                      if (session == null)
+                                      {
+                                          // Create anonymous session (no principal)
+                                          session = _sessions.Provider.CreateSession(
+                                              principal: null,
+                                              idleTimeout: TimeSpan.FromMinutes(_sessions.IdleTimeoutMinutes),
+                                              transactionTimeout: TimeSpan.FromMinutes(5),
+                                              coordinatorNode: "frontend");
+
+                                          // Persist for client
+                                          var cookieOptions = new CookieOptions
+                                          {
+                                              HttpOnly = true,
+                                              Secure = true,
+                                              SameSite = SameSiteMode.Strict,
+                                              MaxAge = TimeSpan.FromMinutes(_sessions.IdleTimeoutMinutes)
+                                          };
+                                          context.Response.Cookies.Append("silica_session_id", session.SessionId.ToString(), cookieOptions);
+                                          context.Response.Headers["X-Silica-Session-Id"] = session.SessionId.ToString();
+                                      }
+                                      else
+                                      {
+                                          // touch resumed session to update last-activity
+                                          try { session.Touch(); } catch { }
+                                      }
+
+                                      // Make session available to downstream code
+                                      context.Items["SilicaSession"] = session;
+
+                                      await next();
+                                  });
+
                                   app.Use(async (context, next) =>
                                   {
                                       UiDiagnostics.Emit("Silica.UI.FrontEnd", "Request", "info",
@@ -121,6 +171,28 @@ namespace Silica.UI.FrontEnds
                                   });
                                   app.UseEndpoints(endpoints =>
                                   {
+                                      endpoints.MapGet("/api/logs", () =>
+                                      {
+                                          var sink = DiagnosticsCoreBootstrap.Instance.BoundedSink;
+                                          return Results.Json(sink.GetSnapshot());
+                                      });
+                                      endpoints.MapGet("/api/metrics", () =>
+                                      {
+                                          var sink = DiagnosticsCoreBootstrap.Instance.BoundedMetricsSink;
+                                          if (sink == null)
+                                          {
+                                              return Results.Json(new { error = "metrics_sink_not_available" });
+                                          }
+
+                                          var snapshot = sink.GetSnapshot();
+                                          return Results.Json(snapshot);
+                                      });
+
+
+                                      // REST root (parity with original Program.cs)
+                                      endpoints.MapGet("/rest", () =>
+                                          Results.Ok(new { status = "ok", message = "REST API placeholder" }));
+
                                       // REST root (parity with original Program.cs)
                                       endpoints.MapGet("/rest", () =>
                                           Results.Ok(new { status = "ok", message = "REST API placeholder" }));

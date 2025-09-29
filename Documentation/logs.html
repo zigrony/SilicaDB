@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Silica Logs Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/logs.css">
+</head>
+<body>
+  <header>
+    <h1>Silica Logs Dashboard</h1>
+  </header>
+
+  <div class="controls">
+    <button onclick="Logs.load()">Refresh</button>
+    <button onclick="Logs.clear()">Clear</button>
+    <label>
+      <input type="checkbox" id="autoRefresh" checked>
+      Auto-refresh (5s)
+    </label>
+    <input type="text" id="searchBox" placeholder="Search logs..." oninput="Logs.applyFilters()">
+    <select id="statusFilter" onchange="Logs.applyFilters()">
+      <option value="">All Statuses</option>
+      <option value="info">Info</option>
+      <option value="warn">Warn</option>
+      <option value="error">Error</option>
+      <option value="fatal">Fatal</option>
+      <option value="debug">Debug</option>
+      <option value="trace">Trace</option>
+      <option value="ok">OK</option>
+      <option value="start">Start</option>
+    </select>
+    <select id="componentFilter" onchange="Logs.applyFilters()">
+      <option value="">All Components</option>
+    </select>
+    <span id="logCount"></span>
+  </div>
+
+  <div id="logsTableContainer">
+    <table id="logsTable">
+      <thead>
+        <tr>
+          <th data-sort="timestamp">Timestamp</th>
+          <th data-sort="status">Status</th>
+          <th data-sort="component">Component</th>
+          <th data-sort="operation">Operation</th>
+          <th data-sort="message">Message</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="logsBody">
+        <tr><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="js/logs.js"></script>
+</body>
+</html>

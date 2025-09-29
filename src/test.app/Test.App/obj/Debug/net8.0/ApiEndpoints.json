@@ -1,7 +1,55 @@
 [
   {
     "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
-    "Method": "\u003CStartAsync\u003Eb__7_6",
+    "Method": "\u003CStartAsync\u003Eb__7_7",
+    "RelativePath": "api/logs",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
+    "Method": "\u003CStartAsync\u003Eb__7_8",
+    "RelativePath": "api/metrics",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
+    "Method": "\u003CStartAsync\u003Eb__7_9",
+    "RelativePath": "rest",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
+    "Method": "\u003CStartAsync\u003Eb__7_10",
     "RelativePath": "rest",
     "HttpMethod": "GET",
     "IsController": false,

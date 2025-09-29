@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Silica Metrics Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/metrics.css">
+</head>
+<body>
+  <header>
+    <h1>Silica Metrics Dashboard</h1>
+  </header>
+  <div class="controls">
+    <button onclick="loadMetrics()">Refresh</button>
+    <button onclick="clearMetrics()">Clear</button>
+    <label>
+      <input type="checkbox" id="autoRefresh" checked>
+      Auto-refresh (5s)
+    </label>
+    <span id="metricCount"></span>
+  </div>
+  <div id="metricsContainer">
+    <table id="metricsTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Component</th>
+          <th>Type</th>
+          <th>Latest Value</th>
+          <th>Gauge</th>
+          <th>Tags</th>
+          <th>Chart</th>
+        </tr>
+      </thead>
+      <tbody id="metricsBody">
+        <tr><td colspan="7">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="chartPanel" class="hidden">
+    <div class="chart-header">
+      <span id="chartTitle"></span>
+      <button onclick="closeChart()" class="close-btn">×</button>
+    </div>
+    <canvas id="metricChart" width="600" height="220"></canvas>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/metrics.js"></script>
+</body>
+</html>
