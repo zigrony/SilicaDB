@@ -44,6 +44,9 @@ namespace Silica.Sessions.Implementation
             SessionId = sessionId != Guid.Empty ? sessionId : Guid.NewGuid();
             GlobalSessionId = globalSessionId != Guid.Empty ? globalSessionId : Guid.NewGuid();
 
+            // Compute a log‑safe surrogate once at construction
+            LogId = ComputeLogId(SessionId);
+
             State = SessionState.Created;
             CreatedUtc = DateTime.UtcNow;
             LastActivityUtc = CreatedUtc;
@@ -92,10 +95,23 @@ namespace Silica.Sessions.Implementation
                 null,
                 null);
         }
+        private static string ComputeLogId(Guid id)
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hash = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(id.ToString("N")));
+            // 12 hex chars (~48 bits) is plenty for uniqueness in logs
+            return Convert.ToHexString(hash).Substring(0, 12);
+        }
 
         // Identity & lifecycle
         public Guid SessionId { get; }
         public Guid GlobalSessionId { get; }
+        /// <summary>
+        /// A log‑safe surrogate identifier derived from <see cref="SessionId"/>.
+        /// This value is stable for the lifetime of the session but cannot be used
+        /// to impersonate or resume the session.
+        /// </summary>
+        public string LogId { get; }
         public string Principal => _principal;
         public SessionState State { get; private set; }
         public DateTime CreatedUtc { get; }
@@ -951,7 +967,9 @@ namespace Silica.Sessions.Implementation
         private Dictionary<string, string> CreateSessionTagMapCore()
         {
             var d = new Dictionary<string, string>(4, StringComparer.OrdinalIgnoreCase);
-            d["session.id"] = SessionId.ToString();
+            // Use log‑safe surrogate for session.id
+            d["session.id"] = LogId;
+            // GlobalSessionId is not a credential, safe to log raw
             d["global.session.id"] = GlobalSessionId.ToString();
             // Low-cardinality signal to avoid leaking PII
             if (!string.IsNullOrEmpty(_principal)) d["principal.present"] = "yes";

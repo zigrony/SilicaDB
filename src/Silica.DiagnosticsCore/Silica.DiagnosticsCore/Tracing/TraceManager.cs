@@ -22,6 +22,12 @@ namespace Silica.DiagnosticsCore.Tracing
         private readonly double _sampleRate;
         private readonly TagValidator? _traceTagValidator;
         private readonly string _minimumLevel; // normalized lowercase
+        // Common low-cardinality trace tag keys allowed by default (session/correlation visibility).
+        private static readonly string[] CommonAllowedTraceKeys = new[]
+        {
+            "session.id", "global.session.id", "principal.present",
+            "session.state", "tx.state", "correlation.id", "span.id"
+        };
 
         public TraceManager(
             TraceDispatcher dispatcher,
@@ -173,6 +179,8 @@ namespace Silica.DiagnosticsCore.Tracing
                         }
                         catch { /* swallow */ }
                     });
+                // Allow common cross-cutting keys up-front to avoid validator drops.
+                _traceTagValidator.AddAllowedKeys(CommonAllowedTraceKeys);
 
             }
 
@@ -360,6 +368,19 @@ namespace Silica.DiagnosticsCore.Tracing
                 const string exKey = Silica.DiagnosticsCore.Metrics.TagKeys.Exception;
                 if (!merged.ContainsKey(exKey))
                     merged[exKey] = exception.GetType().FullName ?? exception.GetType().Name;
+            }
+
+            // Baseline: include correlation/span as tags for filterability in sinks/dashboards.
+            // Keep values short and deterministic.
+            // Note: these are tags in addition to the dedicated TraceEvent properties.
+            merged["correlation.id"] = correlationId.ToString("D");
+            merged["span.id"] = spanId.ToString("D");
+
+            // Run global enrichers before redaction/validation so they can add/modify/remove tags.
+            var enrichers = DiagnosticsEnricherRegistry.GetAll();
+            for (int i = 0; i < enrichers.Length; i++)
+            {
+                try { enrichers[i].Enrich(merged); } catch { /* enrichment is best-effort */ }
             }
 
             var evtPre = new TraceEvent(

@@ -1,7 +1,7 @@
 [
   {
     "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
-    "Method": "\u003CStartAsync\u003Eb__7_7",
+    "Method": "\u003CStartAsync\u003Eb__7_8",
     "RelativePath": "api/logs",
     "HttpMethod": "GET",
     "IsController": false,
@@ -17,7 +17,7 @@
   },
   {
     "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
-    "Method": "\u003CStartAsync\u003Eb__7_8",
+    "Method": "\u003CStartAsync\u003Eb__7_9",
     "RelativePath": "api/metrics",
     "HttpMethod": "GET",
     "IsController": false,
@@ -33,7 +33,7 @@
   },
   {
     "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
-    "Method": "\u003CStartAsync\u003Eb__7_9",
+    "Method": "\u003CStartAsync\u003Eb__7_10",
     "RelativePath": "rest",
     "HttpMethod": "GET",
     "IsController": false,
@@ -49,7 +49,7 @@
   },
   {
     "ContainingType": "Silica.UI.FrontEnds.FrontEndController\u002B\u003C\u003Ec",
-    "Method": "\u003CStartAsync\u003Eb__7_10",
+    "Method": "\u003CStartAsync\u003Eb__7_11",
     "RelativePath": "rest",
     "HttpMethod": "GET",
     "IsController": false,

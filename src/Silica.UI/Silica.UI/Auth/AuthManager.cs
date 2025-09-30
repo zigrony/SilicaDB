@@ -70,8 +70,7 @@ namespace Silica.UI.Auth
                 _userStore,
                 _hasher,
                 _localOptions,
-                metrics: _metrics,
-                sessionProvider: _sessions.Provider);
+                metrics: _metrics);
         }
 
         public bool Authenticate(string username, string password)
@@ -103,7 +102,6 @@ namespace Silica.UI.Auth
                 UiDiagnostics.Emit("Silica.UI.Auth", "Authenticate", "ok", "login_success", null,
                     new Dictionary<string, string> {
                         { "username", context.Username ?? string.Empty },
-                        { "session_id", res.SessionId.ToString() }
                     });
             }
             return res;

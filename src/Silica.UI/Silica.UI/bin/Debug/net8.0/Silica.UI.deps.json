@@ -21,8 +21,7 @@
       "Silica.Authentication/1.0.0": {
         "dependencies": {
           "Silica.DiagnosticsCore": "1.0.0",
-          "Silica.Exceptions": "1.0.0",
-          "Silica.Sessions": "1.0.0"
+          "Silica.Exceptions": "1.0.0"
         },
         "runtime": {
           "Silica.Authentication.dll": {

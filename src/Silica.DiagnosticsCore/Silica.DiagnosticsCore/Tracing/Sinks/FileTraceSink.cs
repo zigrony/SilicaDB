@@ -672,9 +672,9 @@ namespace Silica.DiagnosticsCore.Tracing
               .Append(" [").Append(e.Status).Append("] ")
               .Append(e.Component).Append('/')
               .Append(e.Operation).Append(' ')
-              .Append(e.Message)
-              .Append(" cid=").Append(e.CorrelationId.ToString("D"))
-              .Append(" sid=").Append(e.SpanId.ToString("D"));
+              .Append(e.Message);
+              //.Append(" cid=").Append(e.CorrelationId.ToString("D"))
+              //.Append(" sid=").Append(e.SpanId.ToString("D"));
 
             if (_fmtIncludeTags && e.Tags != null && e.Tags.Count > 0)
             {

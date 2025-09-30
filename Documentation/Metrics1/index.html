@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Silica Metrics Dashboard</title>
+  <link rel="stylesheet" href="css/metrics.css" />
+  <!-- Chart.js for line/bar charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Gauge.js for gauges -->
+  <script src="https://cdn.jsdelivr.net/npm/gaugeJS/dist/gauge.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Silica Metrics Dashboard</h1>
+    <p>Real-time diagnostics from <code>/api/metrics</code></p>
+  </header>
+
+  <main>
+    <section class="gauges">
+      <div class="gauge-container">
+        <canvas id="emittedGauge" width="200" height="200"></canvas>
+        <span class="label">Traces Emitted</span>
+      </div>
+      <div class="gauge-container">
+        <canvas id="latencyGauge" width="200" height="200"></canvas>
+        <span class="label">Avg Sink Latency (ms)</span>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="chart-container">
+        <h2>Emitted Traces Over Time</h2>
+        <canvas id="emittedChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <h2>Sink Emit Duration Histogram</h2>
+        <canvas id="latencyChart"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Powered by Silica.DiagnosticsCore + Silica.UI</p>
+  </footer>
+
+  <script src="js/metrics.js"></script>
+</body>
+</html>

@@ -1,3 +1,10 @@
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.csproj.AssemblyReference.cache
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.AssemblyInfoInputs.cache
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.AssemblyInfo.cs
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.csproj.CoreCompileInputs.cache
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.MvcApplicationPartsAssemblyInfo.cache
+C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Test.App.exe
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Test.App.deps.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Test.App.runtimeconfig.json
@@ -33,13 +40,6 @@ C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Storage.pd
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.UI.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Common.pdb
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\bin\Debug\net8.0\Silica.Durability.pdb
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.csproj.AssemblyReference.cache
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.GeneratedMSBuildEditorConfig.editorconfig
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.AssemblyInfoInputs.cache
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.AssemblyInfo.cs
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.csproj.CoreCompileInputs.cache
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.MvcApplicationPartsAssemblyInfo.cache
-C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\Test.App.sourcelink.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.build.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets.development.json
 C:\GitHubRepos\SilicaDB\src\test.app\Test.App\obj\Debug\net8.0\staticwebassets\msbuild.Test.App.Microsoft.AspNetCore.StaticWebAssets.props

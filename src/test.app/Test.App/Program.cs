@@ -139,16 +139,26 @@ class Program
         //Silica.Authentication.Diagnostics.SetVerbose(true);
 
         // 3) Register an extra FileTraceSink
+        // File sink
         var fileSink = new FileTraceSink(
             filePath: @"c:\temp\testapp.traces.log",
             minLevel: "trace",
             metrics: instance.Metrics,
             dropPolicy: FileTraceSink.DropPolicy.BlockWithTimeout,
             queueCapacity: 512
-        );
+        )
+        .WithFormatting(includeTags: true, includeException: true); // <-- add here
 
         instance.Dispatcher.RegisterSink(fileSink, instance.Options.DispatcherFullMode);
 
+        // Console sink
+        var consoleSink = new ConsoleTraceSink(
+            minLevel: "info",
+            metrics: instance.Metrics
+        )
+        .WithFormatting(includeTags: true, includeException: false); // <-- add here
+
+        instance.Dispatcher.RegisterSink(consoleSink, instance.Options.DispatcherFullMode);
         // 4) Register and emit a custom metric
         var myMetric = new MetricDefinition(
             Name: "testapp.requests",
@@ -186,6 +196,7 @@ class Program
 
         await using var system = new SilicaSystem(optionsUI);
         await system.StartAsync();
+        await BufferPoolTestHarness.Run();
 
         Console.WriteLine("Silica running. Press Enter to stop...");
         Console.ReadLine();

@@ -102,10 +102,7 @@ namespace Silica.Sessions.Implementation
                 catch (InvalidPrincipalException)
                 {
                     // Resilient admin-plane behavior: proceed unauthenticated and signal.
-                    SessionDiagnostics.Emit(_componentName, "CreateSession", "warn",
-                        "invalid_principal_on_create",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId, "principal_present", "no"));
+                    SessionDiagnostics.Emit(_componentName, "CreateSession", "warn", "invalid_principal_on_create");
                 }
             }
 
@@ -116,11 +113,7 @@ namespace Silica.Sessions.Implementation
 
             var principalPresent = (principal == null || string.IsNullOrWhiteSpace(principal)) ? "no" : "yes";
             SessionMetrics.IncrementCreate(_metrics, principalPresent);
-            SessionDiagnostics.Emit(_componentName, "CreateSession", "ok",
-                "created",
-                null,
-                CreateManagerTagMap(session.SessionId, session.GlobalSessionId,
-                    "principal_present", principalPresent));
+            SessionDiagnostics.Emit(_componentName, "CreateSession", "ok", "created");
             return session;
         }
 
@@ -176,9 +169,7 @@ namespace Silica.Sessions.Implementation
                 if (!_sessions.TryGetValue(sessionId, out var session))
                 {
                     // Low-noise debug parity for direct get misses.
-                    SessionDiagnostics.EmitDebug(_componentName, "GetSession",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "GetSession", "session_not_found");
                     throw new SessionNotFoundException(sessionId);
                 }
                 return session;
@@ -194,9 +185,7 @@ namespace Silica.Sessions.Implementation
                 if (!found)
                 {
                     // Parity with other Try* methods: emit low-noise miss
-                    SessionDiagnostics.EmitDebug(_componentName, "TryGetSession",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "TryGetSession", "session_not_found");
                 }
                 return found;
             }
@@ -207,8 +196,7 @@ namespace Silica.Sessions.Implementation
             ThrowIfDisposed();
             var session = GetSession(sessionId);
             session.Touch();
-            SessionDiagnostics.EmitDebug(_componentName, "Touch", "touch",
-                CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+            SessionDiagnostics.EmitDebug(_componentName, "Touch", "touch");
         }
 
         public bool TryTouch(Guid sessionId)
@@ -219,25 +207,20 @@ namespace Silica.Sessions.Implementation
             {
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "TryTouch",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "TryTouch", "session_not_found");
                     return false;
                 }
             }
             try
             {
                 session.Touch();
-                SessionDiagnostics.EmitDebug(_componentName, "TryTouch", "touch",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryTouch", "touch");
                 return true;
             }
             catch (Exception)
             {
                 // Defensive: avoid surfacing errors in admin-plane idempotent call.
-                SessionDiagnostics.EmitDebug(_componentName, "TryTouch",
-                    "skip_unexpected_error_on_touch",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryTouch", "skip_unexpected_error_on_touch");
                 return false;
             }
         }
@@ -254,16 +237,11 @@ namespace Silica.Sessions.Implementation
                 if (session.State == SessionState.Idle && prevState != SessionState.Idle)
                 {
                     SessionMetrics.IncrementIdleSet(_metrics);
-                    SessionDiagnostics.Emit(_componentName, "SetIdle", "ok",
-                        "idle",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "SetIdle", "ok", "idle");
                 }
                 else
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "SetIdle",
-                        "idle_not_set",
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "SetIdle", "idle_not_set");
                 }
             }
         }
@@ -276,9 +254,7 @@ namespace Silica.Sessions.Implementation
             {
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle", "session_not_found");
                     return false;
                 }
             }
@@ -291,25 +267,18 @@ namespace Silica.Sessions.Implementation
                 }
                 catch (Exception)
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle",
-                        "skip_unexpected_error_on_idle",
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle", "skip_unexpected_error_on_idle");
                     return false;
                 }
 
                 if (session.State == SessionState.Idle && prevState != SessionState.Idle)
                 {
                     SessionMetrics.IncrementIdleSet(_metrics);
-                    SessionDiagnostics.Emit(_componentName, "TrySetIdle", "ok",
-                        "idle",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "TrySetIdle", "ok", "idle");
                 }
                 else
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle",
-                        "idle_not_set",
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "TrySetIdle", "idle_not_set");
                 }
                 return true;
             }
@@ -326,9 +295,7 @@ namespace Silica.Sessions.Implementation
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
                     // Observability: document no-op close
-                    SessionDiagnostics.EmitDebug(_componentName, "Close",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "Close", "session_not_found");
                     return;
                 }
                 _sessions.Remove(sessionId);
@@ -340,25 +307,18 @@ namespace Silica.Sessions.Implementation
                 {
                     // End as Aborted; metrics and diagnostics are handled in EndTransaction.
                     session.EndTransaction(Contracts.TransactionState.Aborted);
-                    SessionDiagnostics.Emit(_componentName, "Close", "warn",
-                        "tx_aborted_on_close",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "Close", "warn", "tx_aborted_on_close");
                 }
             }
             catch (SessionLifecycleInvalidException)
             {
                 // Session concurrently transitioned; proceed with close.
-                SessionDiagnostics.EmitDebug(_componentName, "Close",
-                    "skip_lifecycle_invalid_on_close",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "Close", "skip_lifecycle_invalid_on_close");
             }
             catch (Exception)
             {
                 // Defensive: do not block close on unexpected teardown issues.
-                SessionDiagnostics.EmitDebug(_componentName, "Close",
-                    "skip_unexpected_error_on_close",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "Close", "skip_unexpected_error_on_close");
             }
 
             if (session is ISessionContextInternal impl)
@@ -366,10 +326,7 @@ namespace Silica.Sessions.Implementation
                 impl.MarkClosed();
             }
             SessionMetrics.IncrementClose(_metrics);
-            SessionDiagnostics.Emit(_componentName, "Close", "ok",
-                "closed",
-                null,
-                CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+            SessionDiagnostics.Emit(_componentName, "Close", "ok", "closed");
         }
 
         public bool TryClose(Guid sessionId)
@@ -382,9 +339,7 @@ namespace Silica.Sessions.Implementation
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
                     // Observability: document no-op close
-                    SessionDiagnostics.EmitDebug(_componentName, "TryClose",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "TryClose", "session_not_found");
                     return false;
                 }
                 _sessions.Remove(sessionId);
@@ -395,23 +350,16 @@ namespace Silica.Sessions.Implementation
                 if (session.TransactionState == Contracts.TransactionState.Active)
                 {
                     session.EndTransaction(Contracts.TransactionState.Aborted);
-                    SessionDiagnostics.Emit(_componentName, "TryClose", "warn",
-                        "tx_aborted_on_close",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "TryClose", "warn", "tx_aborted_on_close");
                 }
             }
             catch (SessionLifecycleInvalidException)
             {
-                SessionDiagnostics.EmitDebug(_componentName, "TryClose",
-                    "skip_lifecycle_invalid_on_close",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryClose", "skip_lifecycle_invalid_on_close");
             }
             catch (Exception)
             {
-                SessionDiagnostics.EmitDebug(_componentName, "TryClose",
-                    "skip_unexpected_error_on_close",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryClose", "skip_unexpected_error_on_close");
             }
 
             if (session is ISessionContextInternal impl)
@@ -419,10 +367,7 @@ namespace Silica.Sessions.Implementation
                 impl.MarkClosed();
             }
             SessionMetrics.IncrementClose(_metrics);
-            SessionDiagnostics.Emit(_componentName, "TryClose", "ok",
-                "closed",
-                null,
-                CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+            SessionDiagnostics.Emit(_componentName, "TryClose", "ok", "closed");
             return true;
         }
 
@@ -436,9 +381,7 @@ namespace Silica.Sessions.Implementation
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
                     // Observability: document no-op expire
-                    SessionDiagnostics.EmitDebug(_componentName, "Expire",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "Expire", "session_not_found");
                     return;
                 }
                 _sessions.Remove(sessionId);
@@ -449,25 +392,18 @@ namespace Silica.Sessions.Implementation
                 if (session.TransactionState == Contracts.TransactionState.Active)
                 {
                     session.EndTransaction(Contracts.TransactionState.Aborted);
-                    SessionDiagnostics.Emit(_componentName, "Expire", "warn",
-                        "tx_aborted_on_expire",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "Expire", "warn", "tx_aborted_on_expire");
                 }
             }
             catch (SessionLifecycleInvalidException)
             {
                 // Session concurrently transitioned; proceed with expire.
-                SessionDiagnostics.EmitDebug(_componentName, "Expire",
-                    "skip_lifecycle_invalid_on_expire",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "Expire", "skip_lifecycle_invalid_on_expire");
             }
             catch (Exception)
             {
                 // Defensive: do not block expire on unexpected teardown issues.
-                SessionDiagnostics.EmitDebug(_componentName, "Expire",
-                    "skip_unexpected_error_on_expire",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "Expire", "skip_unexpected_error_on_expire");
             }
 
             if (session is ISessionContextInternal impl)
@@ -479,17 +415,11 @@ namespace Silica.Sessions.Implementation
             try
             {
                 var ex = new SessionExpiredException(session.SessionId);
-                SessionDiagnostics.Emit(_componentName, "Expire", "warn",
-                    "expired",
-                    ex,
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.Emit(_componentName, "Expire", "warn", "expired");
             }
             catch
             {
-                SessionDiagnostics.Emit(_componentName, "Expire", "warn",
-                    "expired",
-                    null,
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.Emit(_componentName, "Expire", "warn", "expired");
             }
         }
 
@@ -503,9 +433,7 @@ namespace Silica.Sessions.Implementation
                 if (!_sessions.TryGetValue(sessionId, out session))
                 {
                     // Observability: document no-op expire
-                    SessionDiagnostics.EmitDebug(_componentName, "TryExpire",
-                        "session_not_found",
-                        CreateManagerTagMap(sessionId, Guid.Empty));
+                    SessionDiagnostics.EmitDebug(_componentName, "TryExpire", "session_not_found");
                     return false;
                 }
                 _sessions.Remove(sessionId);
@@ -516,23 +444,16 @@ namespace Silica.Sessions.Implementation
                 if (session.TransactionState == Contracts.TransactionState.Active)
                 {
                     session.EndTransaction(Contracts.TransactionState.Aborted);
-                    SessionDiagnostics.Emit(_componentName, "TryExpire", "warn",
-                        "tx_aborted_on_expire",
-                        null,
-                        CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "TryExpire", "warn", "tx_aborted_on_expire");
                 }
             }
             catch (SessionLifecycleInvalidException)
             {
-                SessionDiagnostics.EmitDebug(_componentName, "TryExpire",
-                    "skip_lifecycle_invalid_on_expire",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryExpire", "skip_lifecycle_invalid_on_expire");
             }
             catch (Exception)
             {
-                SessionDiagnostics.EmitDebug(_componentName, "TryExpire",
-                    "skip_unexpected_error_on_expire",
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.EmitDebug(_componentName, "TryExpire", "skip_unexpected_error_on_expire");
             }
 
             if (session is ISessionContextInternal impl)
@@ -544,17 +465,11 @@ namespace Silica.Sessions.Implementation
             try
             {
                 var ex = new SessionExpiredException(session.SessionId);
-                SessionDiagnostics.Emit(_componentName, "TryExpire", "warn",
-                    "expired",
-                    ex,
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.Emit(_componentName, "TryExpire", "warn", "expired");
             }
             catch
             {
-                SessionDiagnostics.Emit(_componentName, "TryExpire", "warn",
-                    "expired",
-                    null,
-                    CreateManagerTagMap(session.SessionId, session.GlobalSessionId));
+                SessionDiagnostics.Emit(_componentName, "TryExpire", "warn", "expired");
             }
             return true;
         }
@@ -625,25 +540,18 @@ namespace Silica.Sessions.Implementation
                     if (s.TransactionState == Contracts.TransactionState.Active)
                     {
                         s.EndTransaction(Contracts.TransactionState.Aborted);
-                        SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn",
-                            "tx_aborted_on_idle_eviction",
-                            null,
-                            CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                        SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn", "tx_aborted_on_idle_eviction");
                     }
                 }
                 catch (SessionLifecycleInvalidException)
                 {
                     // Session concurrently transitioned; proceed with eviction.
-                    SessionDiagnostics.EmitDebug(_componentName, "EvictIdleSessions",
-                        "skip_lifecycle_invalid_on_idle_eviction",
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "EvictIdleSessions", "skip_lifecycle_invalid_on_idle_eviction");
                 }
                 catch (Exception)
                 {
                     // Defensive: do not let one failure halt the sweep.
-                    SessionDiagnostics.EmitDebug(_componentName, "EvictIdleSessions",
-                        "skip_unexpected_error_on_idle_eviction",
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "EvictIdleSessions", "skip_unexpected_error_on_idle_eviction");
                 }
 
                 if (s is ISessionContextInternal impl)
@@ -656,17 +564,11 @@ namespace Silica.Sessions.Implementation
                 try
                 {
                     var ex = new IdleTimeoutExpiredException(s.SessionId, s.IdleTimeout);
-                    SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn",
-                        "expired_on_idle_eviction",
-                        ex,
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn", "expired_on_idle_eviction");
                 }
                 catch
                 {
-                    SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn",
-                        "expired_on_idle_eviction",
-                        null,
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.Emit(_componentName, "EvictIdleSessions", "warn", "expired_on_idle_eviction");
                 }
             }
             // Batch metric and canonical batch emission
@@ -771,16 +673,12 @@ namespace Silica.Sessions.Implementation
                 catch (SessionLifecycleInvalidException)
                 {
                     // Session concurrently closed/expired; skip and continue
-                    SessionDiagnostics.EmitDebug(_componentName, "AbortTimedOutTransactions",
-                        "skip_lifecycle_invalid",
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "AbortTimedOutTransactions", "skip_lifecycle_invalid");
                 }
                 catch (Exception)
                 {
                     // Defensive: do not let one failure halt the sweep
-                    SessionDiagnostics.EmitDebug(_componentName, "AbortTimedOutTransactions",
-                        "skip_unexpected_error",
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "AbortTimedOutTransactions", "skip_unexpected_error");
                 }
             }
             return aborted;
@@ -835,27 +733,19 @@ namespace Silica.Sessions.Implementation
                     if (s.TransactionState == Contracts.TransactionState.Active)
                     {
                         s.EndTransaction(Contracts.TransactionState.Aborted);
-                        SessionDiagnostics.Emit(_componentName, "Dispose", "warn",
-                            "tx_aborted_on_dispose",
-                            null,
-                            CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                        SessionDiagnostics.Emit(_componentName, "Dispose", "warn", "tx_aborted_on_dispose");
                     }
                 }
                 catch (Exception)
                 {
-                    SessionDiagnostics.EmitDebug(_componentName, "Dispose",
-                        "skip_unexpected_error_on_dispose",
-                        CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                    SessionDiagnostics.EmitDebug(_componentName, "Dispose","skip_unexpected_error_on_dispose");
                 }
                 if (s is ISessionContextInternal impl)
                 {
                     impl.MarkClosed();
                 }
                 SessionMetrics.IncrementClose(_metrics);
-                SessionDiagnostics.Emit(_componentName, "Dispose", "ok",
-                    "closed_on_dispose",
-                    null,
-                    CreateManagerTagMap(s.SessionId, s.GlobalSessionId));
+                SessionDiagnostics.Emit(_componentName, "Dispose", "ok", "closed_on_dispose");
             }
         }
     }

@@ -8,6 +8,7 @@ namespace Silica.Sessions.Contracts
     {
         // Identity & lifecycle
         Guid SessionId { get; }
+        String LogId { get; }
         Guid GlobalSessionId { get; }
         string Principal { get; }
         SessionState State { get; }

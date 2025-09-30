@@ -28,9 +28,5 @@
         /// </summary>
         string? FailureReason { get; }
 
-        /// <summary>
-        /// Optional session identifier when a session was created for this authentication.
-        /// </summary>
-        Guid? SessionId { get; }
     }
 }

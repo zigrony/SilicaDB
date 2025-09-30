@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Diagnostics.Metrics;
 using static Silica.DiagnosticsCore.DiagnosticsOptions;
+using Silica.DiagnosticsCore.Enrichers;
 
 namespace Silica.DiagnosticsCore
 {
@@ -380,6 +381,14 @@ namespace Silica.DiagnosticsCore
                                             sampleRate: options.EffectiveTraceSampleRate,
                                             traceTagValidator: traceTagValidator,
                                             minimumLevel: options.MinimumLevel);
+
+                // Register ambient enricher once at bootstrap so all traces are enriched automatically.
+                // Safe to call multiple times across restarts: registry holds instances; no hard dependencies.
+                try
+                {
+                    DiagnosticsEnricherRegistry.Register(new AmbientTagEnricher());
+                }
+                catch { /* enrichment should never break bootstrap */ }
 
                 if (options.DispatcherFullMode == BoundedChannelFullMode.Wait)
                 {

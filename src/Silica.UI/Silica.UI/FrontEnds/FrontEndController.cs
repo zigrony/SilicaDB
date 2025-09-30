@@ -129,7 +129,28 @@ namespace Silica.UI.FrontEnds
 
                                       // Make session available to downstream code
                                       context.Items["SilicaSession"] = session;
+                                      // after context.Items["SilicaSession"] = session;
 
+                                      // Set ambient tags for this logical request
+                                      AmbientTagContext.Set("session.id", session.LogId);
+                                      AmbientTagContext.Set("global.session.id", session.GlobalSessionId.ToString("D"));
+                                      AmbientTagContext.Set("principal.present", string.IsNullOrEmpty(session.Principal) ? "no" : "yes");
+
+                                      // Ensure ambient tags are removed when the request completes.
+                                      // OnCompleted runs after the response has finished; it will still run if the client disconnects.
+                                      context.Response.OnCompleted(state =>
+                                      {
+                                          try
+                                          {
+                                              AmbientTagContext.Remove("session.id");
+                                              AmbientTagContext.Remove("global.session.id");
+                                              AmbientTagContext.Remove("principal.present");
+                                          }
+                                          catch { /* best-effort cleanup; swallow */ }
+                                          return Task.CompletedTask;
+                                      }, state: null);
+
+                                      // Proceed down the pipeline
                                       await next();
                                   });
 
@@ -283,18 +304,15 @@ namespace Silica.UI.FrontEnds
                                               return;
                                           }
 
-                                          // Issue session id via header + secure cookie
-                                          if (result is { Succeeded: true, SessionId: Guid sid } && sid != Guid.Empty)
+                                          // Enrich the existing session with the authenticated principal
+                                          var session = context.Items["SilicaSession"] as ISessionContext;
+                                          if (session != null)
                                           {
-                                              context.Response.Headers["X-Silica-Session-Id"] = sid.ToString();
-                                              context.Response.Cookies.Append("silica_session_id", sid.ToString(), new CookieOptions
-                                              {
-                                                  HttpOnly = true,
-                                                  Secure = true,
-                                                  SameSite = SameSiteMode.Strict,
-                                                  MaxAge = TimeSpan.FromMinutes(_sessions.IdleTimeoutMinutes)
-                                              });
+                                              session.Authenticate(result.Principal);
+                                              // Optional: regenerate session ID here to prevent fixation
+                                              // session.RegenerateId();
                                           }
+
                                           UiDiagnostics.Emit("Silica.UI.FrontEnd", "GET /private", "ok",
                                               "basic_auth_succeeded", null,
                                               new Dictionary<string, string> { { "username", user ?? string.Empty } });
@@ -302,7 +320,7 @@ namespace Silica.UI.FrontEnds
                                           await context.Response.WriteAsJsonAsync(new
                                           {
                                               principal = result.Principal,
-                                              session_id = result.SessionId,
+                                              session_id = session?.SessionId,
                                               roles = result.Roles
                                           });
                                       });

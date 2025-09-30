@@ -8,7 +8,6 @@ using Silica.Authentication.Metrics;
 using Silica.Authentication.Diagnostics;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Exceptions;
-using Silica.Sessions.Contracts;
 
 namespace Silica.Authentication.Local
 {
@@ -23,7 +22,6 @@ namespace Silica.Authentication.Local
         private readonly IMetricsManager? _metrics;
         private readonly string _componentName;
         private readonly IPrincipalMapper _roles;
-        private readonly ISessionProvider? _sessionProvider;
 
         // Reuse a stopwatch-style helper to measure elapsed ms deterministically
         private static class StopwatchUtil
@@ -57,22 +55,14 @@ namespace Silica.Authentication.Local
             LocalAuthenticationOptions options,
             IMetricsManager? metrics = null,
             string componentName = "Silica.Authentication.Local",
-            IPrincipalMapper? principalMapper = null,
-            ISessionProvider? sessionProvider = null)
+            IPrincipalMapper? principalMapper = null)
         {
             _userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
             _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _metrics = metrics;
             _componentName = string.IsNullOrWhiteSpace(componentName) ? "Silica.Authentication.Local" : componentName;
-            _sessionProvider = sessionProvider;
-            // ADD THIS:
             _roles = principalMapper ?? new NoOpPrincipalMapper();
-
-            if (_metrics is not null)
-            {
-                AuthenticationMetrics.RegisterAll(_metrics, _componentName);
-            }
 
             if (_metrics is not null)
             {
@@ -153,7 +143,7 @@ namespace Silica.Authentication.Local
                     await ApplyFailureDelayAsync(cancellationToken).ConfigureAwait(false);
                     var elapsedFail = StopwatchUtil.GetElapsedMilliseconds(start);
                     AuthenticationMetrics.RecordLatency(_metrics, elapsedFail, Name);
-                    return new LocalAuthenticationResult { Succeeded = false, FailureReason = AuthenticationFailureReasons.InvalidCredentials, SessionId = null };
+                    return new LocalAuthenticationResult { Succeeded = false, FailureReason = AuthenticationFailureReasons.InvalidCredentials };
                 }
 
                 var user = _userStore.FindByUsername(context.Username!);
@@ -272,20 +262,7 @@ namespace Silica.Authentication.Local
                     for (int i = 0; i < count; i++) finalRoles[i] = buffer[i];
                 }
                 IReadOnlyCollection<string> rolesRo = System.Array.AsReadOnly(finalRoles);
-                // Optional: create a session for the authenticated principal via the provider (DI).
-                Guid? sessionId = null;
-                try
-                {
-                    if (_sessionProvider != null)
-                    {
-                        var session = _sessionProvider.CreateSession(user.Username, TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(5), coordinatorNode: "interface");
-                        sessionId = session.SessionId;
-                        session.Touch(); // promote to Active on activity
-                    }
-                }
-                catch { /* do not fail authentication if session creation fails */ }
-
-                return new LocalAuthenticationResult { Succeeded = true, Principal = user.Username, Roles = rolesRo, SessionId = sessionId };
+                return new LocalAuthenticationResult { Succeeded = true, Principal = user.Username, Roles = rolesRo };
             }
             catch (OperationCanceledException ocex)
             {

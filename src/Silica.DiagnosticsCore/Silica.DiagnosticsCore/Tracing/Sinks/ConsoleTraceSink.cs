@@ -10,7 +10,7 @@ using static Silica.DiagnosticsCore.DiagnosticsOptions;
 
 namespace Silica.DiagnosticsCore.Tracing
 {
-    internal sealed class ConsoleTraceSink : ITraceSink, IDisposable, IAsyncDisposable
+    public sealed class ConsoleTraceSink : ITraceSink, IDisposable, IAsyncDisposable
     {
         private readonly string _minLevel;
         private readonly IMetricsManager? _metrics;
@@ -40,7 +40,7 @@ namespace Silica.DiagnosticsCore.Tracing
         private long _circuitOpenUntilTicks; // DateTime.UtcNow.Ticks until which we skip writes (drop + metrics)
 
         // Backpressure policy
-        internal enum DropPolicy
+        public enum DropPolicy
         {
             DropNewest = 0,       // never block producers; new writes dropped when full
             DropOldest = 1,       // evict oldest when full
@@ -566,9 +566,9 @@ namespace Silica.DiagnosticsCore.Tracing
               .Append(" [").Append(e.Status).Append("] ")
               .Append(e.Component).Append('/')
               .Append(e.Operation).Append(' ')
-              .Append(e.Message)
-              .Append(" cid=").Append(e.CorrelationId.ToString("D"))
-              .Append(" sid=").Append(e.SpanId.ToString("D"));
+              .Append(e.Message);
+              //.Append(" cid=").Append(e.CorrelationId.ToString("D"))
+              //.Append(" sid=").Append(e.SpanId.ToString("D"));
 
             if (_fmtIncludeTags && e.Tags != null && e.Tags.Count > 0)
             {
