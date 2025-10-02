@@ -13,16 +13,10 @@ using Silica.DiagnosticsCore.Metrics;
 using Silica.BufferPool.Metrics;
 using Silica.BufferPool.Diagnostics;
 using System.Globalization;
+using Silica.Common.Primitives;
 
 namespace Silica.BufferPool
 {
-    // ---------- Contracts ----------
-
-    /// <summary>
-    /// Uniquely identifies a page by file and index.
-    /// </summary>
-    public readonly record struct PageId(long FileId, long PageIndex);
-
     /// <summary>
     /// Abstraction of a paged storage device.
     /// </summary>

@@ -20,6 +20,8 @@
           "Silica.Sessions": "1.0.0",
           "Silica.Sql.Lexer": "1.0.0",
           "Silica.Storage": "1.0.0",
+          "Silica.Storage.Compression": "1.0.0",
+          "Silica.Storage.SqlMinidriver": "1.0.0",
           "Silica.UI": "1.0.0"
         },
         "runtime": {
@@ -143,7 +145,8 @@
         "dependencies": {
           "Silica.BufferPool": "1.0.0",
           "Silica.Concurrency": "1.0.0",
-          "Silica.DiagnosticsCore": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.StorageAllocation": "1.0.0"
         },
         "runtime": {
           "Silica.PageAccess.dll": {
@@ -186,6 +189,42 @@
         },
         "runtime": {
           "Silica.Storage.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.Storage.Compression/1.0.0": {
+        "dependencies": {
+          "Silica.Storage": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Storage.Compression.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.Storage.SqlMinidriver/1.0.0": {
+        "dependencies": {
+          "Silica.Storage": "1.0.0"
+        },
+        "runtime": {
+          "Silica.Storage.SqlMinidriver.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Silica.StorageAllocation/1.0.0": {
+        "dependencies": {
+          "Silica.BufferPool": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0",
+          "Silica.Storage": "1.0.0"
+        },
+        "runtime": {
+          "Silica.StorageAllocation.dll": {
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -280,6 +319,21 @@
       "sha512": ""
     },
     "Silica.Storage/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Storage.Compression/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.Storage.SqlMinidriver/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.StorageAllocation/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

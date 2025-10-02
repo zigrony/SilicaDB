@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Silica.BufferPool;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Storage;
+using Silica.Common.Primitives;
 
 namespace Silica.BufferPool.Tests
 {

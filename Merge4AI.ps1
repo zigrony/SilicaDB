@@ -66,20 +66,11 @@ function Split-LargeFile {
 
 # Master project list
 $AllProjectsList = @(
-    "Silica.BufferPool",
-    "Silica.Common",
-    "Silica.Concurrency",
-    "Silica.DiagnosticsCore",
-    "Silica.Durability",
-    "Silica.Evictions",
-    "Silica.Exceptions",
-    "Silica.Storage",
-    "Silica.PageAccess",
-    "Silica.Sql.Lexer",
-    "Silica.Authentication",
-	"Silica.FrontEnds",
-	"Silica.Interface",
-    "test.app"
+  "Silica.Authentication", "Silica.BufferPool", "Silica.Certificates",
+  "Silica.Common","Silica.Concurrency", "Silica.DiagnosticsCore",
+  "Silica.Durability","Silica.Evictions", "Silica.Exceptions",
+  "Silica.FrontEnds", "Silica.PageAccess","Silica.Sessions",
+  "Silica.Sql.Lexer","Silica.Storage", "Silica.UI","test.app"
 )
 
 # Resolve project list

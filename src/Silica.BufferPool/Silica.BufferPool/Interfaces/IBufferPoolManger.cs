@@ -3,6 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Silica.Common.Primitives;
 
 namespace Silica.BufferPool
 {

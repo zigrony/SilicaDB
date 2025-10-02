@@ -11,6 +11,7 @@ using Silica.Durability;
 using Silica.Concurrency;
 using Silica.PageAccess;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.Common.Primitives;
 
 namespace Silica.PageAccess.Tests
 {
@@ -61,7 +62,8 @@ namespace Silica.PageAccess.Tests
 
             // Page manager wired with walHook
             var options = PageAccessorOptions.Default(magic: 0x53494C41); // "SILA"
-            var pageAccess = new PageManager(bufferPool, options, metrics, componentName: "PageAccessHarnessPhysical", walHook: walHook);
+            var allocator = new Silica.StorageAllocation.StubAllocator();
+            var pageAccess = new PageManager(bufferPool, options, metrics, allocator, componentName: "PageAccessHarnessPhysical", walHook: walHook);
 
             try
             {
@@ -119,7 +121,8 @@ namespace Silica.PageAccess.Tests
                 TryInvokeStart(wal);
 
                 bufferPool = new BufferPoolManager(device, metrics, wal: wal, logFlush: null, poolName: "IntegrationTestPool", capacityPages: capacityPages);
-                pageAccess = new PageManager(bufferPool, options, metrics, componentName: "PageAccessHarnessPhysical", walHook: null);
+                var allocator2 = new Silica.StorageAllocation.StubAllocator();
+                pageAccess = new PageManager(bufferPool, options, metrics, allocator2, componentName: "PageAccessHarnessPhysical", walHook: null);
 
                 // WAL recovery: replay full-page records into the storage device before reads
                 var recover = new RecoverManager(walFile, metrics);

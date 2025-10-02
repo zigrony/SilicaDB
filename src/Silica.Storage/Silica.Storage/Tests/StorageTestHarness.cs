@@ -23,37 +23,29 @@ namespace Silica.Storage.Tests
             };
 
             string uncompressedPath = @"c:\temp\testdevice_uncompressed.dat";
-            string compressedPath = @"c:\temp\testdevice_compressed.dat";
 
             // 1. Create both scenarios fresh
-            await RunScenarioAsync(false, uncompressedPath, cts.Token);
-            await RunScenarioAsync(true, compressedPath, cts.Token);
+            await RunScenarioAsync(uncompressedPath, cts.Token);
 
             // 2. Reload and verify each
             await ReloadAndVerifyAsync(uncompressedPath, false, cts.Token);
-            await ReloadAndVerifyAsync(compressedPath, true, cts.Token);
 
             // 3. Negative tests: cross-load
             await ExpectMountFailureAsync(uncompressedPath, true, cts.Token);
-            await ExpectMountFailureAsync(compressedPath, false, cts.Token);
 
-            // 4. Now that everything is disposed, compare files
-            CompareFiles(uncompressedPath, compressedPath);
         }
 
-        private static async Task RunScenarioAsync(bool useCompression, string filePath, CancellationToken token)
+        private static async Task RunScenarioAsync(string filePath, CancellationToken token)
         {
             Console.WriteLine();
-            Console.WriteLine("=== {0} scenario (create) ===", useCompression ? "COMPRESSED" : "UNCOMPRESSED");
+            Console.WriteLine("=== scenario (create) ===");
 
             if (File.Exists(filePath))
                 File.Delete(filePath);
 
             var baseDevice = new PhysicalBlockDevice(filePath);
 
-            MiniDriverSpec[] specs = useCompression
-                ? new[] { new MiniDriverSpec(MiniDriverKind.Compression, p1: 1, p2: 5) }
-                : Array.Empty<MiniDriverSpec>();
+            MiniDriverSpec[] specs = Array.Empty<MiniDriverSpec>();
 
             ulong uuidLo = 0x1122334455667788UL;
             ulong uuidHi = 0x99AABBCCDDEEFF00UL;
@@ -79,7 +71,7 @@ namespace Silica.Storage.Tests
                 await DisposeDeviceChainAsync(device);
             }
 
-            Console.WriteLine("=== {0} scenario complete ===", useCompression ? "COMPRESSED" : "UNCOMPRESSED");
+            Console.WriteLine("=== scenario complete ===");
         }
 
         private static async Task ReloadAndVerifyAsync(string filePath, bool expectCompression, CancellationToken token)
@@ -89,9 +81,7 @@ namespace Silica.Storage.Tests
 
             var baseDevice = new PhysicalBlockDevice(filePath);
 
-            MiniDriverSpec[] specs = expectCompression
-                ? new[] { new MiniDriverSpec(MiniDriverKind.Compression, p1: 1, p2: 5) }
-                : Array.Empty<MiniDriverSpec>();
+            MiniDriverSpec[] specs = Array.Empty<MiniDriverSpec>();
 
             var device = StorageStackBuilder.Build(
                 baseDevice,
@@ -123,9 +113,7 @@ namespace Silica.Storage.Tests
 
             var baseDevice = new PhysicalBlockDevice(filePath);
 
-            MiniDriverSpec[] specs = expectCompression
-                ? new[] { new MiniDriverSpec(MiniDriverKind.Compression, p1: 1, p2: 5) }
-                : Array.Empty<MiniDriverSpec>();
+            MiniDriverSpec[] specs = Array.Empty<MiniDriverSpec>();
 
             var device = StorageStackBuilder.Build(
                 baseDevice,

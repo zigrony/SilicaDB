@@ -68,11 +68,13 @@ if ($GenerateMap -and [string]::IsNullOrEmpty($MapOutput)) {
 
 # Master list of all known projects
 $AllProjectsList = @(
-  "Silica.BufferPool","Silica.Common","Silica.Concurrency",
-  "Silica.DiagnosticsCore","Silica.Durability","Silica.Evictions",
-  "Silica.Exceptions","Silica.Storage","Silica.PageAccess",
-  "Silica.Sql.Lexer","Silica.Authentication","Silica.Certificates",
-  "Silica.Sessions","Silica.FrontEnds","Silica.UI","test.app"
+  "Silica.Authentication", "Silica.BufferPool", "Silica.Certificates",
+  "Silica.Common","Silica.Concurrency", "Silica.DiagnosticsCore",
+  "Silica.Durability","Silica.Evictions", "Silica.Exceptions",
+  "Silica.FrontEnds", "Silica.PageAccess","Silica.Sessions",
+  "Silica.Sql.Lexer","Silica.Storage", "Silica.UI", 
+  "Silica.Storage.Compression", "Silica.StorageAllocation", 
+  "Silica.StorageAllocation.Sql", "Silica.Storage.SqlMinidriver","test.app"
 )
 
 # Resolve which projects to export (case-insensitive handling of "All")

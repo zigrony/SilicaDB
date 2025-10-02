@@ -1,6 +1,7 @@
 ﻿using System;
 using Silica.BufferPool;
 using Silica.Exceptions;
+using Silica.Common.Primitives;
 
 namespace Silica.PageAccess
 {

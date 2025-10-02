@@ -108,6 +108,22 @@
         "runtime": {
           "bin/placeholder/Silica.Storage.dll": {}
         }
+      },
+      "Silica.StorageAllocation/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Silica.BufferPool": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0",
+          "Silica.Storage": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Silica.StorageAllocation.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Silica.StorageAllocation.dll": {}
+        }
       }
     }
   },
@@ -151,13 +167,19 @@
       "type": "project",
       "path": "../../Silica.Storage/Silica.Storage/Silica.Storage.csproj",
       "msbuildProject": "../../Silica.Storage/Silica.Storage/Silica.Storage.csproj"
+    },
+    "Silica.StorageAllocation/1.0.0": {
+      "type": "project",
+      "path": "../../Silica.StorageAllocation/Silica.StorageAllocation/Silica.StorageAllocation.csproj",
+      "msbuildProject": "../../Silica.StorageAllocation/Silica.StorageAllocation/Silica.StorageAllocation.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net8.0": [
       "Silica.BufferPool >= 1.0.0",
       "Silica.Concurrency >= 1.0.0",
-      "Silica.DiagnosticsCore >= 1.0.0"
+      "Silica.DiagnosticsCore >= 1.0.0",
+      "Silica.StorageAllocation >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -195,6 +217,9 @@
             },
             "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj": {
               "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore\\Silica.DiagnosticsCore.csproj"
+            },
+            "C:\\GitHubRepos\\SilicaDB\\src\\Silica.StorageAllocation\\Silica.StorageAllocation\\Silica.StorageAllocation.csproj": {
+              "projectPath": "C:\\GitHubRepos\\SilicaDB\\src\\Silica.StorageAllocation\\Silica.StorageAllocation\\Silica.StorageAllocation.csproj"
             }
           }
         }

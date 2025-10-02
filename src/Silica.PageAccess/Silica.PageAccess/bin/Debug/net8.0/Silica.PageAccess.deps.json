@@ -10,7 +10,8 @@
         "dependencies": {
           "Silica.BufferPool": "1.0.0",
           "Silica.Concurrency": "1.0.0",
-          "Silica.DiagnosticsCore": "1.0.0"
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.StorageAllocation": "1.0.0"
         },
         "runtime": {
           "Silica.PageAccess.dll": {}
@@ -106,6 +107,20 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "Silica.StorageAllocation/1.0.0": {
+        "dependencies": {
+          "Silica.BufferPool": "1.0.0",
+          "Silica.DiagnosticsCore": "1.0.0",
+          "Silica.Exceptions": "1.0.0",
+          "Silica.Storage": "1.0.0"
+        },
+        "runtime": {
+          "Silica.StorageAllocation.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -151,6 +166,11 @@
       "sha512": ""
     },
     "Silica.Storage/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Silica.StorageAllocation/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

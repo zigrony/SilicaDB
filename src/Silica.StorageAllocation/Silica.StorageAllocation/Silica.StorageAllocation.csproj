@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Silica.BufferPool\Silica.BufferPool\Silica.BufferPool.csproj" />
+    <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
+    <ProjectReference Include="..\..\Silica.Exceptions\Silica.Exceptions\Silica.Exceptions.csproj" />
+    <ProjectReference Include="..\..\Silica.Storage\Silica.Storage\Silica.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

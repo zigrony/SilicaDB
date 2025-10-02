@@ -8,7 +8,7 @@ namespace Silica.Storage.MiniDrivers
     /// </summary>
     public readonly struct MiniDriverSpec
     {
-        public readonly byte Kind;         // see MiniDriverKind
+        public readonly string Kind;       // string kind key (e.g., "compression")
         public readonly uint Param1;       // interpretation depends on Kind
         public readonly uint Param2;
         public readonly uint Param3;
@@ -18,7 +18,7 @@ namespace Silica.Storage.MiniDrivers
         public readonly Dictionary<string, byte[]>? MetadataBlobs;
 
         public MiniDriverSpec(
-            byte kind,
+            string kind,
             uint p1 = 0,
             uint p2 = 0,
             uint p3 = 0,

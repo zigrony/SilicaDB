@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Silica.BufferPool;
 using Silica.PageAccess;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.Common.Primitives;
 
 namespace Silica.PageAccess.Tests
 {
@@ -24,7 +25,8 @@ namespace Silica.PageAccess.Tests
 
             var device = new InMemoryPageDevice(pageSize);
             await using var pool = new BufferPoolManager(device, metrics, wal: null, logFlush: null, poolName: "PageAccessPool", capacityPages: 32);
-            await using var pageAccess = new PageManager(pool, options, metrics, "PageAccessHarness", walHook: null);
+            var allocator = new Silica.StorageAllocation.StubAllocator();
+            await using var pageAccess = new PageManager(pool, options, metrics, allocator, "PageAccessHarness", walHook: null);
 
             await RunTest("[Test] Header bootstrap + read validation", () => TestHeaderBootstrapAndRead(device, pageAccess, id, version, magic, pageSize));
             await RunTest("[Test] Read/Write lease roundtrip (body slice)", () => TestReadWriteLeaseRoundtrip(device, pageAccess, id, version, magic, pageSize));
@@ -147,7 +149,8 @@ namespace Silica.PageAccess.Tests
             // New device/pool intentionally writes bad magic (no bootstrap by design)
             var device2 = new InMemoryPageDevice(pageSize);
             await using var pool2 = new BufferPoolManager(device2, new DummyMetricsManager(), wal: null, logFlush: null, poolName: "ErrPool", capacityPages: 8);
-            await using var pa2 = new PageManager(pool2, PageAccessorOptions.Default(magic), new DummyMetricsManager(), "ErrAccess", walHook: null);
+            var allocator2 = new Silica.StorageAllocation.StubAllocator();
+            await using var pa2 = new PageManager(pool2, PageAccessorOptions.Default(magic), new DummyMetricsManager(), allocator2, "ErrAccess", walHook: null);
 
             var badHdr = new PageHeader(0xDEADBEEF, 0, ver, PageType.Data, false, PageHeader.HeaderSize, 0, 0, 0, 0);
             await BootstrapHeaderRaw(device2, id, pageSize, badHdr);
@@ -197,7 +200,8 @@ namespace Silica.PageAccess.Tests
             var device2 = new InMemoryPageDevice(pageSize);
             await using var pool2 = new BufferPoolManager(device2, metrics, wal: null, logFlush: null, poolName: "WalHookPool", capacityPages: 8);
             var hook = new FakeWalHook();
-            await using var pa = new PageManager(pool2, options, metrics, "WalHookAccess", walHook: hook);
+            var allocator2 = new Silica.StorageAllocation.StubAllocator();
+            await using var pa = new PageManager(pool2, options, metrics, allocator2, "WalHookAccess", walHook: hook);
 
             // Bootstrap header on the wal-hook device
             await BootstrapHeaderRaw(device2, id, pageSize, new PageHeader(magic, 0, ver, PageType.Data, false, PageHeader.HeaderSize, 0, 0, 0, 0));

@@ -39,7 +39,7 @@ namespace Silica.Storage
     {
         public readonly struct Entry
         {
-            public readonly byte Kind;   // see MiniDriverKind
+            public readonly string Kind;   // string key, e.g. "compression"
             public readonly byte Flags;  // reserved for future
             public readonly ushort Reserved0;
             public readonly uint Param1;
@@ -50,10 +50,10 @@ namespace Silica.Storage
             // V2: optional, driver-owned named blobs; null or empty when not present.
             public readonly Dictionary<string, byte[]>? MetadataBlobs;
 
-            public Entry(byte kind, byte flags, uint p1, uint p2, uint p3, uint p4,
+            public Entry(string kind, byte flags, uint p1, uint p2, uint p3, uint p4,
                          Dictionary<string, byte[]>? blobs = null)
             {
-                Kind = kind;
+                Kind = kind ?? string.Empty;
                 Flags = flags;
                 Reserved0 = 0;
                 Param1 = p1;
@@ -128,7 +128,8 @@ namespace Silica.Storage
             {
                 if (off + 32 > checksumPos) return false;
                 var e = Entries![i];
-                span[off + 0] = e.Kind;
+                // Kind byte slot preserved for legacy numeric manifests; write 0 to indicate string-kind in blobs.
+                span[off + 0] = 0;
                 span[off + 1] = e.Flags;
                 BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(off + 2, 2), e.Reserved0);
                 BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(off + 4, 4), e.Param1);
@@ -139,12 +140,21 @@ namespace Silica.Storage
                 off += 32;
             }
 
-            // V2/V3 blob directory (optional). V3 retains the same layout and placement.
+            // Ensure each format-affecting entry carries a string kind in the blob directory
+            bool ensureKindBlobs = ec > 0;
             bool anyBlobs = false;
-            for (int i = 0; i < ec; i++)
+            if (ensureKindBlobs)
             {
-                if (Entries![i].MetadataBlobs is { Count: > 0 }) { anyBlobs = true; break; }
+                // If any entry lacks MetadataBlobs or the "driver.kind" key, we will write blobs
+                for (int i = 0; i < ec; i++)
+                {
+                    var blobs = Entries![i].MetadataBlobs;
+                    if (blobs is null || !blobs.ContainsKey("driver.kind")) { anyBlobs = true; break; }
+                }
             }
+
+            // V2/V3 blob directory (optional). V3 retains the same layout and placement.
+            anyBlobs = anyBlobs || Entries.Any(e => e.MetadataBlobs is { Count: > 0 });
             if (anyBlobs)
             {
                 if (!TryWriteBlobDirectory(span, checksumPos, ec, Entries!, ref off))
@@ -190,13 +200,14 @@ namespace Silica.Storage
             var entries = ec == 0 ? Array.Empty<Entry>() : new Entry[ec];
             for (int i = 0; i < ec; i++)
             {
-                byte kind = src[off + 0];
+                byte legacyKindByte = src[off + 0];
                 byte flags = src[off + 1];
                 uint p1 = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(off + 4, 4));
                 uint p2 = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(off + 8, 4));
                 uint p3 = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(off + 12, 4));
                 uint p4 = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(off + 16, 4));
-                entries[i] = new Entry(kind, flags, p1, p2, p3, p4, blobs: null);
+                var kindString = MapLegacyKindByteToString(legacyKindByte);
+                entries[i] = new Entry(kindString, flags, p1, p2, p3, p4, blobs: null);
                 off += 32;
             }
 
@@ -204,6 +215,20 @@ namespace Silica.Storage
             {
                 // Best-effort blob directory parsing; failure => treat as no blobs
                 TryReadBlobDirectory(src.Slice(off, checksumPos - off), entries);
+            }
+            // Backward-compat mapping for legacy numeric kind byte; or prefer string "driver.kind" from blobs
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var e = entries[i];
+                string resolved = e.Kind;
+                if (string.IsNullOrEmpty(resolved))
+                {
+                    if (e.MetadataBlobs is { Count: > 0 } && e.MetadataBlobs.TryGetValue("driver.kind", out var kindBytes))
+                        resolved = Encoding.UTF8.GetString(kindBytes);
+                    else
+                        resolved = MapLegacyKindByteToString(src[(40 + 32 * i)]); // defensive; same as legacyKindByte
+                }
+                entries[i] = new Entry(resolved ?? string.Empty, e.Flags, e.Param1, e.Param2, e.Param3, e.Param4, e.MetadataBlobs);
             }
 
             uint expected = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(checksumPos, 4));
@@ -222,6 +247,19 @@ namespace Silica.Storage
 
             manifest = new DeviceManifest(lbs, uuidLo, uuidHi, entries);
             return true;
+        }
+
+        private static string MapLegacyKindByteToString(byte b)
+        {
+            // Legacy numeric => string name mapping; extend as needed
+            switch (b)
+            {
+                case 1: return "encryption";
+                case 2: return "versioning";
+                case 3: return "compression";
+                case 0: return string.Empty;
+                default: return "kind_" + b.ToString();
+            }
         }
 
         private static uint ComputeChecksum(ReadOnlySpan<byte> data)
@@ -434,13 +472,6 @@ namespace Silica.Storage
             return arr;
         }
     }
-    public static class MiniDriverKind
-    {
-        public const byte None = 0;
-        public const byte Compression = 1; // Reserved for future use
-        public const byte Encryption = 2;
-        public const byte Versioning = 3;
-        // Reserved: 4..31
-    }
+    // MiniDriverKind removed: manifests use string keys for driver kinds.
 
 }

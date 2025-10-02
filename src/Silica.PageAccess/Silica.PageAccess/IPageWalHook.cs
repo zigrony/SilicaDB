@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Silica.BufferPool;
+using Silica.Common.Primitives;
 
 namespace Silica.PageAccess
 {

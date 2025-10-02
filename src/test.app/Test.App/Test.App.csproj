@@ -19,6 +19,8 @@
     <ProjectReference Include="..\..\Silica.PageAccess\Silica.PageAccess\Silica.PageAccess.csproj" />
     <ProjectReference Include="..\..\Silica.Sessions\Silica.Sessions\Silica.Sessions.csproj" />
     <ProjectReference Include="..\..\Silica.Sql.Lexer\Silica.Sql.Lexer\Silica.Sql.Lexer.csproj" />
+    <ProjectReference Include="..\..\Silica.Storage.Compression\Silica.Storage.Compression\Silica.Storage.Compression.csproj" />
+    <ProjectReference Include="..\..\Silica.Storage.SqlMinidriver\Silica.Storage.SqlMinidriver\Silica.Storage.SqlMinidriver.csproj" />
     <ProjectReference Include="..\..\Silica.Storage\Silica.Storage\Silica.Storage.csproj" />
     <ProjectReference Include="..\..\Silica.UI\Silica.UI\Silica.UI.csproj" />
   </ItemGroup>

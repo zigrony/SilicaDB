@@ -10,6 +10,8 @@ using Silica.PageAccess;
 using Silica.DiagnosticsCore.Metrics;
 using Silica.Storage.Interfaces;
 using Silica.Storage;
+using Silica.Common.Primitives;
+using Silica.Common.Contracts;
 
 namespace Silica.PageAccess.Tests
 {
@@ -62,7 +64,8 @@ namespace Silica.PageAccess.Tests
 
             // Page access manager
             var options = PageAccessorOptions.Default(magic: 0x53494C41); // "SILA"
-            var pageAccess = new PageManager(bufferPool, options, metrics, componentName: "PageAccessHarness");
+            var allocator = new Silica.StorageAllocation.StubAllocator();
+            var pageAccess = new PageManager(bufferPool, options, metrics, allocator, "PageAccessHarness");
 
             try
             {
@@ -110,7 +113,8 @@ namespace Silica.PageAccess.Tests
                 bufferPool = new BufferPoolManager(
                     device, metrics, wal: wal, logFlush: null,
                     poolName: "IntegrationTestPool", capacityPages: capacityPages);
-                pageAccess = new PageManager(bufferPool, options, metrics, componentName: "PageAccessHarness");
+                var allocator2 = new Silica.StorageAllocation.StubAllocator();
+                pageAccess = new PageManager(bufferPool, options, metrics, allocator2, componentName: "PageAccessHarness");
 
                 // WAL recovery: replay full-page records into the storage device
                 var recover = new RecoverManager(walFile, metrics);

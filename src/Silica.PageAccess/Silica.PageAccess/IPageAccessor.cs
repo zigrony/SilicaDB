@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Silica.BufferPool;
 using Silica.DiagnosticsCore.Metrics;
+using Silica.Common.Primitives;
 
 namespace Silica.PageAccess
 {
@@ -22,6 +23,12 @@ namespace Silica.PageAccess
     /// </summary>
     public interface IPageAccessor
     {
+        /// <summary>
+        /// Allocate a new page via the storage allocator and return its PageId.
+        /// Caller should initialize the header via WriteHeaderAsync or WriteAndStampAsync.
+        /// </summary>
+        Task<PageId> CreatePageAsync(CancellationToken ct = default);
+
         /// <summary>
         /// Acquire a read lease and return a handle with the parsed header and page content.
         /// Validates magic/type/version before returning; optional checksum verification is policy-driven (options).
@@ -120,41 +127,6 @@ namespace Silica.PageAccess
     /// <summary>
     /// Semantic version for page layout. Major must match; minor may be upgradeable per policy.
     /// </summary>
-    public readonly struct PageVersion : IEquatable<PageVersion>
-    {
-        public readonly ushort Major;
-        public readonly ushort Minor;
-
-        public PageVersion(ushort major, ushort minor)
-        {
-            Major = major;
-            Minor = minor;
-        }
-
-        public bool Equals(PageVersion other) => Major == other.Major && Minor == other.Minor;
-        public override bool Equals(object obj) => obj is PageVersion pv && Equals(pv);
-        public override int GetHashCode() => (Major << 16) ^ Minor;
-        public override string ToString() => Major + "." + Minor;
-    }
-
-    /// <summary>
-    /// Stable page type identifiers. Low-cardinality, engine-wide constants.
-    /// </summary>
-    public enum PageType : byte
-    {
-        Unknown = 0,
-        Header = 1,
-        Catalog = 2,
-        PFS = 3,
-        GAM = 4,
-        SGAM = 5,
-        DCM = 6,
-        IAM = 7,
-        Data = 10,
-        Index = 11,
-        Lob = 12,
-        Free = 254
-    }
 
     /// <summary>
     /// Fixed 64-byte physical header, with explicit little-endian offsets.

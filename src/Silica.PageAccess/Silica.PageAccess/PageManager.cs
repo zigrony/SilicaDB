@@ -11,6 +11,8 @@ using Silica.DiagnosticsCore.Metrics;
 using Silica.DiagnosticsCore;
 using System.Collections.Generic;
 using Silica.PageAccess.Diagnostics;
+using Silica.Common.Primitives;
+using Silica.Storage.Allocation;
 
 namespace Silica.PageAccess
 {
@@ -36,12 +38,14 @@ namespace Silica.PageAccess
         private readonly IMetricsManager _metrics;
         private readonly KeyValuePair<string, object> _componentTag;
         private readonly IPageWalHook? _walHook;
+        private readonly IStorageAllocator _allocator;
         private int _disposed;
 
         public PageManager(
             IBufferPoolManager pool,
             PageAccessorOptions options,
             IMetricsManager metrics,
+            IStorageAllocator allocator,
             string componentName = "PageAccess",
             IPageWalHook? walHook = null)
 
@@ -49,12 +53,31 @@ namespace Silica.PageAccess
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
             _options = options;
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+            _allocator = allocator ?? throw new ArgumentNullException(nameof(allocator));
 
             var comp = string.IsNullOrWhiteSpace(componentName) ? "PageAccess" : componentName;
             _componentTag = new KeyValuePair<string, object>(TagKeys.Component, comp);
             _walHook = walHook;
             // Register PageAccess metrics once (DiagnosticsCore is tolerant of duplicates).
             PageAccessMetrics.RegisterAll(_metrics, comp);
+        }
+
+        public async Task<PageId> CreatePageAsync(CancellationToken ct = default)
+        {
+            ThrowIfDisposed();
+            var pageId = await _allocator.AllocatePageAsync(ct).ConfigureAwait(false);
+            PageAccessDiagnostics.Emit(
+                component: "Silica.PageAccess",
+                operation: "CreatePageAsync",
+                level: "info",
+                message: $"Allocated page: file={pageId.FileId}, index={pageId.PageIndex}",
+                ex: null,
+                more: new Dictionary<string, string>
+                {
+                { "file_id", pageId.FileId.ToString() },
+                { "page_index", pageId.PageIndex.ToString() }
+                });
+            return pageId;
         }
 
         private static class Stopwatch

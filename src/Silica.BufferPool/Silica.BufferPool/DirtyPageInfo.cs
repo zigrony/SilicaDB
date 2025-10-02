@@ -1,4 +1,5 @@
-﻿// Filename: Silica.BufferPool/DirtyPageInfo.cs
+﻿using Silica.Common.Primitives;
+// Filename: Silica.BufferPool/DirtyPageInfo.cs
 namespace Silica.BufferPool
 {
     /// <summary>

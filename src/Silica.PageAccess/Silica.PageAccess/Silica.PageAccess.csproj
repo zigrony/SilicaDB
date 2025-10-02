@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\Silica.BufferPool\Silica.BufferPool\Silica.BufferPool.csproj" />
     <ProjectReference Include="..\..\Silica.Concurrency\Silica.Concurrency\Silica.Concurrency.csproj" />
     <ProjectReference Include="..\..\Silica.DiagnosticsCore\Silica.DiagnosticsCore\Silica.DiagnosticsCore.csproj" />
+    <ProjectReference Include="..\..\Silica.StorageAllocation\Silica.StorageAllocation\Silica.StorageAllocation.csproj" />
   </ItemGroup>
 
 </Project>

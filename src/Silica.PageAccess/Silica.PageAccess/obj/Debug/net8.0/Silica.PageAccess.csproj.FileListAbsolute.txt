@@ -9,9 +9,11 @@ C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Evictions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Exceptions.dll
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Storage.dll
+C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.StorageAllocation.dll
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.BufferPool.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Concurrency.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.DiagnosticsCore.pdb
+C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.StorageAllocation.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Common.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Durability.pdb
 C:\GitHubRepos\SilicaDB\src\Silica.PageAccess\Silica.PageAccess\bin\Debug\net8.0\Silica.Evictions.pdb

@@ -23,8 +23,11 @@ using Silica.Certificates.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using Silica.Sessions.Tests;
 using Silica.FrontEnds.Tests;
+using Silica.Storage.Compression.Tests;
 using Silica.UI.Core;
 using Silica.UI.Config;
+using Silica.Storage.SqlMinidriver;
+using Silica.Storage.SqlMinidriver.Tests;
 
 public static class DiagnosticsRegistration
 {
@@ -196,7 +199,6 @@ class Program
 
         await using var system = new SilicaSystem(optionsUI);
         await system.StartAsync();
-        await BufferPoolTestHarness.Run();
 
         Console.WriteLine("Silica running. Press Enter to stop...");
         Console.ReadLine();
@@ -237,6 +239,7 @@ class Program
         //await BufferPoolTestHarness.Run();
         //await DurabilityTestHarness.Run();
         //await PageAccessTestHarness.Run();
+        //await PageAccessAllocatorTestHarness.RunAsync();
         //await ConcurrencyTestHarness.Run();
         //await PageAccessIntegrationHarnessPhysical.RunAsync();
         //await AuthenticationTestHarnessLocal.Run();
@@ -245,6 +248,8 @@ class Program
         //await AuthenticationTestHarnessJwt.Run();
         //await AuthenticationTestHarnessCertificate.Run();
         //await SessionsTestHarness.Run();
+        //await CompressionRoundTripHarness.RunAsync();
+        await SqlMinidriverTestHarness.RunAsync();
 
         //// Create a token that cancels on Ctrl+C or process exit
         //using var cts = new CancellationTokenSource();
